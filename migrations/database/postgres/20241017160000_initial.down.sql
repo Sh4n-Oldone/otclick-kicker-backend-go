@@ -1,0 +1,14 @@
+begin;
+
+DROP TABLE IF EXISTS rating;
+DROP TABLE IF EXISTS players_teams_links;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS user_roles;
+DROP TABLE IF EXISTS matches;
+DROP TABLE IF EXISTS players;
+DROP TABLE IF EXISTS games;
+DROP TABLE IF EXISTS teams;
+DROP TABLE IF EXISTS leagues;
+DROP TABLE IF EXISTS cities;
+
+commit;
