@@ -4,7 +4,6 @@ import (
 	"context"
 	"net"
 	"net/http"
-	"net/smtp"
 	"runtime"
 	"runtime/debug"
 	"time"
@@ -18,14 +17,18 @@ import (
 	goRedis "github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
 
-	"node71.otclick.ru/backend/template/internal/config"
-	"node71.otclick.ru/backend/template/internal/endpoint"
-	"node71.otclick.ru/backend/template/internal/healthchecker"
-	tpHTTP "node71.otclick.ru/backend/template/internal/transport/http"
-	customMiddleware "node71.otclick.ru/backend/template/internal/transport/http/middleware"
-	tpHTTPTemplate "node71.otclick.ru/backend/template/internal/transport/http/template"
-	"node71.otclick.ru/backend/template/pkg/database/postgresql"
-	"node71.otclick.ru/backend/template/pkg/database/redis"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint"
+
+	epCity "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/city"
+	srvCity "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/city"
+
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/healthchecker"
+	tpHTTP "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http"
+	customMiddleware "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/middleware"
+	tpHTTPCity "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/city"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/redis"
 )
 
 func initRuntime(cpu, threads int, logger zerolog.Logger) {
@@ -77,9 +80,9 @@ func initHealthChecker(config *config.Configuration, router *chi.Mux) {
 func initKitHTTP(appConfig *config.Configuration, endpoints endpoint.ServicesEndpoints, netLogger zerolog.Logger, listenErr chan error, router *chi.Mux) (*http.Server, net.Listener) {
 	var serverOptions []kithttp.ServerOption
 
-	router.Mount("/Rhumb.v1.TemplateService/",
-		tpHTTPTemplate.NewServer(
-			endpoints.TemplateEP,
+	router.Mount("/Kicker.v1.CityService/",
+		tpHTTPCity.NewServer(
+			endpoints.CityEP,
 			serverOptions))
 
 	if webDebugEnabled {
@@ -144,12 +147,6 @@ func initRedisConnection(appConfig *config.Configuration) (*goRedis.Client, erro
 	return rds, nil
 }
 
-func initSmtpAuth(appConfig *config.Configuration) smtp.Auth {
-	// здесь возвращается nil, потому что авторизация в SMTP сервере, на данный момент, не поддерживается
-	// если будет поддерживаться - раскоментировать и вернуть!
-	//auth := smtp.PlainAuth("", appConfig.Mail.From, appConfig.Mail.Password, appConfig.Mail.Host)
-	return nil
-}
 
 /*func initCache(config *config.CacheConfig) (cache.ICache, error) {
 	return connector.NewCache(config.Type, config.ConnectionString, config.DialTimeout, config.MaxRetries)
@@ -175,10 +172,10 @@ func initEndpoints(
 	rwdbOperationer postgresql.RWDBOperationer,
 	rdbOperationer postgresql.RDBOperationer,
 	redisDB redis.Redis,
-	smtpAuth smtp.Auth) endpoint.ServicesEndpoints {
-	templateSrv := srvTemplate.NewService(appConfig, &apiLogger, validator, rwdbOperationer, rdbOperationer, redisDB, smtpAuth)
+	) endpoint.ServicesEndpoints {
+	citySrv := srvCity.NewService(appConfig, &apiLogger, validator, rwdbOperationer, rdbOperationer)
 
 	return endpoint.ServicesEndpoints{
-		TemplateEP: epTemplate.MakeEndpoints(templateSrv),
+		CityEP: epCity.MakeEndpoints(citySrv),
 	}
 }

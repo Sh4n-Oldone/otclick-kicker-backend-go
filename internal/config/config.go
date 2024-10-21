@@ -59,7 +59,6 @@ type (
 		RDB         DBConfig          `env:",prefix=RDB_"`
 		Version     Version           `env:",prefix=VERSION_"`
 		Token       TokenConfig       `env:",prefix=TOKEN_"`
-		Secret      Secret            `env:",prefix=SECRET_"`
 		Redis       RedisConfig       `env:",prefix=REDIS_"`
 		LifeTime    LifeTimeConfig    `env:",prefix=LIFETIME_"`
 	}
@@ -118,11 +117,6 @@ type (
 	TokenConfig struct {
 		AccessTTL  time.Duration `env:"TTL_ACCESS,default=1h"`
 		RefreshTTL time.Duration `env:"TTL_REFRESH,default=720h"`
-	}
-
-	Secret struct {
-		Key  string `env:"KEY, required"`
-		Salt string `env:"SALT, required"`
 	}
 
 	RedisConfig struct {

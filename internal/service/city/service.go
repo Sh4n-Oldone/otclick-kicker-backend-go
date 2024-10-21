@@ -1,16 +1,21 @@
-package template
+package city
 
 import (
 	"context"
+
 	"github.com/bufbuild/protovalidate-go"
 	"github.com/rs/zerolog"
-	"node71.otclick.ru/backend/template/pkg/database/postgresql"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql"
 
-	"node71.otclick.ru/backend/template/internal/config"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
 )
 
 type IService interface {
-	Create(ctx context.Context) (*int64, error)
+	GetList(ctx context.Context, withDeleted bool) ([]entity.City, error)
+	Create(ctx context.Context, city entity.City) (*int64, error)
+	Update(ctx context.Context, city entity.City) error
+	Delete(ctx context.Context, id int64) error
 
 	GetLogger() *zerolog.Logger
 }

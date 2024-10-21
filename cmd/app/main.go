@@ -13,10 +13,10 @@ import (
 	"github.com/bufbuild/protovalidate-go"
 	goRedis "github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
-	"node71.otclick.ru/backend/template/internal/config"
-	"node71.otclick.ru/backend/template/pkg/database/postgresql"
-	"node71.otclick.ru/backend/template/pkg/database/redis"
-	"node71.otclick.ru/backend/template/pkg/logger"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/redis"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/logger"
 )
 
 func main() {
@@ -111,9 +111,7 @@ func main() {
 
 	redisDB, err := redis.New(rds)
 
-	smtpAuth := initSmtpAuth(appConfig)
-
-	serviceEndpoints := initEndpoints(appConfig, apiLogger, validator, rwdbOperationer, rdbOperationer, redisDB, smtpAuth)
+	serviceEndpoints := initEndpoints(appConfig, apiLogger, validator, rwdbOperationer, rdbOperationer, redisDB)
 	chiRouter := initHTTPRouter(appConfig)
 
 	initHealthChecker(appConfig, chiRouter)

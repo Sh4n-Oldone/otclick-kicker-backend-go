@@ -1,5 +1,7 @@
 package errors
 
 const (
-	FailedCastValidateRequest = "failed to CastValidateRequest"
+	FailedValidateRequest = "ошибка валидации запроса"
+	EmptyParameterError = "отсутствует параметр в запросе"
+	WrongParameterError = "неверный параметр в запросе"
 )

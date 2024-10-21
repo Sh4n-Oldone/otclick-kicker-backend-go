@@ -1,9 +1,9 @@
 package endpoint
 
 import (
-	"node71.otclick.ru/backend/template/internal/endpoint/template"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/city"
 )
 
 type ServicesEndpoints struct {
-	TemplateEP template.Endpoints
+	CityEP city.Endpoints
 }
