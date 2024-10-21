@@ -1,14 +1,22 @@
 package postgresql
 
 import (
+	"context"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/rs/zerolog"
+
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
 )
 
 type RWDBOperationer interface {
+	CreateCity(logger zerolog.Logger, ctx context.Context, city entity.City) (id int64, err error)
+	UpdateCity(logger zerolog.Logger, ctx context.Context, city entity.City) error
+	DeleteCity(logger zerolog.Logger, ctx context.Context, id int64) error
 }
 
 // RDBOperationer is the interface that implemented by the RDBOperation structure.
 type RDBOperationer interface {
+	GetCityList(logger zerolog.Logger, ctx context.Context, withDelete bool) ([]entity.City, error)
 }
 
 type dbp struct {

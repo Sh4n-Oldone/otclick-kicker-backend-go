@@ -9,7 +9,7 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 
-	"node71.otclick.ru/backend/template/pkg/error_templates"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
 )
 
 // DecodeDatabaseError is a function that decodes some reason database errors into human-understandable error messages.
