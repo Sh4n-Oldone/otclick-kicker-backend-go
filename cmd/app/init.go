@@ -23,10 +23,14 @@ import (
 	epCity "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/city"
 	srvCity "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/city"
 
+	epMatch "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/match"
+	srvMatch "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/match"
+
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/healthchecker"
 	tpHTTP "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http"
 	customMiddleware "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/middleware"
 	tpHTTPCity "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/city"
+	tpHTTPMatch "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/match"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/redis"
 )
@@ -84,6 +88,11 @@ func initKitHTTP(appConfig *config.Configuration, endpoints endpoint.ServicesEnd
 		tpHTTPCity.NewServer(
 			endpoints.CityEP,
 			serverOptions))
+
+	router.Mount("/Kicker.v1.MatchService/",
+		tpHTTPMatch.NewServer(
+			endpoints.MatchEP,
+			serverOptions))	
 
 	if webDebugEnabled {
 		router.Mount("/dbg", ProfilerHandler())
@@ -174,8 +183,11 @@ func initEndpoints(
 	redisDB redis.Redis,
 	) endpoint.ServicesEndpoints {
 	citySrv := srvCity.NewService(appConfig, &apiLogger, validator, rwdbOperationer, rdbOperationer)
+	matchSrv := srvMatch.NewService(appConfig, &apiLogger, validator, rwdbOperationer, rdbOperationer)
+
 
 	return endpoint.ServicesEndpoints{
 		CityEP: epCity.MakeEndpoints(citySrv),
+		MatchEP: epMatch.MakeEndpoints(matchSrv),
 	}
 }
