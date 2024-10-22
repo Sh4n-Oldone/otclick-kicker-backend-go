@@ -6,7 +6,8 @@ stages:
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
   GIT_SUBMODULE_FORCE_HTTPS: "true"
-  DOCKER_IMAGE: "$DOCKER_REGISTRY/rhumb-api"
+  SERVICE_NAME: "kicker-backend-go"
+  DOCKER_IMAGE: "$DOCKER_REGISTRY/$SERVICE_NAME"
   DOCKER_TAG: "$CI_JOB_ID"
 
 
@@ -38,8 +39,8 @@ deploy:
     - export TAG=$(cat tag.txt)
     - docker images --format "{{.Repository}}:{{.Tag}}" | grep "^$DOCKER_IMAGE:" | xargs -r docker rmi -f
     - docker pull $DOCKER_IMAGE:$TAG
-    - docker stop rhumb-api || true
-    - docker rm rhumb-api || true
-    - docker run -d --restart unless-stopped --name rhumb-api --env-file .env.sample --network rhumb -p 4401:8080 -p 4411:18080 $DOCKER_IMAGE:$TAG
+    - docker stop $SERVICE_NAME || true
+    - docker rm $SERVICE_NAME || true
+    - docker run -d --restart unless-stopped --name $SERVICE_NAME --env-file .env.sample --network kicker -p 4420:8080 $DOCKER_IMAGE:$TAG
   dependencies:
     - build
