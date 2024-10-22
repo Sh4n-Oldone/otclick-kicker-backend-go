@@ -12,6 +12,10 @@ type RWDBOperationer interface {
 	CreateCity(logger zerolog.Logger, ctx context.Context, city entity.City) (id int64, err error)
 	UpdateCity(logger zerolog.Logger, ctx context.Context, city entity.City) error
 	DeleteCity(logger zerolog.Logger, ctx context.Context, id int64) error
+
+	CreateMatch(logger zerolog.Logger, ctx context.Context, match entity.Match) (id int64, err error)
+	UpdateMatch(logger zerolog.Logger, ctx context.Context, match entity.Match) error
+	DeleteMatch(logger zerolog.Logger, ctx context.Context, id int64) error
 }
 
 // RDBOperationer is the interface that implemented by the RDBOperation structure.

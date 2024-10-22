@@ -36,3 +36,21 @@ func ValidateUpdateCityRequest(request *entity.UpdateCityRequest) error {
 
 	return nil
 }
+
+func ValidateCreateMatchRequest(request *entity.CreateMatchRequest) error {
+	if request.Date == nil {
+		err := error_templates.New("invalid request fields", errors.New("invalid request fields"), codes.InvalidArgument, http.StatusBadRequest)
+		return error_templates.WrapErrorDetail(err, fmt.Sprintf("wrong value of parameter %T", request.Date))
+	}
+
+	return nil
+}
+
+func ValidateUpdateMatchRequest(request *entity.UpdateMatchRequest) error {
+	if request.ID <= 0 {
+		err := error_templates.New("invalid request fields", errors.New("invalid request fields"), codes.InvalidArgument, http.StatusBadRequest)
+		return error_templates.WrapErrorDetail(err, fmt.Sprintf("wrong value of parameter %T", request.ID))
+	}
+
+	return nil
+}
