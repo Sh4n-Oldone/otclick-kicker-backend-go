@@ -21,16 +21,19 @@ import (
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint"
 
 	epCity "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/city"
+	epPlayer "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/player"
 	srvCity "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/city"
+	srvPlayer "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/player"
 
 	epMatch "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/match"
 	srvMatch "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/match"
 
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/healthchecker"
 	tpHTTP "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http"
-	customMiddleware "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/middleware"
 	tpHTTPCity "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/city"
 	tpHTTPMatch "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/match"
+	customMiddleware "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/middleware"
+	tpHTTPPlayer "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/player"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/redis"
 )
@@ -92,7 +95,12 @@ func initKitHTTP(appConfig *config.Configuration, endpoints endpoint.ServicesEnd
 	router.Mount("/Kicker.v1.MatchService/",
 		tpHTTPMatch.NewServer(
 			endpoints.MatchEP,
-			serverOptions))	
+			serverOptions))
+
+	router.Mount("/Kicker.v1.PlayerService/",
+		tpHTTPPlayer.NewServer(
+			endpoints.PlayerEP,
+			serverOptions))
 
 	if webDebugEnabled {
 		router.Mount("/dbg", ProfilerHandler())
@@ -156,7 +164,6 @@ func initRedisConnection(appConfig *config.Configuration) (*goRedis.Client, erro
 	return rds, nil
 }
 
-
 /*func initCache(config *config.CacheConfig) (cache.ICache, error) {
 	return connector.NewCache(config.Type, config.ConnectionString, config.DialTimeout, config.MaxRetries)
 }
@@ -181,13 +188,14 @@ func initEndpoints(
 	rwdbOperationer postgresql.RWDBOperationer,
 	rdbOperationer postgresql.RDBOperationer,
 	redisDB redis.Redis,
-	) endpoint.ServicesEndpoints {
+) endpoint.ServicesEndpoints {
 	citySrv := srvCity.NewService(appConfig, &apiLogger, validator, rwdbOperationer, rdbOperationer)
 	matchSrv := srvMatch.NewService(appConfig, &apiLogger, validator, rwdbOperationer, rdbOperationer)
-
+	playerSrv := srvPlayer.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
 
 	return endpoint.ServicesEndpoints{
-		CityEP: epCity.MakeEndpoints(citySrv),
-		MatchEP: epMatch.MakeEndpoints(matchSrv),
+		CityEP:   epCity.MakeEndpoints(citySrv),
+		MatchEP:  epMatch.MakeEndpoints(matchSrv),
+		PlayerEP: epPlayer.MakeEndpoints(playerSrv),
 	}
 }
