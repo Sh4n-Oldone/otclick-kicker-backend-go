@@ -53,7 +53,7 @@ func (db *RWDBOperation) DeletePlayer(logger zerolog.Logger, ctx context.Context
 		return DecodeDatabaseError(err)
 	}
 
-	_, err := tx.Exec(ctx, query2, id)
+	_, err = tx.Exec(ctx, query2, id)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.DeletePlayer")
 		_ = tx.Rollback(ctx)
