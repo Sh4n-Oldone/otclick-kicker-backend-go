@@ -6,7 +6,7 @@ func ConvertCreateCityRequestToCity(request *entity.CreateCityRequest) *entity.C
 	return &entity.City{
 		Name:    request.Name,
 		Ru:      request.Ru,
-		Deleted: request.Deleted,
+		DeletedAt: request.DeletedAt,
 	}
 }
 
@@ -15,7 +15,21 @@ func ConvertUpdateCityRequestToCity(request *entity.UpdateCityRequest) *entity.C
 		ID:      request.ID,
 		Name:    request.Name,
 		Ru:      request.Ru,
-		Deleted: request.Deleted,
+		DeletedAt: request.DeletedAt,
+	}
+}
+
+func ConvertCreateUserRequestToUser(request *entity.CreateUserRequest) *entity.User{
+	return &entity.User{
+		Email: request.Email,
+		Password: []byte(request.Password),
+	}
+}
+
+func ConvertLoginUserRequestToUser(request *entity.LoginUserRequest) *entity.User{
+	return &entity.User{
+		Email: request.Email,
+		Password: []byte(request.Password),
 	}
 }
 
@@ -49,3 +63,4 @@ func ConvertUpdateMatchRequestToMatch(request *entity.UpdateMatchRequest) *entit
 		ScoreTeam2:     request.ScoreTeam2,
 	}
 }
+

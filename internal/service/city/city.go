@@ -25,7 +25,7 @@ func (s *Service) Create(ctx context.Context, city entity.City) (*int64, error) 
 		return nil, err
 	}
 
-	return &id, nil
+	return id, nil
 }
 
 func (s *Service) Update(ctx context.Context, city entity.City) error {

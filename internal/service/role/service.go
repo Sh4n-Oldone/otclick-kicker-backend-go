@@ -1,4 +1,4 @@
-package match
+package role
 
 import (
 	"context"
@@ -11,9 +11,7 @@ import (
 )
 
 type IService interface {
-	Create(ctx context.Context, match entity.Match) (*int64, error)
-	Update(ctx context.Context, match entity.Match) error
-	Delete(ctx context.Context, id int64) error
+	GetList(ctx context.Context) ([]entity.Role, error)
 
 	GetLogger() *zerolog.Logger
 }

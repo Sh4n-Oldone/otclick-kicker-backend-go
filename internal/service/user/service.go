@@ -1,4 +1,4 @@
-package match
+package user
 
 import (
 	"context"
@@ -11,9 +11,11 @@ import (
 )
 
 type IService interface {
-	Create(ctx context.Context, match entity.Match) (*int64, error)
-	Update(ctx context.Context, match entity.Match) error
-	Delete(ctx context.Context, id int64) error
+	Create(ctx context.Context, request entity.CreateUserRequest) (*int64, error)
+	Login(ctx context.Context, user entity.User) (*string, error)
+	ChangePassword(ctx context.Context, userOld, userNew entity.User) error
+	CheckAuth(ctx context.Context) error
+	GetUser(ctx context.Context, userID int64) (*entity.User, error)
 
 	GetLogger() *zerolog.Logger
 }
