@@ -10,12 +10,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/bufbuild/protovalidate-go"
 	goRedis "github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/user"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/redis"
+	// "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/redis"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/logger"
 )
 
@@ -89,11 +89,6 @@ func main() {
 	}
 	defer rdb.Close()
 
-	validator, err := protovalidate.New()
-	if err != nil {
-		coreLogger.Fatal().Err(err).Msg("failed to initialize proto validator")
-	}
-
 	rwdbOperationer, rdbOperationer := postgresql.NewOperationer(rwdb, rdb)
 
 	rds, err := initRedisConnection(appConfig)
@@ -109,14 +104,16 @@ func main() {
 		}
 	}(rds)
 
-	redisDB, err := redis.New(rds)
+	// redisDB, err := redis.New(rds)
 
-	serviceEndpoints := initEndpoints(appConfig, apiLogger, validator, rwdbOperationer, rdbOperationer, redisDB)
+	userService := user.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
+
+	serviceEndpoints := initEndpoints(appConfig, apiLogger, rwdbOperationer, rdbOperationer)
 	chiRouter := initHTTPRouter(appConfig)
 
 	initHealthChecker(appConfig, chiRouter)
 
-	httpServer, httpListener := initKitHTTP(appConfig, serviceEndpoints, netLogger, listenErr, chiRouter)
+	httpServer, httpListener := initKitHTTP(appConfig, userService, serviceEndpoints, netLogger, listenErr, chiRouter)
 	defer func() {
 		err = httpListener.Close()
 		if err != nil {
@@ -155,7 +152,6 @@ func runApp(httpServer *http.Server, coreLogger zerolog.Logger, listenErr chan e
 			}
 			coreLogger.Info().Msg("server loop stopped")
 			runningApp = false
-			break
 		}
 	}
 }

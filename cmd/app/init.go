@@ -8,7 +8,6 @@ import (
 	"runtime/debug"
 	"time"
 
-	"github.com/bufbuild/protovalidate-go"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	kithttp "github.com/go-kit/kit/transport/http"
@@ -25,17 +24,27 @@ import (
 	srvCity "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/city"
 	srvPlayer "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/player"
 
+	epUser "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/user"
+	srvUser "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/user"
+
 	epMatch "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/match"
 	srvMatch "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/match"
 
+	epRole "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/role"
+	srvRole "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/role"
+
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/healthchecker"
+
 	tpHTTP "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http"
 	tpHTTPCity "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/city"
 	tpHTTPMatch "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/match"
+	tpHTTPUser "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/user"
+	tpHTTPRole "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/role"
+
 	customMiddleware "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/middleware"
 	tpHTTPPlayer "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/player"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/redis"
+	// "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/redis"
 )
 
 func initRuntime(cpu, threads int, logger zerolog.Logger) {
@@ -84,13 +93,15 @@ func initHealthChecker(config *config.Configuration, router *chi.Mux) {
 	router.Mount("/", healthChecker.Handler())
 }
 
-func initKitHTTP(appConfig *config.Configuration, endpoints endpoint.ServicesEndpoints, netLogger zerolog.Logger, listenErr chan error, router *chi.Mux) (*http.Server, net.Listener) {
+func initKitHTTP(appConfig *config.Configuration, service srvUser.IService, endpoints endpoint.ServicesEndpoints, netLogger zerolog.Logger, listenErr chan error, router *chi.Mux) (*http.Server, net.Listener) {
 	var serverOptions []kithttp.ServerOption
 
 	router.Mount("/Kicker.v1.CityService/",
 		tpHTTPCity.NewServer(
 			endpoints.CityEP,
-			serverOptions))
+			serverOptions,
+			appConfig,
+			service))
 
 	router.Mount("/Kicker.v1.MatchService/",
 		tpHTTPMatch.NewServer(
@@ -101,6 +112,20 @@ func initKitHTTP(appConfig *config.Configuration, endpoints endpoint.ServicesEnd
 		tpHTTPPlayer.NewServer(
 			endpoints.PlayerEP,
 			serverOptions))
+
+	router.Mount("/Kicker.v1.UserService/",
+		tpHTTPUser.NewServer(
+			endpoints.UserEP,
+			serverOptions,
+			appConfig,
+			service))
+	
+	router.Mount("/Kicker.v1.RoleService/",
+		tpHTTPRole.NewServer(
+			endpoints.RoleEP,
+			serverOptions,
+			appConfig,
+			service))
 
 	if webDebugEnabled {
 		router.Mount("/dbg", ProfilerHandler())
@@ -184,18 +209,20 @@ func initServices(config *config.Configuration, cache cache.ICache, baseLogger z
 func initEndpoints(
 	appConfig *config.Configuration,
 	apiLogger zerolog.Logger,
-	validator *protovalidate.Validator,
 	rwdbOperationer postgresql.RWDBOperationer,
 	rdbOperationer postgresql.RDBOperationer,
-	redisDB redis.Redis,
-) endpoint.ServicesEndpoints {
-	citySrv := srvCity.NewService(appConfig, &apiLogger, validator, rwdbOperationer, rdbOperationer)
-	matchSrv := srvMatch.NewService(appConfig, &apiLogger, validator, rwdbOperationer, rdbOperationer)
+	) endpoint.ServicesEndpoints {
+	citySrv := srvCity.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
+	userSrv := srvUser.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
+	matchSrv := srvMatch.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
+	roleSrv := srvRole.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
 	playerSrv := srvPlayer.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
 
 	return endpoint.ServicesEndpoints{
-		CityEP:   epCity.MakeEndpoints(citySrv),
-		MatchEP:  epMatch.MakeEndpoints(matchSrv),
+		CityEP: epCity.MakeEndpoints(citySrv),
+		UserEP: epUser.MakeEndpoints(userSrv),
+		MatchEP: epMatch.MakeEndpoints(matchSrv),
+		RoleEP: epRole.MakeEndpoints(roleSrv),
 		PlayerEP: epPlayer.MakeEndpoints(playerSrv),
 	}
 }

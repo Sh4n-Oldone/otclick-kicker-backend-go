@@ -1,10 +1,12 @@
 package helpers
 
 import (
-	stderr "errors"
 	"fmt"
-	"google.golang.org/grpc/codes"
 	"net/http"
+
+	"google.golang.org/grpc/codes"
+
+	stderr "errors"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 )

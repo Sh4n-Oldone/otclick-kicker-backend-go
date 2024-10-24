@@ -1,14 +1,15 @@
 package postgresql
 
 const (
+	// Citiy queries -->
 	queryGetCityList string = `
-		SELECT * 
+		SELECT id, name, ru, deleted_at 
 		FROM cities
-		WHERE deleted = false
+		WHERE deleted_at IS NULL
 		ORDER BY id;`
 
 	queryGetCityListWithDeleted string = `
-		SELECT * 
+		SELECT id, name, ru, deleted_at 
 		FROM cities
 		ORDER BY id;`
 
@@ -29,7 +30,63 @@ const (
 		WHERE id = $4;`
 
 	queryDeleteCity string = `UPDATE cities SET deleted = TRUE WHERE id = $1;`
+	// <--
 
+	// User queries
+	queryGetUserByID string = `
+		SELECT 
+			u.id, 
+			u.email,
+			u.password,
+			coalesce(r.id, 0),
+			r.name,
+			coalesce(t.id, 0)
+		FROM users as u
+			LEFT JOIN user_roles as r ON u.role_id = r.id
+			LEFT JOIN teams as t ON u.team_id = t.id
+		WHERE u.id = $1;`
+
+	queryGetUserByEmail string = `
+		SELECT 
+			u.id, 
+			u.email,
+			u.password,
+			coalesce(r.id, 0),
+			r.name,
+			coalesce(t.id, 0)
+		FROM users as u
+			LEFT JOIN user_roles as r ON u.role_id = r.id
+			LEFT JOIN teams as t ON u.team_id = t.id
+		WHERE u.email = $1;`
+
+	queryCreateUser string = `
+		INSERT INTO users (email, password, role_id)
+		VALUES
+		(
+			$1,
+			$2,
+			$3
+		) RETURNING id;`
+
+	queryUpdateUser string = `
+		UPDATE users 
+		SET 
+			email = COALESCE($1, email), 
+			password = COALESCE($2, password), 
+			role_id = COALESCE($3, role_id), 
+			team_id = COALESCE($4, team_id)
+		WHERE id = $5;`
+	// <--
+
+	// Role queries -->
+	queryGetRoleList string = `SELECT id, name, description, updated_at FROM user_roles;`
+
+	queryGetRoleByID string = `SELECT id, name, description, updated_at FROM user_roles WHERE id = $1;`
+
+	queryGetRoleByName string = `SELECT id, name, description, updated_at FROM user_roles WHERE name = $1;`
+	// <--
+
+	// Match queries -->
 	queryCreateMatch string = `
 	INSERT INTO matches (
 		date,
@@ -72,4 +129,5 @@ const (
 		WHERE id = $11;`
 
 	queryDeleteMatch string = `DELETE FROM matches WHERE id = $1`
+	// <--
 )

@@ -10,9 +10,11 @@ import (
 )
 
 type RWDBOperationer interface {
-	CreateCity(logger zerolog.Logger, ctx context.Context, city entity.City) (id int64, err error)
+	CreateCity(logger zerolog.Logger, ctx context.Context, city entity.City) (id *int64, err error)
 	UpdateCity(logger zerolog.Logger, ctx context.Context, city entity.City) error
 	DeleteCity(logger zerolog.Logger, ctx context.Context, id int64) error
+	CreateUser(logger zerolog.Logger, ctx context.Context, user entity.User) (id *int64, err error)
+	UpdateUser(logger zerolog.Logger, ctx context.Context, user entity.User) error
 	CreateMatch(logger zerolog.Logger, ctx context.Context, match entity.Match) (id int64, err error)
 	UpdateMatch(logger zerolog.Logger, ctx context.Context, match entity.Match) error
 	DeleteMatch(logger zerolog.Logger, ctx context.Context, id int64) error
@@ -23,7 +25,10 @@ type RWDBOperationer interface {
 
 // RDBOperationer is the interface that implemented by the RDBOperation structure.
 type RDBOperationer interface {
+	GetRoleList(logger zerolog.Logger, ctx context.Context) ([]entity.Role, error)
+	GetRole(logger zerolog.Logger, ctx context.Context, id *int64, name *string) (*entity.Role, error)
 	GetCityList(logger zerolog.Logger, ctx context.Context, withDelete bool) ([]entity.City, error)
+	GetUser(logger zerolog.Logger, ctx context.Context, id *int64, email *string) (*entity.User, error)
 	GetPlayerByID(logger zerolog.Logger, ctx context.Context, playerID int) (entities.Player, error)
 	GetPlayersByTeamID(logger zerolog.Logger, ctx context.Context, teamID int) ([]entities.Player, error)
 	GetMatchesByPlayerID(logger zerolog.Logger, ctx context.Context, playerID int) ([]entities.PlayersMatch, error)

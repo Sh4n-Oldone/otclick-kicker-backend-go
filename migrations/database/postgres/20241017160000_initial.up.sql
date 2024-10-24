@@ -83,7 +83,7 @@ values
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     email VARCHAR NOT NULL UNIQUE,
-    password VARCHAR NOT NULL,
+    password BYTEA NOT NULL,
     role_id smallint references user_roles(id) not null,
     team_id int references teams(id) default null
 );
