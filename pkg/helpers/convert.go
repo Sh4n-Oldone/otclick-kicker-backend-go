@@ -4,31 +4,31 @@ import "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
 
 func ConvertCreateCityRequestToCity(request *entity.CreateCityRequest) *entity.City {
 	return &entity.City{
-		Name:    request.Name,
-		Ru:      request.Ru,
+		Name:      request.Name,
+		Ru:        request.Ru,
 		DeletedAt: request.DeletedAt,
 	}
 }
 
 func ConvertUpdateCityRequestToCity(request *entity.UpdateCityRequest) *entity.City {
 	return &entity.City{
-		ID:      request.ID,
-		Name:    request.Name,
-		Ru:      request.Ru,
+		ID:        request.ID,
+		Name:      request.Name,
+		Ru:        request.Ru,
 		DeletedAt: request.DeletedAt,
 	}
 }
 
-func ConvertCreateUserRequestToUser(request *entity.CreateUserRequest) *entity.User{
+func ConvertCreateUserRequestToUser(request *entity.CreateUserRequest) *entity.User {
 	return &entity.User{
-		Email: request.Email,
+		Email:    request.Email,
 		Password: []byte(request.Password),
 	}
 }
 
-func ConvertLoginUserRequestToUser(request *entity.LoginUserRequest) *entity.User{
+func ConvertLoginUserRequestToUser(request *entity.LoginUserRequest) *entity.User {
 	return &entity.User{
-		Email: request.Email,
+		Email:    request.Email,
 		Password: []byte(request.Password),
 	}
 }
@@ -64,3 +64,16 @@ func ConvertUpdateMatchRequestToMatch(request *entity.UpdateMatchRequest) *entit
 	}
 }
 
+func ConvertCreateLeagueRequestToLeague(request *entity.CreateLeagueRequest) *entity.League {
+	return &entity.League{
+		CityID: request.CityID,
+		Name:   request.Name,
+	}
+}
+
+func ConvertUpdateLeagueRequestToLeague(request *entity.UpdateLeagueRequest) *entity.League {
+	return &entity.League{
+		ID:   request.ID,
+		Name: request.Name,
+	}
+}
