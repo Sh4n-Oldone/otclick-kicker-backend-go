@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/rs/zerolog"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql"
 )
@@ -15,6 +16,7 @@ type IService interface {
 	Update(ctx context.Context, request entities.UpdateGameRequest) error
 	Find(ctx context.Context, request entities.FindGameRequest) (entities.FindGameResponse, error)
 	UpdateFutureGame(ctx context.Context, request entities.UpdateFutureGameRequest) error
+	GetGamesYears(ctx context.Context) (entity.GetGamesYearsResponse, error)
 
 	GetLogger() *zerolog.Logger
 }

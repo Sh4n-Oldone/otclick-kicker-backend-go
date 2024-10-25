@@ -28,6 +28,7 @@ func NewServer(endpoints game.Endpoints, options []kithttp.ServerOption, cfg *co
 	//Actual
 	r.Get("/games/find-games", kithttp.NewServer(endpoints.Find, decodeFindRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 	r.Get("/games/played/{id}", kithttp.NewServer(endpoints.Get, decodeIdParamRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.Get("/games/years", kithttp.NewServer(endpoints.GetYears, decodeGamesYearsRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 
 	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthNotCaptain()).
 		Post("/games/played", kithttp.NewServer(endpoints.Create, decodeCreateRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
