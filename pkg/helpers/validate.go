@@ -3,8 +3,10 @@ package helpers
 import (
 	"errors"
 	"fmt"
+	"github.com/go-playground/validator/v10"
 	"net/http"
 	"net/mail"
+	"time"
 
 	"google.golang.org/grpc/codes"
 
@@ -176,4 +178,30 @@ func ValidateUpdateLeagueRequest(request *entity.UpdateLeagueRequest) error {
 	}
 
 	return nil
+}
+func NewCustomValidator() *validator.Validate {
+	validate := validator.New()
+
+	_ = validate.RegisterValidation("valid-date", validateDate)
+
+	_ = validate.RegisterValidation("valid-year", validateYear)
+
+	_ = validate.RegisterValidation("valid-month", validateMonth)
+
+	return validate
+}
+
+func validateDate(fl validator.FieldLevel) bool {
+	date := fl.Field().Interface().(time.Time)
+	return !(date.Equal(time.Unix(0, 0)) || date.IsZero() || date.Year() == 0)
+}
+
+func validateYear(fl validator.FieldLevel) bool {
+	date := fl.Field().Interface().(time.Time)
+	return !(date.Year() < time.Now().Year() && date.Year() > time.Now().Year())
+}
+
+func validateMonth(fl validator.FieldLevel) bool {
+	date := fl.Field().Interface().(time.Time)
+	return date.Month() == time.Now().Month()
 }

@@ -2,34 +2,34 @@ package entity
 
 import "time"
 
-type City struct{
-	ID int64	`db:"id" json:"id"`
-	Name string `db:"name" json:"name"`
-	Ru string `db:"ru" json:"ru"`
+type City struct {
+	ID        int64      `db:"id" json:"id"`
+	Name      string     `db:"name" json:"name"`
+	Ru        string     `db:"ru" json:"ru"`
 	DeletedAt *time.Time `json:"deleted_at" db:"deleted_at"`
 }
 
-type GetCityListRequest struct{
+type GetCityListRequest struct {
 	WithDeleted bool
 }
 
-type CreateCityRequest struct{
-	Name string `db:"name" json:"name"`
-	Ru string `db:"ru" json:"ru"`
+type CreateCityRequest struct {
+	Name      string     `db:"name" json:"name"`
+	Ru        string     `db:"ru" json:"ru"`
 	DeletedAt *time.Time `json:"deleted_at" db:"deleted_at"`
 }
 
-type UpdateCityRequest struct{
-	ID int64	`db:"id" json:"id"`
-	Name string `db:"name" json:"name"`
-	Ru string `db:"ru" json:"ru"`
+type UpdateCityRequest struct {
+	ID        int64      `db:"id" json:"id"`
+	Name      string     `db:"name" json:"name"`
+	Ru        string     `db:"ru" json:"ru"`
 	DeletedAt *time.Time `json:"deleted_at" db:"deleted_at"`
 }
 
-type DeleteCityRequest struct{
+type DeleteCityRequest struct {
 	ID int64
 }
 
 type GetCityListResponse struct {
-	Cities []City	`json:"cities"`
+	Cities []City `json:"cities"`
 }

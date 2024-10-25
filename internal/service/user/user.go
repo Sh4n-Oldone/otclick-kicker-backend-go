@@ -23,9 +23,9 @@ func (s *Service) Create(ctx context.Context, request entity.CreateUserRequest) 
 	}
 
 	user := &entity.User{
-		Email: request.Email,
+		Email:    request.Email,
 		Password: passHash,
-		Role: role,
+		Role:     role,
 	}
 
 	id, err := s.rwdbOperations.CreateUser(logger, ctx, *user)
@@ -96,6 +96,6 @@ func (s *Service) GetUser(ctx context.Context, userID int64) (*entity.User, erro
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return user, nil
 }

@@ -47,7 +47,7 @@ func (db *RDBOperation) GetUser(logger zerolog.Logger, ctx context.Context, id *
 func (db *RWDBOperation) CreateUser(logger zerolog.Logger, ctx context.Context, user entity.User) (*int64, error) {
 	var id int64
 
-	if user.Role == nil {		
+	if user.Role == nil {
 		return nil, nil
 	}
 

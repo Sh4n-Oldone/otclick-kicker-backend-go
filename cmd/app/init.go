@@ -20,8 +20,10 @@ import (
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint"
 
 	epCity "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/city"
+	epGame "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/game"
 	epPlayer "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/player"
 	srvCity "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/city"
+	srvGame "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/game"
 	srvPlayer "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/player"
 
 	epLeague "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/league"
@@ -43,6 +45,7 @@ import (
 
 	tpHTTP "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http"
 	tpHTTPCity "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/city"
+	tpHTTPGame "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/game"
 	tpHTTPLeague "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/league"
 	tpHTTPMatch "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/match"
 	tpHTTPPlayer "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/player"
@@ -119,7 +122,9 @@ func initKitHTTP(appConfig *config.Configuration, service srvUser.IService, endp
 	router.Mount("/Kicker.v1.PlayerService/",
 		tpHTTPPlayer.NewServer(
 			endpoints.PlayerEP,
-			serverOptions))
+			serverOptions,
+			appConfig,
+			service))
 
 	router.Mount("/Kicker.v1.TeamService/",
 		tpHTTPTeam.NewServer(
@@ -142,6 +147,13 @@ func initKitHTTP(appConfig *config.Configuration, service srvUser.IService, endp
 	router.Mount("/Kicker.v1.LeagueService/",
 		tpHTTPLeague.NewServer(
 			endpoints.LeagueEP,
+			serverOptions,
+			appConfig,
+			service))
+
+	router.Mount("/Kicker.v1.GameService/",
+		tpHTTPGame.NewServer(
+			endpoints.GameEP,
 			serverOptions,
 			appConfig,
 			service))
@@ -238,6 +250,7 @@ func initEndpoints(
 	playerSrv := srvPlayer.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
 	teamSrv := srvTeam.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
 	leagueSrv := srvLeague.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
+	gameSrv := srvGame.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
 
 	return endpoint.ServicesEndpoints{
 		CityEP:   epCity.MakeEndpoints(citySrv),
@@ -247,5 +260,6 @@ func initEndpoints(
 		PlayerEP: epPlayer.MakeEndpoints(playerSrv),
 		TeamEP:   epTeam.MakeEndpoints(teamSrv),
 		LeagueEP: epLeague.MakeEndpoints(leagueSrv),
+		GameEP:   epGame.MakeEndpoints(gameSrv),
 	}
 }

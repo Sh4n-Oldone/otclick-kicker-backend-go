@@ -15,7 +15,7 @@ func (db *RDBOperation) GetCityList(logger zerolog.Logger, ctx context.Context, 
 		query = queryGetCityListWithDeleted
 	}
 
-	rows, err := db.db.Query(ctx, query)	
+	rows, err := db.db.Query(ctx, query)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to get city list")
 		return nil, DecodeDatabaseError(err)

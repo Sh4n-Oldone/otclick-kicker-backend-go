@@ -134,5 +134,4 @@ type (
 		Key  string `env:"KEY, required"`
 		Salt string `env:"SALT, required"`
 	}
-
 )

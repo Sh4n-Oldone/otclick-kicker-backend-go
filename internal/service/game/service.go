@@ -1,4 +1,4 @@
-package player
+package game
 
 import (
 	"context"
@@ -9,21 +9,21 @@ import (
 )
 
 type IService interface {
-	Create(ctx context.Context, player entities.CreatePlayerRequest) (int, error)
-	Delete(ctx context.Context, playerID int) error
-	Update(ctx context.Context, player entities.UpdatePlayerRequest) error
-	Find(ctx context.Context, player entities.FindPlayersRequest) (entities.FindPlayersResponse, error)
-	Get(ctx context.Context, id int) (entities.FullPlayer, error)
-	GetByTeamID(ctx context.Context, teamID int) ([]entities.Player, error)
+	Create(ctx context.Context, request entities.CreateGameRequest) (entities.CreateGameResponse, error)
+	Delete(ctx context.Context, gameID int) error
+	Get(ctx context.Context, gameID int) (entities.GetGameResponse, error)
+	Update(ctx context.Context, request entities.UpdateGameRequest) error
+	Find(ctx context.Context, request entities.FindGameRequest) (entities.FindGameResponse, error)
+	UpdateFutureGame(ctx context.Context, request entities.UpdateFutureGameRequest) error
 
 	GetLogger() *zerolog.Logger
 }
 
 type Service struct {
 	logger         *zerolog.Logger
-	rwdbOperations postgresql.RWDBOperationer
-	rdbOperations  postgresql.RDBOperationer
 	config         *config.Configuration
+	rdbOperations  postgresql.RDBOperationer
+	rwdbOperations postgresql.RWDBOperationer
 }
 
 // GetLogger is a method of business logic layer that gets a logger for logging events in a upper layer.
@@ -38,9 +38,9 @@ func NewService(
 	rdbOperationer postgresql.RDBOperationer,
 ) IService {
 	return &Service{
+		config:         config,
 		logger:         logger,
 		rwdbOperations: rwdbOperationer,
 		rdbOperations:  rdbOperationer,
-		config:         config,
 	}
 }

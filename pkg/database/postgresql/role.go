@@ -63,4 +63,3 @@ func (db *RDBOperation) GetRole(logger zerolog.Logger, ctx context.Context, id *
 
 	return &role, nil
 }
-

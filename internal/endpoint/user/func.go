@@ -31,7 +31,7 @@ func makeCreate(s user.IService) endpoint.Endpoint {
 			return nil, err
 		}
 
-		response := &struct{
+		response := &struct {
 			Id int64 `json:"id"`
 		}{}
 
@@ -59,7 +59,7 @@ func makeLogin(s user.IService) endpoint.Endpoint {
 			return nil, err
 		}
 
-		response := &struct{
+		response := &struct {
 			Token string `json:"token"`
 		}{}
 
@@ -87,12 +87,12 @@ func makeChangePassword(s user.IService) endpoint.Endpoint {
 		}
 
 		userOld := &entity.User{
-			Email: req.Email,
+			Email:    req.Email,
 			Password: []byte(req.Password),
 		}
 
 		userNew := &entity.User{
-			Email: req.Email,
+			Email:    req.Email,
 			Password: []byte(req.NewPassword),
 		}
 

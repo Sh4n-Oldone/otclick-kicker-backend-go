@@ -7,15 +7,15 @@ import (
 )
 
 type Endpoints struct {
-	Create endpoint.Endpoint
-	Login endpoint.Endpoint
+	Create         endpoint.Endpoint
+	Login          endpoint.Endpoint
 	ChangePassword endpoint.Endpoint
 }
 
 func MakeEndpoints(s user.IService) Endpoints {
 	return Endpoints{
-		Create: makeCreate(s),
-		Login: makeLogin(s),
+		Create:         makeCreate(s),
+		Login:          makeLogin(s),
 		ChangePassword: makeChangePassword(s),
 	}
 }
