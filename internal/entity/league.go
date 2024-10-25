@@ -1,7 +1,39 @@
 package entity
 
-type League struct{
-	ID int64 `json:"id" db:"id"`
-	Name string `json:"name" db:"name"`
-	City City
+type GetLeagueListRequest struct {
+	CityID int64 `db:"city_id" json:"city_id"`
+}
+
+type GetLeagueListResponse struct {
+	Leagues []League `json:"leagues"`
+}
+
+type League struct {
+	ID     int64  `db:"id" json:"id"`
+	Name   string `db:"name" json:"name"`
+	CityID int64  `db:"city_id" json:"city_id"`
+}
+
+type CreateLeagueRequest struct {
+	CityID int64   `db:"city_id" json:"city_id"`
+	Name   string  `db:"name" json:"name"`
+	Teams  []int64 `json:"teams"`
+}
+
+type CreateLeagueResponse struct {
+	ID int64 `db:"id" json:"id"`
+}
+
+type UpdateLeagueRequest struct {
+	ID    int64   `db:"id" json:"id"`
+	Name  string  `db:"name" json:"name"`
+	Teams []int64 `json:"teams"`
+}
+
+type UpdateLeagueResponse struct {
+	ID int64 `db:"id" json:"id"`
+}
+
+type DeleteLeagueRequest struct {
+	ID int64
 }

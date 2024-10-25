@@ -21,6 +21,14 @@ type RWDBOperationer interface {
 	CreatePlayer(logger zerolog.Logger, ctx context.Context, player entities.CreatePlayerRequest) (int, error)
 	DeletePlayer(logger zerolog.Logger, ctx context.Context, playerID int) error
 	UpdatePlayer(logger zerolog.Logger, ctx context.Context, playerData entities.UpdatePlayerRequest) error
+	CreateTeam(logger zerolog.Logger, ctx context.Context, team entity.CreateTeamRequest) (id int64, err error)
+	UpdateTeam(logger zerolog.Logger, ctx context.Context, team entity.UpdateTeamRequest) (bool, error)
+	DeleteTeam(logger zerolog.Logger, ctx context.Context, id int64) (bool, error)
+	AddPlayerIntoTeam(logger zerolog.Logger, ctx context.Context, playerID, teamID int64) (bool, error)
+	RemovePlayerFromTeam(logger zerolog.Logger, ctx context.Context, playerID, teamID int64) (bool, error)
+	CreateLeague(logger zerolog.Logger, ctx context.Context, league entity.League, teams []int64) (id int64, err error)
+	UpdateLeague(logger zerolog.Logger, ctx context.Context, league entity.League, teams []int64) error
+	DeleteLeague(logger zerolog.Logger, ctx context.Context, id int64) error
 }
 
 // RDBOperationer is the interface that implemented by the RDBOperation structure.
@@ -35,6 +43,7 @@ type RDBOperationer interface {
 	GetLeaguesByPlayerID(logger zerolog.Logger, ctx context.Context, playerID int) ([]entities.PlayersLeague, error)
 	GetGamesByPlayersTeam(logger zerolog.Logger, ctx context.Context, teamID int) ([]entities.Game, error)
 	FindPlayers(logger zerolog.Logger, ctx context.Context, player entities.FindPlayersRequest) ([]entities.Player, error)
+	GetLeagueList(logger zerolog.Logger, ctx context.Context, cityID int64) ([]entity.League, error)
 }
 
 type dbp struct {

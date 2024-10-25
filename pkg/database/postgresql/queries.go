@@ -1,7 +1,7 @@
 package postgresql
 
 const (
-	// Citiy queries -->
+	// City queries -->
 	queryGetCityList string = `
 		SELECT id, name, ru, deleted_at 
 		FROM cities
@@ -129,5 +129,50 @@ const (
 		WHERE id = $11;`
 
 	queryDeleteMatch string = `DELETE FROM matches WHERE id = $1`
+	// <--
+
+	// League queries -->
+	queryGetLeagueList string = `
+		SELECT id, name, city_id 
+		FROM leagues
+		WHERE city_id = $1
+		ORDER BY id;`
+
+	queryCreateLeague string = `
+		INSERT INTO leagues (name, city_id) 
+		VALUES 
+		(
+			$1,
+			$2
+		) RETURNING id;`
+
+	queryUpdateLeague string = `
+		UPDATE leagues
+		SET 
+		    name = $1
+		WHERE id = $2;
+`
+
+	queryUpdateTeamsLeagueID = `
+		UPDATE teams
+		SET 
+		    league_id = $1
+		WHERE id = $2;
+`
+
+	queryGetTeamLeagueID = `
+		SELECT league_id
+		FROM teams
+		WHERE id = $1;
+`
+
+	queryDeleteTeamsLeagueID = `
+		UPDATE teams 
+		SET 
+		    league_id = NULL
+		WHERE league_id = $1;
+`
+
+	queryDeleteLeague string = `DELETE FROM leagues WHERE id = $1;`
 	// <--
 )
