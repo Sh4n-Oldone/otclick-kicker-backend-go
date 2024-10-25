@@ -125,6 +125,7 @@ func initKitHTTP(appConfig *config.Configuration, service srvUser.IService, endp
 		tpHTTPTeam.NewServer(
 			endpoints.TeamEP,
 			serverOptions))
+
 	router.Mount("/Kicker.v1.UserService/",
 		tpHTTPUser.NewServer(
 			endpoints.UserEP,
