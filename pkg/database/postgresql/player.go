@@ -48,7 +48,7 @@ func (db *RWDBOperation) DeletePlayer(logger zerolog.Logger, ctx context.Context
 		return DecodeDatabaseError(stderr.New(errors.ErrDeletePlayer))
 	}
 	if tag.RowsAffected() == 0 {
-		err = stderr.New(errors.ErrPlayerDontDeleted)
+		err = stderr.New(errors.ErrPlayerNotFound)
 		logger.Error().Stack().Err(err).Msg(err.Error())
 		return DecodeDatabaseError(err)
 	}
@@ -88,7 +88,7 @@ func (db *RWDBOperation) UpdatePlayer(logger zerolog.Logger, ctx context.Context
 		return DecodeDatabaseError(stderr.New(errors.ErrUpdatePlayer))
 	}
 	if tag.RowsAffected() == 0 {
-		err = stderr.New(errors.ErrPlayerDontUpdated)
+		err = stderr.New(errors.ErrPlayerNotFound)
 		logger.Error().Stack().Err(err).Msg(err.Error())
 		return DecodeDatabaseError(err)
 	}

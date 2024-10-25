@@ -2,6 +2,7 @@ package endpoint
 
 import (
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/city"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/game"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/league"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/match"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/player"
@@ -18,4 +19,5 @@ type ServicesEndpoints struct {
 	PlayerEP player.Endpoints
 	LeagueEP league.Endpoints
 	TeamEP   team.Endpoints
+	GameEP   game.Endpoints
 }

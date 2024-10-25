@@ -6,6 +6,7 @@ import (
 	"github.com/rs/zerolog"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
+	"time"
 )
 
 func (db *RDBOperation) GetGamesByPlayersTeam(logger zerolog.Logger, ctx context.Context, teamID int) ([]entities.Game, error) {
@@ -37,4 +38,399 @@ func (db *RDBOperation) GetGamesByPlayersTeam(logger zerolog.Logger, ctx context
 	}
 
 	return games, nil
+}
+
+func (db *RWDBOperation) CreatePlayedGame(logger zerolog.Logger, ctx context.Context, request entities.CreateGameRequest) (entities.CreateGameResponse, error) {
+	const query1 string = `
+		INSERT INTO public.games (city_id, date, team1_id, team2_id)
+		VALUES ($1, $2, $3, $4)
+		RETURNING id
+	`
+
+	const query2 string = `
+		INSERT INTO public.matches (date,
+		                            game_id,
+		                            team1_id,
+		                            team2_id,
+		                            player1_team1_id,
+		                            player2_team1_id,
+		                            player1_team2_id,
+		                            player2_team2_id,
+		                            score_team1,
+		                            score_team2)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		RETURNING id;
+	`
+
+	var gameId int
+	matchIds := make([]int, 0)
+
+	tx, err := db.db.Begin(ctx)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to postgresql.CreatePlayedGame")
+		return entities.CreateGameResponse{}, DecodeDatabaseError(stderr.New(errors.ErrCreateGame))
+	}
+
+	err = tx.QueryRow(ctx, query1, request.CityID, request.Date, request.Team1ID, request.Team2ID).
+		Scan(&gameId)
+	if err != nil {
+		_ = tx.Rollback(ctx)
+		logger.Error().Err(err).Msg("failed to postgresql.CreatePlayedGame")
+		return entities.CreateGameResponse{}, DecodeDatabaseError(stderr.New(errors.ErrCreateGame))
+	}
+
+	for _, match := range request.Matches {
+		var matchId int
+		err = tx.QueryRow(ctx, query2,
+			match.Date,
+			gameId,
+			match.Team1ID,
+			match.Team2ID,
+			match.Player1Team1Id,
+			match.Player2Team1Id,
+			match.Player1Team2Id,
+			match.Player2Team2Id,
+			match.ScoreTeam1,
+			match.ScoreTeam2).
+			Scan(&matchId)
+		if err != nil {
+			_ = tx.Rollback(ctx)
+			logger.Error().Err(err).Msg("failed to postgresql.CreatePlayedGame")
+			return entities.CreateGameResponse{}, DecodeDatabaseError(stderr.New(errors.ErrCreateMatch))
+		}
+		matchIds = append(matchIds, matchId)
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		_ = tx.Rollback(ctx)
+		logger.Error().Err(err).Msg("failed to postgresql.CreatePlayedGame")
+		return entities.CreateGameResponse{}, DecodeDatabaseError(stderr.New(errors.ErrCreateGame))
+	}
+
+	return entities.CreateGameResponse{
+		GameID:   gameId,
+		MatchIDs: matchIds,
+	}, nil
+}
+
+func (db *RWDBOperation) DeleteGame(logger zerolog.Logger, ctx context.Context, gameID int) error {
+	const query1 string = `
+		DELETE FROM public.matches
+		WHERE game_id = $1
+	`
+
+	const query2 string = `
+		DELETE FROM public.games
+		WHERE id = $1
+	`
+
+	tx, err := db.db.Begin(ctx)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to postgresql.DeleteGame")
+		return DecodeDatabaseError(stderr.New(errors.ErrDeleteGame))
+	}
+
+	_, err = tx.Exec(ctx, query1, gameID)
+	if err != nil {
+		_ = tx.Rollback(ctx)
+		logger.Error().Err(err).Msg("failed to postgresql.DeleteGame")
+		return DecodeDatabaseError(stderr.New(errors.ErrDeleteMatch))
+	}
+
+	tag, err := tx.Exec(ctx, query2, gameID)
+	if err != nil {
+		_ = tx.Rollback(ctx)
+		logger.Error().Err(err).Msg("failed to postgresql.DeleteGame")
+		return DecodeDatabaseError(stderr.New(errors.ErrDeleteGame))
+	}
+	if tag.RowsAffected() == 0 {
+		_ = tx.Rollback(ctx)
+		err = stderr.New(errors.ErrGameNotFound)
+		logger.Error().Err(err).Msg("failed to postgresql.DeleteGame")
+		return DecodeDatabaseError(err)
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		_ = tx.Rollback(ctx)
+		logger.Error().Err(err).Msg("failed to postgresql.DeleteGame")
+		return DecodeDatabaseError(stderr.New(errors.ErrDeleteGame))
+	}
+
+	return nil
+}
+
+func (db *RDBOperation) GetGame(logger zerolog.Logger, ctx context.Context, gameID int) (entities.GetGameResponse, error) {
+	const query string = `
+	SELECT 
+		g.id AS game_id,
+		g.city_id,
+		g.date AS game_date,
+		t1.id AS team1_id,
+		t1.name AS team1_name,
+		t2.id AS team2_id,
+		t2.name AS team2_name,
+		m.id AS match_id,
+		m.date AS match_date,
+		m.team1_id AS match_team1_id,
+		m.team2_id AS match_team2_id,
+		m.player1_team1_id AS player1_team1_id,
+		pt1_1.name AS player1_team1_name,
+		pt1_1.last_name AS player1_team1_last_name,
+		m.player2_team1_id AS player2_team1_id,
+		pt1_2.name AS player2_team1_name,
+		pt1_2.last_name AS player2_team1_last_name,
+		m.player1_team2_id AS player1_team2_id,
+		pt2_1.name AS player1_team2_name,
+		pt2_1.last_name AS player1_team2_last_name,
+		m.player2_team2_id AS player2_team2_id,
+		pt2_2.name AS player2_team2_name,
+		pt2_2.last_name AS player2_team2_last_name,
+		m.score_team1,
+		m.score_team2
+	FROM 
+		public.games g
+	LEFT JOIN 
+		public.teams t1 ON g.team1_id = t1.id
+	LEFT JOIN 
+		public.teams t2 ON g.team2_id = t2.id
+	LEFT JOIN 
+		public.matches m ON g.id = m.game_id
+	LEFT JOIN 
+		public.players pt1_1 ON m.player1_team1_id = pt1_1.id
+	LEFT JOIN 
+		public.players pt1_2 ON m.player2_team1_id = pt1_2.id
+	LEFT JOIN 
+		public.players pt2_1 ON m.player1_team2_id = pt2_1.id
+	LEFT JOIN 
+		public.players pt2_2 ON m.player2_team2_id = pt2_2.id
+	WHERE 
+		g.id = $1
+	`
+
+	var game entities.GetGameResponse
+	matches := make([]entities.FullMatch, 0)
+
+	rows, err := db.db.Query(ctx, query, gameID)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to postgresql.GetGame")
+		return entities.GetGameResponse{}, DecodeDatabaseError(stderr.New(errors.ErrGetGame))
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var match entities.FullMatch
+
+		var p1t1Name, p2t1Name, p1t2Name, p2t2Name, p1t1LastName, p2t1LastName, p1t2LastName, p2t2LastName string
+
+		err = rows.Scan(
+			&game.ID,
+			&game.CityID,
+			&game.Date,
+			&game.Team1ID,
+			&game.Team1Name,
+			&game.Team2ID,
+			&game.Team2Name,
+			&match.ID,
+			&match.Date,
+			&match.Team1ID,
+			&match.Team2ID,
+			&match.Player1Team1Id,
+			&p1t1Name,
+			&p1t1LastName,
+			&match.Player2Team1Id,
+			&p2t1Name,
+			&p2t1LastName,
+			&match.Player1Team2Id,
+			&p1t2Name,
+			&p1t2LastName,
+			&match.Player2Team2Id,
+			&p2t2Name,
+			&p2t2LastName,
+			&match.ScoreTeam1,
+			&match.ScoreTeam2,
+		)
+
+		if p1t1Name == "" {
+			match.Player1Team1Name = p1t1LastName
+		} else {
+			match.Player1Team1Name = p1t1Name + " " + p1t1LastName
+		}
+
+		if p2t1Name == "" {
+			match.Player2Team1Name = p2t1LastName
+		} else {
+			match.Player2Team1Name = p2t1Name + " " + p2t1LastName
+		}
+
+		if p1t2Name == "" {
+			match.Player1Team2Name = p1t2LastName
+		} else {
+			match.Player1Team2Name = p1t2Name + " " + p1t2LastName
+		}
+
+		if p2t2Name == "" {
+			match.Player1Team1Name = p2t2LastName
+		} else {
+			match.Player2Team2Name = p2t2Name + " " + p2t2LastName
+		}
+
+		matches = append(matches, match)
+	}
+
+	return entities.GetGameResponse{
+		ID:        game.ID,
+		CityID:    game.CityID,
+		Date:      game.Date,
+		Team1ID:   game.Team1ID,
+		Team1Name: game.Team1Name,
+		Team2ID:   game.Team2ID,
+		Team2Name: game.Team2Name,
+		Matches:   matches,
+	}, nil
+}
+
+func (db *RWDBOperation) UpdateGame(logger zerolog.Logger, ctx context.Context, game entities.UpdateGameRequest) error {
+	const query1 string = `
+		UPDATE public.games
+		SET 
+			date = $2,
+			team1_id = $3,
+			team2_id = $4
+		WHERE id = $1;
+	`
+
+	const query2 string = `
+		UPDATE public.matches m
+		SET 
+			date = $2,
+			team1_id = $3,
+			team2_id = $4,
+			player1_team1_id = $5,
+			player2_team1_id = COALESCE($6, player2_team1_id),
+			player1_team2_id = $7,
+			player2_team2_id = COALESCE($8, player2_team2_id),
+			score_team1 = $9,
+			score_team2 = $10
+
+		WHERE id = $1 AND game_id = $11;
+	`
+
+	tx, err := db.db.Begin(ctx)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to postgresql.UpdateGame")
+		return DecodeDatabaseError(stderr.New(errors.ErrUpdateGame))
+	}
+
+	tag, err := tx.Exec(ctx, query1, game.ID, game.Date, game.Team1ID, game.Team2ID)
+	if err != nil {
+		_ = tx.Rollback(ctx)
+		logger.Error().Err(err).Msg("failed to postgresql.UpdateGame")
+		return DecodeDatabaseError(stderr.New(errors.ErrUpdateGame))
+	}
+	if tag.RowsAffected() == 0 {
+		_ = tx.Rollback(ctx)
+		err = stderr.New(errors.ErrGameNotFound)
+		logger.Error().Err(err).Msg("failed to postgresql.UpdateGame")
+		return DecodeDatabaseError(stderr.New(errors.ErrUpdateGame))
+	}
+
+	for _, match := range game.Matches {
+
+		_, err = tx.Exec(ctx, query2, match.ID, match.Date, match.Team1ID, match.Team2ID, match.Player1Team1Id,
+			match.Player2Team1Id, match.Player1Team2Id, match.Player2Team2Id, match.ScoreTeam1, match.ScoreTeam2, game.ID)
+		if err != nil {
+			_ = tx.Rollback(ctx)
+			logger.Error().Err(err).Msg("failed to postgresql.UpdateMatch")
+			return DecodeDatabaseError(stderr.New(errors.ErrUpdateMatch))
+		}
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		_ = tx.Rollback(ctx)
+		logger.Error().Err(err).Msg("failed to postgresql.UpdateGame")
+		return DecodeDatabaseError(stderr.New(errors.ErrUpdateGame))
+	}
+
+	return nil
+}
+
+func (db *RDBOperation) FindGames(logger zerolog.Logger, ctx context.Context, request entities.FindGameRequest) ([]entities.FindGame, error) {
+	now := time.Now()
+
+	const query string = `
+	SELECT 
+		g.id AS gameId, 
+		g.date AS dateOfGame, 
+		g.team1_id AS team1Id, 
+		t1.short_name AS team1ShortName, 
+		g.team2_id AS team2Id, 
+		t2.short_name AS team2ShortName,
+		COALESCE(SUM(m.score_team1), 0) AS totalScoreTeam1,
+		COALESCE(SUM(m.score_team2), 0) AS totalScoreTeam2
+	FROM public.games g
+	JOIN teams t1 ON g.team1_id = t1.id
+	JOIN teams t2 ON g.team2_id = t2.id
+	LEFT JOIN matches m ON m.game_id = g.id
+	WHERE ((g.team1_id = $1 AND g.team2_id = $2) OR (g.team1_id = $2 AND g.team2_id = $1))
+	AND g.date <= $3
+	GROUP BY g.id, t1.short_name, t2.short_name;
+	`
+
+	var games []entities.FindGame
+
+	rows, err := db.db.Query(ctx, query, request.Team1ID, request.Team2ID, now)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to postgresql.FindGame")
+		return nil, DecodeDatabaseError(stderr.New(errors.ErrGetGame))
+	}
+
+	for rows.Next() {
+		var game entities.FindGame
+
+		err = rows.Scan(
+			&game.ID,
+			&game.Date,
+			&game.Team1ID,
+			&game.Team1ShortName,
+			&game.Team2ID,
+			&game.Team2ShortName,
+			&game.TotalScoreTeam1,
+			&game.TotalScoreTeam2,
+		)
+		if err != nil {
+			logger.Error().Err(err).Msg("failed to postgresql.FindGame")
+			return nil, DecodeDatabaseError(stderr.New(errors.ErrGetGame))
+		}
+
+		games = append(games, game)
+	}
+
+	return games, nil
+}
+
+func (db *RWDBOperation) UpdateFutureGame(logger zerolog.Logger, ctx context.Context, request entities.UpdateFutureGameRequest) error {
+	const query string = `
+		UPDATE public.games
+		SET 
+			date = $2,
+			team1_id = $3,
+			team2_id = $4
+		WHERE id = $1;
+	`
+
+	tag, err := db.db.Exec(ctx, query, request.ID, request.Date, request.Team1ID, request.Team2ID)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to postgresql.UpdateFutureGame")
+		return DecodeDatabaseError(stderr.New(errors.ErrUpdateGame))
+	}
+	if tag.RowsAffected() == 0 {
+		err = stderr.New(errors.ErrGameNotFound)
+		logger.Error().Err(err).Msg("failed to postgresql.UpdateFutureGame")
+		return DecodeDatabaseError(err)
+	}
+
+	return nil
 }

@@ -65,7 +65,7 @@ func (db *RWDBOperation) DeleteMatch(logger zerolog.Logger, ctx context.Context,
 	return nil
 }
 
-func (db *RDBOperation) GetMatchesByPlayerID(logger zerolog.Logger, ctx context.Context, playerID int) ([]entities.PlayersMatch, error) {
+func (db *RDBOperation) GetMatchesByPlayerID(logger zerolog.Logger, ctx context.Context, playerID int) ([]entities.Match, error) {
 	query := `
 		SELECT id, date, game_id, team1_id, team2_id, player1_team1_id, player2_team1_id, player1_team2_id, player2_team2_id, score_team1, score_team2
 		FROM public.matches
@@ -74,7 +74,7 @@ func (db *RDBOperation) GetMatchesByPlayerID(logger zerolog.Logger, ctx context.
 		   OR player1_team2_id = $1
 		   OR player2_team2_id = $1`
 
-	matches := make([]entities.PlayersMatch, 0)
+	matches := make([]entities.Match, 0)
 
 	rows, err := db.db.Query(ctx, query, playerID)
 	if err != nil {
@@ -84,7 +84,7 @@ func (db *RDBOperation) GetMatchesByPlayerID(logger zerolog.Logger, ctx context.
 	defer rows.Close()
 
 	for rows.Next() {
-		var m entities.PlayersMatch
+		var m entities.Match
 		err = rows.Scan(&m.ID, &m.Date, &m.GameID, &m.Team1ID, &m.Team2ID, &m.Player1Team1ID, &m.Player2Team1ID,
 			&m.Player1Team2ID, &m.Player2Team2ID, &m.ScoreTeam1, &m.ScoreTeam2)
 		if err != nil {

@@ -11,10 +11,10 @@ import (
 
 func NewToken(user entity.User, duration time.Duration, secretKey string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"id": user.ID,
-		"email": user.Email,
+		"id":        user.ID,
+		"email":     user.Email,
 		"role_name": user.Role.Name,
-		"team_id": user.Team.ID,
+		"team_id":   user.Team.ID,
 		"token_exp": time.Now().Add(duration).Unix(), //TODO возможно стоит ключ "token_exp" вынести куда-то
 	})
 

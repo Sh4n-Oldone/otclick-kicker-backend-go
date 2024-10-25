@@ -2,7 +2,7 @@ package entities
 
 import "time"
 
-type PlayersMatch struct {
+type Match struct {
 	ID             int
 	Date           time.Time
 	GameID         int
@@ -14,4 +14,46 @@ type PlayersMatch struct {
 	Player2Team2ID int
 	ScoreTeam1     int
 	ScoreTeam2     int
+}
+
+type GamesMatch struct {
+	Date           time.Time `json:"date" validate:"required,valid-date"`
+	Team1ID        int       `json:"team1Id" validate:"required,gt=0"`
+	Team2ID        int       `json:"team2Id" validate:"required,gt=0"`
+	Player1Team1Id int       `json:"player1Team1Id" validate:"required,gt=0"`
+	Player2Team1Id *int      `json:"player2Team1Id"`
+	Player1Team2Id int       `json:"player1Team2Id" validate:"required,gt=0"`
+	Player2Team2Id *int      `json:"player2Team2Id"`
+	ScoreTeam1     int       `json:"scoreTeam1" validate:"required,gte=0"`
+	ScoreTeam2     int       `json:"scoreTeam2" validate:"required,gte=0"`
+}
+
+type FullMatch struct {
+	ID               int       `json:"id"`
+	Date             time.Time `json:"date"`
+	Team1ID          int       `json:"team1Id"`
+	Team2ID          int       `json:"team2Id"`
+	Player1Team1Id   int       `json:"player1Team1Id"`
+	Player1Team1Name string    `json:"player1Team1Name"`
+	Player2Team1Id   int       `json:"player2Team1Id"`
+	Player2Team1Name string    `json:"player2Team1Name"`
+	Player1Team2Id   int       `json:"player1Team2Id"`
+	Player1Team2Name string    `json:"player1Team2Name"`
+	Player2Team2Id   int       `json:"player2Team2Id"`
+	Player2Team2Name string    `json:"player2Team2Name"`
+	ScoreTeam1       int       `json:"scoreTeam1"`
+	ScoreTeam2       int       `json:"scoreTeam2"`
+}
+
+type NewMatch struct {
+	ID             int       `json:"id" validate:"gt=0"`
+	Date           time.Time `json:"date" validate:"required,valid-date"`
+	Team1ID        int       `json:"team1Id" validate:"gt=0"`
+	Team2ID        int       `json:"team2Id" validate:"gt=0"`
+	Player1Team1Id int       `json:"player1Team1Id" validate:"required,gt=0"`
+	Player2Team1Id *int      `json:"player2Team1Id"`
+	Player1Team2Id int       `json:"player1Team2Id" validate:"required,gt=0"`
+	Player2Team2Id *int      `json:"player2Team2Id"`
+	ScoreTeam1     int       `json:"scoreTeam1" validate:"required,gte=0"`
+	ScoreTeam2     int       `json:"scoreTeam2" validate:"required,gte=0"`
 }

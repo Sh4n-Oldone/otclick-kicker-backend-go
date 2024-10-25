@@ -29,6 +29,10 @@ type RWDBOperationer interface {
 	CreateLeague(logger zerolog.Logger, ctx context.Context, league entity.League, teams []int64) (id int64, err error)
 	UpdateLeague(logger zerolog.Logger, ctx context.Context, league entity.League, teams []int64) error
 	DeleteLeague(logger zerolog.Logger, ctx context.Context, id int64) error
+	CreatePlayedGame(logger zerolog.Logger, ctx context.Context, request entities.CreateGameRequest) (entities.CreateGameResponse, error)
+	DeleteGame(logger zerolog.Logger, ctx context.Context, gameID int) error
+	UpdateGame(logger zerolog.Logger, ctx context.Context, request entities.UpdateGameRequest) error
+	UpdateFutureGame(logger zerolog.Logger, ctx context.Context, request entities.UpdateFutureGameRequest) error
 }
 
 // RDBOperationer is the interface that implemented by the RDBOperation structure.
@@ -39,11 +43,13 @@ type RDBOperationer interface {
 	GetUser(logger zerolog.Logger, ctx context.Context, id *int64, email *string) (*entity.User, error)
 	GetPlayerByID(logger zerolog.Logger, ctx context.Context, playerID int) (entities.Player, error)
 	GetPlayersByTeamID(logger zerolog.Logger, ctx context.Context, teamID int) ([]entities.Player, error)
-	GetMatchesByPlayerID(logger zerolog.Logger, ctx context.Context, playerID int) ([]entities.PlayersMatch, error)
+	GetMatchesByPlayerID(logger zerolog.Logger, ctx context.Context, playerID int) ([]entities.Match, error)
 	GetLeaguesByPlayerID(logger zerolog.Logger, ctx context.Context, playerID int) ([]entities.PlayersLeague, error)
 	GetGamesByPlayersTeam(logger zerolog.Logger, ctx context.Context, teamID int) ([]entities.Game, error)
 	FindPlayers(logger zerolog.Logger, ctx context.Context, player entities.FindPlayersRequest) ([]entities.Player, error)
 	GetLeagueList(logger zerolog.Logger, ctx context.Context, cityID int64) ([]entity.League, error)
+	GetGame(logger zerolog.Logger, ctx context.Context, gameID int) (entities.GetGameResponse, error)
+	FindGames(logger zerolog.Logger, ctx context.Context, request entities.FindGameRequest) ([]entities.FindGame, error)
 }
 
 type dbp struct {
