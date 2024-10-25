@@ -4,6 +4,7 @@ import (
 	"context"
 	stderr "errors"
 	"github.com/rs/zerolog"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 	"time"
@@ -433,4 +434,29 @@ func (db *RWDBOperation) UpdateFutureGame(logger zerolog.Logger, ctx context.Con
 	}
 
 	return nil
+}
+
+func (db *RDBOperation) GetGamesYears(logger zerolog.Logger, ctx context.Context) (entity.GetGamesYearsResponse, error) {
+	rows, err := db.db.Query(ctx, queryGetGamesYears)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to get years list")
+		return entity.GetGamesYearsResponse{}, DecodeDatabaseError(err)
+	}
+	defer rows.Close()
+
+	var years []entity.Year
+
+	for rows.Next() {
+		var year entity.Year
+
+		err = rows.Scan(&year.Year)
+		if err != nil {
+			logger.Error().Err(err).Msg("failed to scan year record")
+			return entity.GetGamesYearsResponse{}, DecodeDatabaseError(err)
+		}
+
+		years = append(years, year)
+	}
+
+	return entity.GetGamesYearsResponse{Years: years}, nil
 }

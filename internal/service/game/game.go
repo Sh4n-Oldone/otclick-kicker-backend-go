@@ -2,6 +2,7 @@ package game
 
 import (
 	"context"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 )
 
@@ -80,4 +81,16 @@ func (s *Service) UpdateFutureGame(ctx context.Context, request entities.UpdateF
 	}
 
 	return nil
+}
+
+func (s *Service) GetGamesYears(ctx context.Context) (entity.GetGamesYearsResponse, error) {
+	logger := s.logger.With().Interface("service", "game.GetGamesYears").Logger()
+	timeout, cancel := context.WithTimeout(ctx, s.config.RDB.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	resp, err := s.rdbOperations.GetGamesYears(logger, timeout)
+	if err != nil {
+		return entity.GetGamesYearsResponse{}, err
+	}
+	return resp, nil
 }

@@ -175,4 +175,10 @@ const (
 
 	queryDeleteLeague string = `DELETE FROM leagues WHERE id = $1;`
 	// <--
+
+	queryGetGamesYears string = `    
+	SELECT DISTINCT EXTRACT(YEAR FROM date) AS year
+    FROM games
+    ORDER BY year ASC;
+`
 )

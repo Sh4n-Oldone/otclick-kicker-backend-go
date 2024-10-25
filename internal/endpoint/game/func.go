@@ -132,12 +132,26 @@ func makeUpdateFutureGame(s game.IService) endpoint.Endpoint {
 
 		err = s.UpdateFutureGame(ctx, req)
 		if err != nil {
-			serviceLogger.Error().Err(err).Msg("Failed to game.Find")
+			serviceLogger.Error().Err(err).Msg("Failed to game.UpdateFutureGame")
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
 		return entities.OkResponse{
 			Message: "OK",
 		}, nil
+	}
+}
+
+func makeGetYears(s game.IService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		//reqID, ctx := middleware.GetRequestID(ctx)
+
+		resp, err := s.GetGamesYears(ctx)
+		if err != nil {
+			s.GetLogger().Error().Err(err).Msg("Failed to game.GetGameYears")
+			return nil, err
+		}
+
+		return resp, nil
 	}
 }
