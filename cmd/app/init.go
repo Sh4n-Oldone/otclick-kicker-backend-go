@@ -52,6 +52,9 @@ import (
 	tpHTTPRole "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/role"
 	tpHTTPTeam "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/team"
 	tpHTTPUser "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/user"
+	tpHTTPTable "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/table"
+	tpHTTPBar "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/bar"
+	tpHTTPPlace "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/place"
 
 	customMiddleware "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/middleware"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql"
@@ -159,6 +162,27 @@ func initKitHTTP(appConfig *config.Configuration, service srvUser.IService, endp
 			appConfig,
 			service))
 
+	router.Mount("/Kicker.v1.TableService/",
+		tpHTTPTable.NewServer(
+			endpoints.TableEP,
+			serverOptions,
+			appConfig,
+			service))
+	
+	router.Mount("/Kicker.v1.BarService/",
+		tpHTTPBar.NewServer(
+			endpoints.BarEP,
+			serverOptions,
+			appConfig,
+			service))
+		
+	router.Mount("/Kicker.v1.PlaceService/",
+		tpHTTPPlace.NewServer(
+			endpoints.PlaceEP,
+			serverOptions,
+			appConfig,
+			service))
+			
 	if webDebugEnabled {
 		router.Mount("/dbg", ProfilerHandler())
 	}

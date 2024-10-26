@@ -158,6 +158,119 @@ func ValidateChangePasswordRequest(request *entity.ChangePasswordRequest) error 
 	return nil
 }
 
+func ValidateCreateTableRequest(request *entity.CreateTableRequest) error {
+	if request.Name == "" {
+		err := error_templates.New("invalid request fields", errors.New("invalid request fields"), codes.InvalidArgument, http.StatusBadRequest)
+		return error_templates.WrapErrorDetail(err, fmt.Sprintf("wrong value of parameter %T", request.Name))
+	}
+
+	return nil
+}
+
+func ValidateUpdateTableRequest(request *entity.UpdateTableRequest) error {
+	if request.ID <= 0 {
+		err := error_templates.New("invalid request fields", errors.New("invalid request fields"), codes.InvalidArgument, http.StatusBadRequest)
+		return error_templates.WrapErrorDetail(err, fmt.Sprintf("wrong value of parameter %T", request.ID))
+	}
+	if request.Name == "" {
+		err := error_templates.New("invalid request fields", errors.New("invalid request fields"), codes.InvalidArgument, http.StatusBadRequest)
+		return error_templates.WrapErrorDetail(err, fmt.Sprintf("wrong value of parameter %T", request.Name))
+	}
+
+	return nil
+}
+
+func ValidateDeleteTableRequest(request *entity.DeleteTableRequest) error {
+	if request.ID <= 0 {
+		err := error_templates.New("invalid request fields", errors.New("invalid request fields"), codes.InvalidArgument, http.StatusBadRequest)
+		return error_templates.WrapErrorDetail(err, fmt.Sprintf("wrong value of parameter %T", request.ID))
+	}
+
+	return nil
+}
+
+func ValidateCreateBarRequest(request *entity.CreateBarRequest) error {
+	if request.CityID <= 0 {
+		err := error_templates.New("invalid request fields", errors.New("invalid request fields"), codes.InvalidArgument, http.StatusBadRequest)
+		return error_templates.WrapErrorDetail(err, fmt.Sprintf("wrong value of parameter %T", request.CityID))
+	}
+	if request.CityID == 0 {
+		err := error_templates.New("invalid request fields", errors.New("invalid request fields"), codes.InvalidArgument, http.StatusBadRequest)
+		return error_templates.WrapErrorDetail(err, fmt.Sprintf("wrong value of parameter %T", request.CityID))
+	}
+
+	return nil
+}
+
+func ValidateUpdateBarRequest(request *entity.UpdateBarRequest) error {
+	if request.ID <= 0 {
+		err := error_templates.New("invalid request fields", errors.New("invalid request fields"), codes.InvalidArgument, http.StatusBadRequest)
+		return error_templates.WrapErrorDetail(err, fmt.Sprintf("wrong value of parameter %T", request.ID))
+	}
+	if request.CityID <= 0 {
+		err := error_templates.New("invalid request fields", errors.New("invalid request fields"), codes.InvalidArgument, http.StatusBadRequest)
+		return error_templates.WrapErrorDetail(err, fmt.Sprintf("wrong value of parameter %T", request.CityID))
+	}
+	if request.Name == "" {
+		err := error_templates.New("invalid request fields", errors.New("invalid request fields"), codes.InvalidArgument, http.StatusBadRequest)
+		return error_templates.WrapErrorDetail(err, fmt.Sprintf("wrong value of parameter %T", request.Name))
+	}
+	if request.Description == "" {
+		err := error_templates.New("invalid request fields", errors.New("invalid request fields"), codes.InvalidArgument, http.StatusBadRequest)
+		return error_templates.WrapErrorDetail(err, fmt.Sprintf("wrong value of parameter %T", request.Description))
+	}
+
+	return nil
+}
+
+func ValidateDeleteBarRequest(request *entity.DeleteBarRequest) error {
+	if request.ID <= 0 {
+		err := error_templates.New("invalid request fields", errors.New("invalid request fields"), codes.InvalidArgument, http.StatusBadRequest)
+		return error_templates.WrapErrorDetail(err, fmt.Sprintf("wrong value of parameter %T", request.ID))
+	}
+
+	return nil
+}
+
+func ValidateCreatePlaceRequest(request *entity.CreatePlaceRequest) error {
+	if request.BarID <= 0 {
+		err := error_templates.New("invalid request fields", errors.New("invalid request fields"), codes.InvalidArgument, http.StatusBadRequest)
+		return error_templates.WrapErrorDetail(err, fmt.Sprintf("wrong value of parameter %T", request.BarID))
+	}
+	if request.TableID <= 0 {
+		err := error_templates.New("invalid request fields", errors.New("invalid request fields"), codes.InvalidArgument, http.StatusBadRequest)
+		return error_templates.WrapErrorDetail(err, fmt.Sprintf("wrong value of parameter %T", request.TableID))
+	}
+
+	return nil
+}
+
+func ValidateUpdatePlaceRequest(request *entity.UpdatePlaceRequest) error {
+	if request.ID <= 0 {
+		err := error_templates.New("invalid request fields", errors.New("invalid request fields"), codes.InvalidArgument, http.StatusBadRequest)
+		return error_templates.WrapErrorDetail(err, fmt.Sprintf("wrong value of parameter %T", request.ID))
+	}
+	if request.BarID <= 0 {
+		err := error_templates.New("invalid request fields", errors.New("invalid request fields"), codes.InvalidArgument, http.StatusBadRequest)
+		return error_templates.WrapErrorDetail(err, fmt.Sprintf("wrong value of parameter %T", request.BarID))
+	}
+	if request.TableID <= 0 {
+		err := error_templates.New("invalid request fields", errors.New("invalid request fields"), codes.InvalidArgument, http.StatusBadRequest)
+		return error_templates.WrapErrorDetail(err, fmt.Sprintf("wrong value of parameter %T", request.TableID))
+	}
+
+	return nil
+}
+
+func ValidateDeletePlaceRequest(request *entity.DeletePlaceRequest) error {
+	if request.ID <= 0 {
+		err := error_templates.New("invalid request fields", errors.New("invalid request fields"), codes.InvalidArgument, http.StatusBadRequest)
+		return error_templates.WrapErrorDetail(err, fmt.Sprintf("wrong value of parameter %T", request.ID))
+	}
+
+	return nil
+}
+
 func ValidateCreateLeagueRequest(request *entity.CreateLeagueRequest) error {
 	if request.Name == "" {
 		err := error_templates.New("invalid request fields", errors.New("invalid request fields"), codes.InvalidArgument, http.StatusBadRequest)
@@ -179,6 +292,7 @@ func ValidateUpdateLeagueRequest(request *entity.UpdateLeagueRequest) error {
 
 	return nil
 }
+
 func NewCustomValidator() *validator.Validate {
 	validate := validator.New()
 

@@ -1,4 +1,4 @@
-package team
+package place
 
 import (
 	"context"
@@ -11,18 +11,11 @@ import (
 )
 
 type IService interface {
-	// GetTeam(ctx context.Context, teamID int64) (entity.GetTeamResponse, error)
-	// GetTeams(ctx context.Context, team entity.Team) (*int64, error)
-	// GetTeamsByCity(ctx context.Context, team entity.Team) (*int64, error)
-	// GetTeamsByLeague(ctx context.Context, team entity.Team) (*int64, error)
-	// GetTeamVsTeamTable(ctx context.Context, team entity.Team) (*int64, error)
-
-	Create(ctx context.Context, team entity.CreateTeamRequest) (int64, error)
-	Update(ctx context.Context, team entity.UpdateTeamRequest) (bool, error)
-	Delete(ctx context.Context, id int64) (bool, error)
-
-	AddPlayerIntoTeam(ctx context.Context, playerID, teamID int64) (bool, error)
-	RemovePlayerFromTeam(ctx context.Context, playerID, teamID int64) (bool, error)
+	GetList(ctx context.Context, barID, tableID *int64, withDeleted bool) ([]entity.Place, error)
+	Get(ctx context.Context, id int64) (*entity.Place, error)
+	Create(ctx context.Context, city entity.Place) (*int64, error)
+	Update(ctx context.Context, city entity.Place) error
+	Delete(ctx context.Context, id int64) error
 
 	GetLogger() *zerolog.Logger
 }
