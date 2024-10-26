@@ -7,7 +7,7 @@ import (
 )
 
 func (s *Service) GetList(ctx context.Context, withDeleted bool) ([]entity.City, error) {
-	logger := s.logger.With().Interface("service", "GetList").Logger()
+	logger := s.logger.With().Interface("service", "GetCityList").Logger()
 
 	cities, err := s.rdbOperations.GetCityList(logger, ctx, withDeleted)
 	if err != nil {
@@ -18,7 +18,7 @@ func (s *Service) GetList(ctx context.Context, withDeleted bool) ([]entity.City,
 }
 
 func (s *Service) Create(ctx context.Context, city entity.City) (*int64, error) {
-	logger := s.logger.With().Interface("service", "Create").Logger()
+	logger := s.logger.With().Interface("service", "CreateCity").Logger()
 
 	id, err := s.rwdbOperations.CreateCity(logger, ctx, city)
 	if err != nil {
@@ -29,7 +29,7 @@ func (s *Service) Create(ctx context.Context, city entity.City) (*int64, error) 
 }
 
 func (s *Service) Update(ctx context.Context, city entity.City) error {
-	logger := s.logger.With().Interface("service", "Update").Logger()
+	logger := s.logger.With().Interface("service", "UpdateCity").Logger()
 
 	err := s.rwdbOperations.UpdateCity(logger, ctx, city)
 	if err != nil {
@@ -40,7 +40,7 @@ func (s *Service) Update(ctx context.Context, city entity.City) error {
 }
 
 func (s *Service) Delete(ctx context.Context, id int64) error {
-	logger := s.logger.With().Interface("service", "Create").Logger()
+	logger := s.logger.With().Interface("service", "DeleteCity").Logger()
 
 	err := s.rwdbOperations.DeleteCity(logger, ctx, id)
 	if err != nil {

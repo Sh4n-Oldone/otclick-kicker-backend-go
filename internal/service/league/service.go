@@ -3,7 +3,6 @@ package league
 import (
 	"context"
 
-	"github.com/bufbuild/protovalidate-go"
 	"github.com/rs/zerolog"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql"
 
@@ -22,7 +21,6 @@ type IService interface {
 
 type Service struct {
 	logger         *zerolog.Logger
-	validator      *protovalidate.Validator
 	config         *config.Configuration
 	rdbOperations  postgresql.RDBOperationer
 	rwdbOperations postgresql.RWDBOperationer
@@ -31,11 +29,6 @@ type Service struct {
 // GetLogger is a method of business logic layer that gets a logger for logging events in a upper layer.
 func (s *Service) GetLogger() *zerolog.Logger {
 	return s.logger
-}
-
-// GetValidator is a method of business logic layer that gets a validator for validating data in a upper layer.
-func (s *Service) GetValidator() *protovalidate.Validator {
-	return s.validator
 }
 
 func NewService(

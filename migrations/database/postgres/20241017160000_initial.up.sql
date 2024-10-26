@@ -7,6 +7,12 @@ CREATE TABLE IF NOT EXISTS cities (
     deleted_at timestamptz DEFAULT NULL
 );
 
+INSERT INTO cities (name, ru)
+values
+    ('St.Peterburg', 'Санкт-Петербург'),
+    ('Moscow', 'Москва'),
+    ('Voronezh', 'Воронеж');
+
 CREATE TABLE IF NOT EXISTS leagues (
     id SERIAL PRIMARY KEY,
     name VARCHAR NOT NULL,
@@ -86,6 +92,37 @@ CREATE TABLE IF NOT EXISTS users (
     password BYTEA NOT NULL,
     role_id smallint references user_roles(id) not null,
     team_id int references teams(id) default null
+);
+
+CREATE TABLE IF NOT EXISTS tables (
+    id SMALLSERIAL PRIMARY KEY,
+    name VARCHAR NOT NULL UNIQUE,
+    updated_at timestamptz default now() not null,
+    deleted_at timestamptz default null
+);
+
+INSERT INTO tables (name)
+VALUES
+    ('Garlando World Champion'),
+    ('Leo Tournament'),
+    ('Tornado T3000'),
+    ('Leonhart');
+
+CREATE TABLE IF NOT EXISTS bars (
+    id SMALLSERIAL PRIMARY KEY,
+    city_id int references cities(id) not null,
+    name VARCHAR NOT NULL UNIQUE,
+    description VARCHAR,
+    updated_at timestamptz default now() not null,
+    deleted_at timestamptz default null
+);
+
+CREATE TABLE IF NOT EXISTS places (
+    id SMALLSERIAL PRIMARY KEY,
+    bar_id int references bars(id) not null,
+    table_id int references tables(id) not null,
+    updated_at timestamptz default now() not null,
+    deleted_at timestamptz default null
 );
 
 commit;

@@ -29,7 +29,7 @@ const (
 			deleted = $3
 		WHERE id = $4;`
 
-	queryDeleteCity string = `UPDATE cities SET deleted = TRUE WHERE id = $1;`
+	queryDeleteCity string = `UPDATE cities SET deleted_at = NOW() WHERE id = $1;`
 	// <--
 
 	// User queries
@@ -131,6 +131,165 @@ const (
 	queryDeleteMatch string = `DELETE FROM matches WHERE id = $1`
 	// <--
 
+	// Table queries -->
+	queryGetTableList string = `
+		SELECT id, name, updated_at, deleted_at 
+		FROM tables
+		WHERE deleted_at IS NULL
+		ORDER BY id;`
+
+	queryGetTableListWithDeleted string = `
+		SELECT id, name, updated_at, deleted_at 
+		FROM tables
+		ORDER BY id;`
+
+	queryGetTableByID string = `
+		SELECT id, name, updated_at, deleted_at
+		FROM tables
+		WHERE id = $1;`
+
+	queryCreateTable string = `
+		INSERT INTO tables (name, updated_at) 
+		VALUES 
+		(
+			$1,
+			NOW()
+		) RETURNING id;`
+
+	queryUpdateTable string = `
+		UPDATE tables
+		SET 
+		    name = COALESCE($2, name),
+			updated_at = NOW()
+		WHERE id = $1;`
+
+	queryDeleteTable string = `UPDATE tables SET deleted_at = NOW() WHERE id = $1;`
+	// <--
+
+	// Bar queries -->
+	queryGetBarList string = `
+		SELECT id, city_id, name, description, updated_at, deleted_at 
+		FROM bars
+		WHERE deleted_at IS NULL
+		ORDER BY id;`
+
+	queryGetBarListByCityID string = `
+		SELECT id, city_id, name, description, updated_at, deleted_at 
+		FROM bars 
+		WHERE city_id = $1 AND deleted_at IS NULL
+		ORDER BY id;`
+
+	queryGetBarListWithDeleted string = `
+		SELECT id, city_id, name, description, updated_at, deleted_at 
+		FROM bars
+		ORDER BY id;`
+
+	queryGetBarListByCityIDWithDeleted string = `
+		SELECT id, city_id, name, description, updated_at, deleted_at 
+		FROM bars 
+		WHERE city_id = $1
+		ORDER BY id;`
+
+	queryGetBarByID string = `
+		SELECT id, city_id, name, description, updated_at, deleted_at
+		FROM bars
+		WHERE id = $1;`
+
+	queryCreateBar string = `
+		INSERT INTO bars (city_id, name, description, updated_at) 
+		VALUES 
+		(
+			$1,
+			$2,
+			$3,
+			NOW()
+		) RETURNING id;`
+
+	queryUpdateBar string = `
+		UPDATE cities
+		SET 
+			city_id = COALESCE($2, city_id),
+		    name = COALESCE($3, name),
+    		description = COALESCE($4, description),
+			updated_at = NOW()
+		WHERE id = $1;`
+
+	queryDeleteBar string = `UPDATE bars SET deleted_at = NOW() WHERE id = $1;`
+	// <--
+
+	// Place queries -->
+	queryGetPlaceList string = `
+		SELECT id, bar_id, table_id, updated_at, deleted_at 
+		FROM places
+		WHERE deleted_at IS NULL
+		ORDER BY bar_id, table_id, id;`
+
+	queryGetPlaceListWithDeleted string = `
+		SELECT id, bar_id, table_id, updated_at, deleted_at 
+		FROM places
+		ORDER BY bar_id, table_id, id;`
+
+	queryGetPlaceListByBarID string = `
+		SELECT id, bar_id, table_id, updated_at, deleted_at 
+		FROM places
+		WHERE bar_id = $1 AND deleted_at IS NULL
+		ORDER BY bar_id, table_id, id;`
+
+	queryGetPlaceListByBarIDWithDeleted string = `
+		SELECT id, bar_id, table_id, updated_at, deleted_at 
+		FROM places
+		WHERE bar_id = $1
+		ORDER BY bar_id, table_id, id;`
+
+	queryGetBarListByTableID string = `
+		SELECT id, bar_id, table_id, updated_at, deleted_at 
+		FROM places
+		WHERE table_id = $1 AND deleted_at IS NULL
+		ORDER BY bar_id, table_id, id;`
+
+	queryGetBarListByTableIDWithDeleted string = `
+		SELECT id, bar_id, table_id, updated_at, deleted_at 
+		FROM places
+		WHERE table_id = $1
+		ORDER BY bar_id, table_id, id;`
+
+	queryGetBarListByBarIDByTableID string = `
+		SELECT id, bar_id, table_id, updated_at, deleted_at 
+		FROM places
+		WHERE bar_id = $1 AND table_id = $2 AND deleted_at IS NULL
+		ORDER BY bar_id, table_id, id;`
+
+	queryGetBarListByBarIDByTableIDWithDeleted string = `
+		SELECT id, bar_id, table_id, updated_at, deleted_at 
+		FROM places
+		WHERE bar_id = $1 AND table_id = $2
+		ORDER BY bar_id, table_id, id;`
+
+	queryGetPlaceByID string = `
+		SELECT id, bar_id, table_id, updated_at, deleted_at 
+		FROM places
+		WHERE id = $1 AND deleled_at IS NULL;`
+
+	queryCreatePlace string = `
+		INSERT INTO places (bar_id, table_id, updated_at) 
+		VALUES 
+		(
+			$1,
+			$2,
+			NOW()
+		) RETURNING id;`
+
+	queryUpdatePlace string = `
+		UPDATE places
+		SET 
+			bar_id = COALESCE($2, bar_id),
+			table_id = COALESCE($3, table_id),
+			updated_at = NOW()
+		WHERE id = $1;`
+
+	queryDeletePlace string = `UPDATE places SET deleted_at = NOW() WHERE id = $1;`
+	// <--
+
 	// League queries -->
 	queryGetLeagueList string = `
 		SELECT id, name, city_id 
@@ -150,28 +309,24 @@ const (
 		UPDATE leagues
 		SET 
 		    name = $1
-		WHERE id = $2;
-`
+		WHERE id = $2;`
 
 	queryUpdateTeamsLeagueID = `
 		UPDATE teams
 		SET 
 		    league_id = $1
-		WHERE id = $2;
-`
+		WHERE id = $2;`
 
 	queryGetTeamLeagueID = `
 		SELECT league_id
 		FROM teams
-		WHERE id = $1;
-`
+		WHERE id = $1;`
 
 	queryDeleteTeamsLeagueID = `
 		UPDATE teams 
 		SET 
 		    league_id = NULL
-		WHERE league_id = $1;
-`
+		WHERE league_id = $1;`
 
 	queryDeleteLeague string = `DELETE FROM leagues WHERE id = $1;`
 	// <--
@@ -179,6 +334,5 @@ const (
 	queryGetGamesYears string = `    
 	SELECT DISTINCT EXTRACT(YEAR FROM date) AS year
     FROM games
-    ORDER BY year ASC;
-`
+    ORDER BY year ASC;`
 )

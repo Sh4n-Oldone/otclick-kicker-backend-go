@@ -13,14 +13,29 @@ type RWDBOperationer interface {
 	CreateCity(logger zerolog.Logger, ctx context.Context, city entity.City) (id *int64, err error)
 	UpdateCity(logger zerolog.Logger, ctx context.Context, city entity.City) error
 	DeleteCity(logger zerolog.Logger, ctx context.Context, id int64) error
+	
 	CreateUser(logger zerolog.Logger, ctx context.Context, user entity.User) (id *int64, err error)
 	UpdateUser(logger zerolog.Logger, ctx context.Context, user entity.User) error
+	
 	CreateMatch(logger zerolog.Logger, ctx context.Context, match entity.Match) (id int64, err error)
 	UpdateMatch(logger zerolog.Logger, ctx context.Context, match entity.Match) error
 	DeleteMatch(logger zerolog.Logger, ctx context.Context, id int64) error
+	
 	CreatePlayer(logger zerolog.Logger, ctx context.Context, player entities.CreatePlayerRequest) (int, error)
 	DeletePlayer(logger zerolog.Logger, ctx context.Context, playerID int) error
 	UpdatePlayer(logger zerolog.Logger, ctx context.Context, playerData entities.UpdatePlayerRequest) error
+	
+	CreateBar(logger zerolog.Logger, ctx context.Context, entity entity.Bar) (id *int64, err error)
+	UpdateBar(logger zerolog.Logger, ctx context.Context, entity entity.Bar) error
+	DeleteBar(logger zerolog.Logger, ctx context.Context, id int64) error
+	
+	CreateTable(logger zerolog.Logger, ctx context.Context, entity entity.Table) (id *int64, err error)
+	UpdateTable(logger zerolog.Logger, ctx context.Context, entity entity.Table) error
+	DeleteTable(logger zerolog.Logger, ctx context.Context, id int64) error
+
+	CreatePlace(logger zerolog.Logger, ctx context.Context, entity entity.Place) (id *int64, err error)
+	UpdatePlace(logger zerolog.Logger, ctx context.Context, entity entity.Place) error
+	DeletePlace(logger zerolog.Logger, ctx context.Context, id int64) error
 	CreateTeam(logger zerolog.Logger, ctx context.Context, team entity.CreateTeamRequest) (id int64, err error)
 	UpdateTeam(logger zerolog.Logger, ctx context.Context, team entity.UpdateTeamRequest) (bool, error)
 	DeleteTeam(logger zerolog.Logger, ctx context.Context, id int64) (bool, error)
@@ -39,14 +54,28 @@ type RWDBOperationer interface {
 type RDBOperationer interface {
 	GetRoleList(logger zerolog.Logger, ctx context.Context) ([]entity.Role, error)
 	GetRole(logger zerolog.Logger, ctx context.Context, id *int64, name *string) (*entity.Role, error)
+
 	GetCityList(logger zerolog.Logger, ctx context.Context, withDelete bool) ([]entity.City, error)
+
 	GetUser(logger zerolog.Logger, ctx context.Context, id *int64, email *string) (*entity.User, error)
+
 	GetPlayerByID(logger zerolog.Logger, ctx context.Context, playerID int) (entities.Player, error)
 	GetPlayersByTeamID(logger zerolog.Logger, ctx context.Context, teamID int) ([]entities.Player, error)
+
 	GetMatchesByPlayerID(logger zerolog.Logger, ctx context.Context, playerID int) ([]entities.Match, error)
 	GetLeaguesByPlayerID(logger zerolog.Logger, ctx context.Context, playerID int) ([]entities.PlayersLeague, error)
+
 	GetGamesByPlayersTeam(logger zerolog.Logger, ctx context.Context, teamID int) ([]entities.Game, error)
+
 	FindPlayers(logger zerolog.Logger, ctx context.Context, player entities.FindPlayersRequest) ([]entities.Player, error)
+
+	GetTableList(logger zerolog.Logger, ctx context.Context, withDelete bool) ([]entity.Table, error)
+
+	GetBarList(logger zerolog.Logger, ctx context.Context, cityID *int64, withDelete bool) ([]entity.Bar, error)
+	GetBarByID(logger zerolog.Logger, ctx context.Context, id int64) (*entity.Bar, error)
+
+	GetPlaceList(logger zerolog.Logger, ctx context.Context, barID, tableID *int64, withDelete bool) ([]entity.Place, error)
+	GetPlaceByID(logger zerolog.Logger, ctx context.Context, id int64) (*entity.Place, error)
 	GetLeagueList(logger zerolog.Logger, ctx context.Context, cityID int64) ([]entity.League, error)
 	GetGame(logger zerolog.Logger, ctx context.Context, gameID int) (entities.GetGameResponse, error)
 	FindGames(logger zerolog.Logger, ctx context.Context, request entities.FindGameRequest) ([]entities.FindGame, error)
