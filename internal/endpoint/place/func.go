@@ -60,7 +60,7 @@ func makeCreate(s place.IService) endpoint.Endpoint {
 			ID: req.TableID,
 		}
 		entity := &entity.Place{
-			Bar: *rel1,
+			Bar:   *rel1,
 			Table: *rel2,
 		}
 
@@ -70,7 +70,7 @@ func makeCreate(s place.IService) endpoint.Endpoint {
 			return nil, err
 		}
 
-		response := &struct{
+		response := &struct {
 			ID int64 `json:"id"`
 		}{}
 
@@ -104,8 +104,8 @@ func makeUpdate(s place.IService) endpoint.Endpoint {
 			ID: req.TableID,
 		}
 		entity := &entity.Place{
-			ID: req.ID,
-			Bar: *rel1,
+			ID:    req.ID,
+			Bar:   *rel1,
 			Table: *rel2,
 		}
 
@@ -115,7 +115,7 @@ func makeUpdate(s place.IService) endpoint.Endpoint {
 			return nil, err
 		}
 
-		response := &struct{
+		response := &struct {
 			ID int64 `json:"id"`
 		}{}
 

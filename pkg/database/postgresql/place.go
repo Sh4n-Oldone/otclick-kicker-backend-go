@@ -12,14 +12,14 @@ import (
 
 func (db *RDBOperation) GetPlaceList(logger zerolog.Logger, ctx context.Context, barID, tableID *int64, withDeleted bool) ([]entity.Place, error) {
 
-	queries := map[string]string {
-		"queryGetPlaceList": queryGetPlaceList,
-		"queryGetPlaceListWithDeleted": queryGetPlaceListWithDeleted,
-		"queryGetPlaceListByBarID": queryGetPlaceListByBarID,
-		"queryGetPlaceListByBarIDWithDeleted": queryGetPlaceListByBarIDWithDeleted,
-		"queryGetBarListByTableID": queryGetBarListByTableID,
-		"queryGetBarListByTableIDWithDeleted": queryGetBarListByTableIDWithDeleted,
-		"queryGetBarListByBarIDByTableID": queryGetBarListByBarIDByTableID,
+	queries := map[string]string{
+		"queryGetPlaceList":                          queryGetPlaceList,
+		"queryGetPlaceListWithDeleted":               queryGetPlaceListWithDeleted,
+		"queryGetPlaceListByBarID":                   queryGetPlaceListByBarID,
+		"queryGetPlaceListByBarIDWithDeleted":        queryGetPlaceListByBarIDWithDeleted,
+		"queryGetBarListByTableID":                   queryGetBarListByTableID,
+		"queryGetBarListByTableIDWithDeleted":        queryGetBarListByTableIDWithDeleted,
+		"queryGetBarListByBarIDByTableID":            queryGetBarListByBarIDByTableID,
 		"queryGetBarListByBarIDByTableIDWithDeleted": queryGetBarListByBarIDByTableIDWithDeleted,
 	}
 
@@ -34,7 +34,7 @@ func (db *RDBOperation) GetPlaceList(logger zerolog.Logger, ctx context.Context,
 		queryName += "WithDeleted"
 	}
 
-	rows, err := db.db.Query(ctx, queries[queryName], barID, tableID)	
+	rows, err := db.db.Query(ctx, queries[queryName], barID, tableID)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.GetPlaceList")
 		return nil, DecodeDatabaseError(err)
@@ -51,7 +51,7 @@ func (db *RDBOperation) GetPlaceList(logger zerolog.Logger, ctx context.Context,
 		entity.Bar = rel1
 		entity.Table = rel2
 
-		err = rows.Scan(&entity.ID, &entity.Bar.ID, &entity.Table.ID, &entity.UpdatedAt, &entity.DeletedAt)
+		err = rows.Scan(&entity.ID, &entity.Bar.ID, &entity.Bar.Name, &entity.Table.ID, &entity.Table.Name, &entity.UpdatedAt, &entity.DeletedAt)
 		if err != nil {
 			logger.Error().Stack().Err(err).Msg("failed scan to postgresql.GetPlaceList")
 			return nil, DecodeDatabaseError(err)
@@ -80,7 +80,6 @@ func (db *RDBOperation) GetPlaceByID(logger zerolog.Logger, ctx context.Context,
 
 	return &entity, nil
 }
-
 
 func (db *RWDBOperation) CreatePlace(logger zerolog.Logger, ctx context.Context, entity entity.Place) (*int64, error) {
 	var id int64
