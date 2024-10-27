@@ -163,3 +163,7 @@ func decodeUpdateFutureGameRequest(_ context.Context, r *http.Request) (interfac
 func decodeGamesYearsRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	return nil, nil
 }
+
+func decodeGetComingGamesRequest(_ context.Context, _ *http.Request) (interface{}, error) {
+	return nil, nil
+}

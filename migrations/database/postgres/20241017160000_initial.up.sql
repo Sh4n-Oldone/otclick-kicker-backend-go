@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS players_teams_links (
 CREATE TABLE IF NOT EXISTS games (
     id SERIAL PRIMARY KEY,
     city_id INT REFERENCES cities(id),
+    place_id INT REFERENCES places(id),
     date date NOT NULL,
     team1_id INT REFERENCES teams(id),
     team2_id INT REFERENCES teams(id)

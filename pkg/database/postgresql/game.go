@@ -460,3 +460,59 @@ func (db *RDBOperation) GetGamesYears(logger zerolog.Logger, ctx context.Context
 
 	return entity.GetGamesYearsResponse{Years: years}, nil
 }
+
+func (db *RDBOperation) GetComingGames(logger zerolog.Logger, ctx context.Context) ([]entities.ComingGame, error) {
+	const query string = `
+		SELECT 
+			g.id,
+			g.date,
+			g.city_id,
+			b.name,
+			tbl.name,
+			t1.id,
+			t1.name,
+			t2.id,
+			t2.name
+		FROM games g
+			JOIN  places p ON g.place_id = p.id
+			LEFT JOIN teams t1 ON g.team1_id = t1.id
+			LEFT JOIN teams t2 ON g.team2_id = t2.id
+			LEFT JOIN bars b ON p.bar_id = b.id
+			LEFT JOIN tables tbl ON p.table_id = tbl.id
+		WHERE 
+			g.date > CURRENT_DATE
+			AND p.deleted_at IS NULL;
+	`
+
+	games := make([]entities.ComingGame, 0)
+
+	rows, err := db.db.Query(ctx, query)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to postgresql.GetComingGames")
+		return nil, DecodeDatabaseError(stderr.New(errors.ErrGetGame))
+	}
+
+	for rows.Next() {
+		var game entities.ComingGame
+
+		err = rows.Scan(
+			&game.ID,
+			&game.Date,
+			&game.CityID,
+			&game.Bar,
+			&game.Table,
+			&game.Team1ID,
+			&game.Team1Name,
+			&game.Team2ID,
+			&game.Team2Name,
+		)
+		if err != nil {
+			logger.Error().Err(err).Msg("failed to postgresql.GetComingGames")
+			return nil, DecodeDatabaseError(stderr.New(errors.ErrGetGame))
+		}
+
+		games = append(games, game)
+	}
+
+	return games, nil
+}
