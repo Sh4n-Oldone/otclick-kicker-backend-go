@@ -27,8 +27,7 @@ func NewServer(endpoints city.Endpoints, options []kithttp.ServerOption, cfg *co
 	r.Use(custom_middleware.HeaderHandler)
 
 	//Actual
-	r.With(custom_middleware.Auth(cfg, service)).
-		Get("/cities", kithttp.NewServer(endpoints.GetList, decodeGetListRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.Get("/cities", kithttp.NewServer(endpoints.GetList, decodeGetListRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
 		Post("/cities", kithttp.NewServer(endpoints.Create, decodeCreateRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
