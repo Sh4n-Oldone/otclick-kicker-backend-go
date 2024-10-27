@@ -44,17 +44,17 @@ import (
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/healthchecker"
 
 	tpHTTP "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http"
+	tpHTTPBar "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/bar"
 	tpHTTPCity "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/city"
 	tpHTTPGame "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/game"
 	tpHTTPLeague "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/league"
 	tpHTTPMatch "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/match"
+	tpHTTPPlace "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/place"
 	tpHTTPPlayer "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/player"
 	tpHTTPRole "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/role"
+	tpHTTPTable "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/table"
 	tpHTTPTeam "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/team"
 	tpHTTPUser "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/user"
-	tpHTTPTable "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/table"
-	tpHTTPBar "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/bar"
-	tpHTTPPlace "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/place"
 
 	customMiddleware "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/middleware"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql"
@@ -120,7 +120,9 @@ func initKitHTTP(appConfig *config.Configuration, service srvUser.IService, endp
 	router.Mount("/Kicker.v1.MatchService/",
 		tpHTTPMatch.NewServer(
 			endpoints.MatchEP,
-			serverOptions))
+			serverOptions,
+			appConfig,
+			service))
 
 	router.Mount("/Kicker.v1.PlayerService/",
 		tpHTTPPlayer.NewServer(
@@ -132,7 +134,9 @@ func initKitHTTP(appConfig *config.Configuration, service srvUser.IService, endp
 	router.Mount("/Kicker.v1.TeamService/",
 		tpHTTPTeam.NewServer(
 			endpoints.TeamEP,
-			serverOptions))
+			serverOptions,
+			appConfig,
+			service))
 
 	router.Mount("/Kicker.v1.UserService/",
 		tpHTTPUser.NewServer(
@@ -168,21 +172,21 @@ func initKitHTTP(appConfig *config.Configuration, service srvUser.IService, endp
 			serverOptions,
 			appConfig,
 			service))
-	
+
 	router.Mount("/Kicker.v1.BarService/",
 		tpHTTPBar.NewServer(
 			endpoints.BarEP,
 			serverOptions,
 			appConfig,
 			service))
-		
+
 	router.Mount("/Kicker.v1.PlaceService/",
 		tpHTTPPlace.NewServer(
 			endpoints.PlaceEP,
 			serverOptions,
 			appConfig,
 			service))
-			
+
 	if webDebugEnabled {
 		router.Mount("/dbg", ProfilerHandler())
 	}

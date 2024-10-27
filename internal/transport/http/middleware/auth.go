@@ -182,3 +182,37 @@ func AuthCaptain() func(http.Handler) http.Handler {
 		return http.HandlerFunc(fn)
 	}
 }
+
+func AuthSuperUserAdminCapitan() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			role := r.Context().Value(cnst.RoleNameContextKey)
+
+			if rl, ok := role.(string); !ok || (rl != cnst.SuperUserRole && rl != cnst.AdminRole && rl != cnst.CaptainRole) {
+				w.WriteHeader(http.StatusForbidden)
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		}
+
+		return http.HandlerFunc(fn)
+	}
+}
+
+func AuthSuperUserAdmin() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			role := r.Context().Value(cnst.RoleNameContextKey)
+
+			if rl, ok := role.(string); !ok || (rl != cnst.SuperUserRole && rl != cnst.AdminRole) {
+				w.WriteHeader(http.StatusForbidden)
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		}
+
+		return http.HandlerFunc(fn)
+	}
+}
