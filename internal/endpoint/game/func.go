@@ -155,3 +155,18 @@ func makeGetYears(s game.IService) endpoint.Endpoint {
 		return resp, nil
 	}
 }
+
+func makeGetComingGames(s game.IService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "game.makeGetComingGames").Logger()
+
+		resp, err := s.GetComingGames(ctx)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed to game.UpdateFutureGame")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		return resp, nil
+	}
+}

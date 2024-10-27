@@ -72,3 +72,19 @@ type UpdateFutureGameRequest struct {
 	Team1ID int       `json:"team1Id" validate:"required,gt=0"`
 	Team2ID int       `json:"team2Id" validate:"required,gt=0"`
 }
+
+type GetComingGamesResponse struct {
+	ComingGames []ComingGame `json:"games"`
+}
+
+type ComingGame struct {
+	ID        int       `json:"id"`
+	Date      time.Time `json:"date"`
+	CityID    int       `json:"cityId"`
+	Bar       string    `json:"bar"`
+	Table     string    `json:"table"`
+	Team1ID   int       `json:"team1Id"`
+	Team1Name string    `json:"team1ShortName"`
+	Team2ID   int       `json:"team2Id"`
+	Team2Name string    `json:"team2ShortName"`
+}

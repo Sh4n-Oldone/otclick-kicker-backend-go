@@ -94,3 +94,16 @@ func (s *Service) GetGamesYears(ctx context.Context) (entity.GetGamesYearsRespon
 	}
 	return resp, nil
 }
+
+func (s *Service) GetComingGames(ctx context.Context) (entities.GetComingGamesResponse, error) {
+	logger := s.logger.With().Interface("service", "game.GetComingGames").Logger()
+	timeout, cancel := context.WithTimeout(ctx, s.config.RDB.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	games, err := s.rdbOperations.GetComingGames(logger, timeout)
+	if err != nil {
+		return entities.GetComingGamesResponse{}, err
+	}
+
+	return entities.GetComingGamesResponse{ComingGames: games}, nil
+}

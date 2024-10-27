@@ -13,22 +13,22 @@ type RWDBOperationer interface {
 	CreateCity(logger zerolog.Logger, ctx context.Context, city entity.City) (id *int64, err error)
 	UpdateCity(logger zerolog.Logger, ctx context.Context, city entity.City) error
 	DeleteCity(logger zerolog.Logger, ctx context.Context, id int64) error
-	
+
 	CreateUser(logger zerolog.Logger, ctx context.Context, user entity.User) (id *int64, err error)
 	UpdateUser(logger zerolog.Logger, ctx context.Context, user entity.User) error
-	
+
 	CreateMatch(logger zerolog.Logger, ctx context.Context, match entity.Match) (id int64, err error)
 	UpdateMatch(logger zerolog.Logger, ctx context.Context, match entity.Match) error
 	DeleteMatch(logger zerolog.Logger, ctx context.Context, id int64) error
-	
+
 	CreatePlayer(logger zerolog.Logger, ctx context.Context, player entities.CreatePlayerRequest) (int, error)
 	DeletePlayer(logger zerolog.Logger, ctx context.Context, playerID int) error
 	UpdatePlayer(logger zerolog.Logger, ctx context.Context, playerData entities.UpdatePlayerRequest) error
-	
+
 	CreateBar(logger zerolog.Logger, ctx context.Context, entity entity.Bar) (id *int64, err error)
 	UpdateBar(logger zerolog.Logger, ctx context.Context, entity entity.Bar) error
 	DeleteBar(logger zerolog.Logger, ctx context.Context, id int64) error
-	
+
 	CreateTable(logger zerolog.Logger, ctx context.Context, entity entity.Table) (id *int64, err error)
 	UpdateTable(logger zerolog.Logger, ctx context.Context, entity entity.Table) error
 	DeleteTable(logger zerolog.Logger, ctx context.Context, id int64) error
@@ -80,6 +80,7 @@ type RDBOperationer interface {
 	GetGame(logger zerolog.Logger, ctx context.Context, gameID int) (entities.GetGameResponse, error)
 	FindGames(logger zerolog.Logger, ctx context.Context, request entities.FindGameRequest) ([]entities.FindGame, error)
 	GetGamesYears(logger zerolog.Logger, ctx context.Context) (entity.GetGamesYearsResponse, error)
+	GetComingGames(logger zerolog.Logger, ctx context.Context) ([]entities.ComingGame, error)
 }
 
 type dbp struct {
