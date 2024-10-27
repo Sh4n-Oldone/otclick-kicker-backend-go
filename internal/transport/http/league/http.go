@@ -26,8 +26,7 @@ func NewServer(endpoints league.Endpoints, options []kithttp.ServerOption, cfg *
 	r.Use(custom_middleware.HeaderHandler)
 
 	//Actual
-	r.With(custom_middleware.Auth(cfg, service)).
-		Get("/leagues", kithttp.NewServer(endpoints.GetList, decodeGetListRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.Get("/leagues", kithttp.NewServer(endpoints.GetList, decodeGetListRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
 		Post("/leagues", kithttp.NewServer(endpoints.Create, decodeCreateRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).

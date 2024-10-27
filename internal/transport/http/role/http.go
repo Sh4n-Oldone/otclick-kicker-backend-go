@@ -27,8 +27,7 @@ func NewServer(endpoints role.Endpoints, options []kithttp.ServerOption, cfg *co
 	r.Use(custom_middleware.HeaderHandler)
 
 	//Actual
-	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
-		Get("/roles", kithttp.NewServer(endpoints.GetList, decodeGetRoleListRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.Get("/roles", kithttp.NewServer(endpoints.GetList, decodeGetRoleListRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 
 	return r
 }
