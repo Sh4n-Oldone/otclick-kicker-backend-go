@@ -417,12 +417,13 @@ func (db *RWDBOperation) UpdateFutureGame(logger zerolog.Logger, ctx context.Con
 		UPDATE public.games
 		SET 
 			date = $2,
-			team1_id = $3,
-			team2_id = $4
+			place_id = $3,
+			team1_id = $4,
+			team2_id = $5
 		WHERE id = $1;
 	`
 
-	tag, err := db.db.Exec(ctx, query, request.ID, request.Date, request.Team1ID, request.Team2ID)
+	tag, err := db.db.Exec(ctx, query, request.ID, request.Date, request.PlaceID, request.Team1ID, request.Team2ID)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to postgresql.UpdateFutureGame")
 		return DecodeDatabaseError(stderr.New(errors.ErrUpdateGame))

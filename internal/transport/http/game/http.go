@@ -37,7 +37,7 @@ func NewServer(endpoints game.Endpoints, options []kithttp.ServerOption, cfg *co
 		Delete("/games/played/{id}", kithttp.NewServer(endpoints.Delete, decodeIdParamRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
 		Patch("/games/played", kithttp.NewServer(endpoints.Update, decodeUpdateRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
-	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
+	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdminCapitan()).
 		Patch("/games/future", kithttp.NewServer(endpoints.UpdateFutureGame, decodeUpdateFutureGameRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 	return r
 }
