@@ -85,6 +85,7 @@ type (
 	}
 
 	HTTPConfig struct {
+		CorsEnabled                bool          `env:"CORS_ENABLED,default=false"`
 		RequestLoggingEnabled      bool          `env:"REQUEST_LOGGING_ENABLED,default=false"`
 		ResponseTimeLoggingEnabled bool          `env:"RESPONSE_TIME_LOGGING_ENABLED,default=false"`
 		ReadTimeout                time.Duration `env:"READ_TIMEOUT,default=30s"`

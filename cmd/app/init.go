@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 	kithttp "github.com/go-kit/kit/transport/http"
 	"github.com/heptiolabs/healthcheck"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -77,7 +78,7 @@ func initRuntime(cpu, threads int, logger zerolog.Logger) {
 	logger.Info().Msgf("set to use maximum %d threads", threads)
 }
 
-func initHTTPRouter(_ *config.Configuration) *chi.Mux {
+func initHTTPRouter(config *config.Configuration) *chi.Mux {
 	router := chi.NewRouter()
 
 	router.Use(middleware.NoCache)
@@ -85,6 +86,9 @@ func initHTTPRouter(_ *config.Configuration) *chi.Mux {
 	router.Use(customMiddleware.RequestID)
 	router.Use(middleware.Recoverer)
 	router.Use(middleware.StripSlashes)
+	if config.HTTP.CorsEnabled == false {
+		router.Use(cors.Handler(cors.Options{}))
+	}
 
 	pongResponse := []byte("pong")
 	router.Get("/ping", func(w http.ResponseWriter, r *http.Request) {
