@@ -13,7 +13,7 @@ import (
 type IService interface {
 	GetList(ctx context.Context, barID, tableID *int64, withDeleted bool) ([]entity.Place, error)
 	Get(ctx context.Context, id int64) (*entity.Place, error)
-	Create(ctx context.Context, city entity.Place) (*int64, error)
+	Create(ctx context.Context, place entity.Place) (*int64, error)
 	Update(ctx context.Context, city entity.Place) error
 	Delete(ctx context.Context, id int64) error
 

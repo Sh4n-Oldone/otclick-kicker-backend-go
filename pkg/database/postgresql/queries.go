@@ -219,48 +219,48 @@ const (
 
 	// Place queries -->
 	queryGetPlaceList string = `
-		SELECT id, bar_id, table_id, updated_at, deleted_at 
+		SELECT id, bar_id, bar_name, table_id, table_name, updated_at, deleted_at 
 		FROM places
 		WHERE deleted_at IS NULL
 		ORDER BY bar_id, table_id, id;`
 
 	queryGetPlaceListWithDeleted string = `
-		SELECT id, bar_id, table_id, updated_at, deleted_at 
+		SELECT id, bar_id, bar_name, table_id, table_name, updated_at, deleted_at 
 		FROM places
 		ORDER BY bar_id, table_id, id;`
 
 	queryGetPlaceListByBarID string = `
-		SELECT id, bar_id, table_id, updated_at, deleted_at 
+		SELECT id, bar_id, bar_name, table_id, table_name, updated_at, deleted_at 
 		FROM places
 		WHERE bar_id = $1 AND deleted_at IS NULL
 		ORDER BY bar_id, table_id, id;`
 
 	queryGetPlaceListByBarIDWithDeleted string = `
-		SELECT id, bar_id, table_id, updated_at, deleted_at 
+		SELECT id, bar_id, bar_name, table_id, table_name, updated_at, deleted_at 
 		FROM places
 		WHERE bar_id = $1
 		ORDER BY bar_id, table_id, id;`
 
 	queryGetBarListByTableID string = `
-		SELECT id, bar_id, table_id, updated_at, deleted_at 
+		SELECT id, bar_id, bar_name, table_id, table_name, updated_at, deleted_at 
 		FROM places
 		WHERE table_id = $1 AND deleted_at IS NULL
 		ORDER BY bar_id, table_id, id;`
 
 	queryGetBarListByTableIDWithDeleted string = `
-		SELECT id, bar_id, table_id, updated_at, deleted_at 
+		SELECT id, bar_id, bar_name, table_id, table_name, updated_at, deleted_at 
 		FROM places
 		WHERE table_id = $1
 		ORDER BY bar_id, table_id, id;`
 
 	queryGetBarListByBarIDByTableID string = `
-		SELECT id, bar_id, table_id, updated_at, deleted_at 
+		SELECT id, bar_id, bar_name, table_id, table_name, updated_at, deleted_at 
 		FROM places
 		WHERE bar_id = $1 AND table_id = $2 AND deleted_at IS NULL
 		ORDER BY bar_id, table_id, id;`
 
 	queryGetBarListByBarIDByTableIDWithDeleted string = `
-		SELECT id, bar_id, table_id, updated_at, deleted_at 
+		SELECT id, bar_id, bar_name, table_id, table_name, updated_at, deleted_at 
 		FROM places
 		WHERE bar_id = $1 AND table_id = $2
 		ORDER BY bar_id, table_id, id;`

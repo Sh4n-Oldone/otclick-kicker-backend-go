@@ -245,6 +245,19 @@ func ValidateCreatePlaceRequest(request *entity.CreatePlaceRequest) error {
 	return nil
 }
 
+func ValidateCreatePlaceWithBarAndTablesRequest(request *entity.CreatePlaceWithBarAndTablesRequest) error {
+	if request.BarID <= 0 && request.BarName == "" {
+		err := error_templates.New("invalid request fields", errors.New("invalid request fields"), codes.InvalidArgument, http.StatusBadRequest)
+		return error_templates.WrapErrorDetail(err, fmt.Sprintf("wrong value of parameter %T", request.BarID))
+	}
+	if request.Tables[0].ID <= 0 && request.Tables[0].Name == "" {
+		err := error_templates.New("invalid request fields", errors.New("invalid request fields"), codes.InvalidArgument, http.StatusBadRequest)
+		return error_templates.WrapErrorDetail(err, fmt.Sprintf("wrong value of parameter %T", request.TableID))
+	}
+
+	return nil
+}
+
 func ValidateUpdatePlaceRequest(request *entity.UpdatePlaceRequest) error {
 	if request.ID <= 0 {
 		err := error_templates.New("invalid request fields", errors.New("invalid request fields"), codes.InvalidArgument, http.StatusBadRequest)
