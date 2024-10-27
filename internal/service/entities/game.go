@@ -69,6 +69,7 @@ type FindGameResponse struct {
 type UpdateFutureGameRequest struct {
 	ID      int       `json:"id" validate:"required,gt=0"`
 	Date    time.Time `json:"date" validate:"required,valid-date"`
+	PlaceID int       `json:"placeId" validate:"required,gt=0"`
 	Team1ID int       `json:"team1Id" validate:"required,gt=0"`
 	Team2ID int       `json:"team2Id" validate:"required,gt=0"`
 }
