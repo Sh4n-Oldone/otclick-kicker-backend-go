@@ -17,24 +17,24 @@ func (s *Service) Create(ctx context.Context, match entity.Match) (*int64, error
 	return &id, nil
 }
 
-func (s *Service) Update(ctx context.Context, match entity.Match)  error {
+func (s *Service) Update(ctx context.Context, match entity.Match) (bool, error) {
 	logger := s.logger.With().Interface("service", "Update").Logger()
 
-	err := s.rwdbOperations.UpdateMatch(logger, ctx, match)
+	res, err := s.rwdbOperations.UpdateMatch(logger, ctx, match)
 	if err != nil {
-		return err
+		return res, err
 	}
 
-	return nil
+	return res, nil
 }
 
-func (s *Service) Delete(ctx context.Context, id int64) error {
+func (s *Service) Delete(ctx context.Context, id int64) (bool, error) {
 	logger := s.logger.With().Interface("service", "Delete").Logger()
 
-	err := s.rwdbOperations.DeleteMatch(logger, ctx, id)
+	res, err := s.rwdbOperations.DeleteMatch(logger, ctx, id)
 	if err != nil {
-		return err
+		return res, err
 	}
 
-	return nil
+	return res, nil
 }

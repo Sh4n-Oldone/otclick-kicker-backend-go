@@ -54,66 +54,86 @@ func decodeGetTeamRequest(_ context.Context, r *http.Request) (interface{}, erro
 }
 
 // // GetTeams
-// func decodeGetTeamsRequest(_ context.Context, r *http.Request) (interface{}, error) {
-// 	request := &entity.GetTeamsRequest{}
+func decodeGetTeamsRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	request := &entity.GetTeamsRequest{}
+	buf := bytebufferpool.Get()
+	defer bytebufferpool.Put(buf)
 
-// 	buf := bytebufferpool.Get()
-// 	defer bytebufferpool.Put(buf)
+	var onlyFree bool = false
+	onlyFreeParam := r.URL.Query().Get("onlyFree")
+	if onlyFreeParam == "true" {
+		onlyFree = true
+	}
 
-// 	_, err := io.Copy(buf, r.Body)
-// 	if err != nil {
-// 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
-// 	}
+	_, err := io.Copy(buf, r.Body)
+	if err != nil {
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
 
-// 	err = json.Unmarshal(buf.Bytes(), &request)
-// 	if err != nil {
-// 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
-// 	}
+	err = json.Unmarshal(buf.Bytes(), &request)
+	if err != nil {
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
 
-// 	return request, nil
-// }
+	request.OnlyFree = onlyFree
+	return request, nil
+}
 
 // // GetTeamsByCity{city_id}
-// func decodeGetTeamsByCityRequest(_ context.Context, r *http.Request) (interface{}, error) {
-// 	request := &entity.GetTeamsByCityRequest{}
+func decodeGetTeamsByCityRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	request := &entity.GetTeamsByCityRequest{}
 
-// 	idParam := chi.URLParam(r, "id")
-// 	if idParam == "" {
-// 		err := stderr.New(errors.EmptyParameterError)
-// 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
-// 	}
-// 	// {city_id}
-// 	id, err := strconv.ParseInt(idParam, 10, 64)
-// 	if err != nil {
-// 		err := stderr.New(errors.WrongParameterError)
-// 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
-// 	}
+	idParam := chi.URLParam(r, "city_id")
+	if idParam == "" {
+		err := stderr.New(errors.EmptyParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
 
-// 	request.ID = id /////////////////////////////////////////// Скоординировать по id  везде  ////////////////////////////////////////
+	var onlyFree bool = false
+	onlyFreeParam := r.URL.Query().Get("onlyFree")
+	if onlyFreeParam == "true" {
+		onlyFree = true
+	}
 
-// 	return request, nil
-// }
+	cityID, err := strconv.ParseInt(idParam, 10, 64)
+	if err != nil {
+		err := stderr.New(errors.WrongParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	request.OnlyFree = onlyFree
+	request.CityID = cityID
+
+	return request, nil
+}
 
 // // GetTeamsByLeague{league_id}
-// func decodeGetTeamsByLeagueRequest(_ context.Context, r *http.Request) (interface{}, error) {
-// 	request := &entity.GetTeamsByLeagueRequest{}
+func decodeGetTeamsByLeagueRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	request := &entity.GetTeamsByLeagueRequest{}
 
-// 	idParam := chi.URLParam(r, "id")
-// 	if idParam == "" {
-// 		err := stderr.New(errors.EmptyParameterError)
-// 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
-// 	}
-// 	// {league_id}
-// 	id, err := strconv.ParseInt(idParam, 10, 64)
-// 	if err != nil {
-// 		err := stderr.New(errors.WrongParameterError)
-// 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
-// 	}
+	idParam := chi.URLParam(r, "league_id")
+	if idParam == "" {
+		err := stderr.New(errors.EmptyParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
 
-// 	request.ID = id
+	var onlyFree bool = false
+	onlyFreeParam := r.URL.Query().Get("onlyFree")
+	if onlyFreeParam == "true" {
+		onlyFree = true
+	}
 
-// 	return request, nil
-// }
+	leagueID, err := strconv.ParseInt(idParam, 10, 64)
+	if err != nil {
+		err := stderr.New(errors.WrongParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	request.OnlyFree = onlyFree
+	request.LeagueID = leagueID
+
+	return request, nil
+}
 
 // // GetTeamVsTeamTable{city_id}
 // func decodeGetTeamVsTeamTableRequest(_ context.Context, r *http.Request) (interface{}, error) {

@@ -5,66 +5,187 @@ import (
 	stderr "errors"
 	"github.com/rs/zerolog"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 
 	"fmt"
-	"github.com/jackc/pgx/v5"
 	"strings"
+
+	"github.com/jackc/pgx/v5"
 )
 
-/* func (db *RDBOperation) GetTeam(logger zerolog.Logger, ctx context.Context, teamID int64) (entity.GetTeamResponse, error) {
-		rows, err := db.db.Query(ctx, "queryGetTeamPlayers", teamID)
-	   	if err != nil {
-	   		logger.Error().Err(err).Msg("failed to GetTeam")
-	   		return entity.GetTeamResponse{}, DecodeDatabaseError(err)
-	   	}
+func (db *RDBOperation) GetTeam(logger zerolog.Logger, ctx context.Context, teamID int64) (entity.GetTeamResponse, error) {
+	team := entity.GetTeamResponse{}
 
-	response := entity.GetTeamResponse{}
-	return response, nil
-} */
+	const queryGetTeam = `SELECT t.id, t.name, t.short_name, t.avatar, t.city_id,
+	COALESCE(ARRAY_AGG(ptl.player_id ORDER BY ptl.player_id) FILTER (WHERE ptl.player_id IS NOT NULL), ARRAY[]::int8[])
+	FROM teams t
+	LEFT JOIN players_teams_links ptl ON ptl.team_id = t.id
+	WHERE t.id = $1
+	GROUP BY t.id`
 
-// func (db *RWDBOperation) GetTeams(logger zerolog.Logger, ctx context.Context, team entity.Team) (int64, error) {
-// 	var id int64
+	var playerIDs []int64
+	err := db.db.QueryRow(ctx, queryGetTeam, teamID).Scan(&team.ID, &team.Name, &team.ShortName, &team.Avatar, &team.CityId, &playerIDs)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to GetTeam")
+		return entity.GetTeamResponse{}, DecodeDatabaseError(err)
+	}
 
-// 	err := db.db.QueryRow(ctx, queryGetTeams,
-// 		team.ID,
-// 	).Scan(&id)
-// 	if err != nil {
-// 		logger.Error().Err(err).Msg("failed to GetTeams")
-// 		return 0, DecodeDatabaseError(err)
-// 	}
+	const queryGetPlayerByID = `
+	SELECT
+        p.id,
+        p.name,
+        p.second_name,
+        p.last_name,
+        p.avatar,
+        p.active_player,
+        (p.deleted_at IS NOT NULL) AS deleted,
+        p.city_id,
+        t.name,
+        t.short_name,
+		r.value
+    FROM players p
+    LEFT JOIN players_teams_links ptl ON p.id = ptl.player_id
+    LEFT JOIN teams t ON t.id = ptl.team_id
+    LEFT JOIN rating r ON p.id = r.player_id
+    WHERE p.id = $1;
+	`
+	var players = []entity.PlayerGetTeam{}
+	for _, playerID := range playerIDs {
+		var p entity.PlayerGetTeam
 
-// 	return id, nil
-// }
+		err := db.db.QueryRow(ctx, queryGetPlayerByID, playerID).
+			Scan(&p.ID,
+				&p.Name,
+				&p.SecondName,
+				&p.LastName,
+				&p.Avatar,
+				&p.ActivePlayer,
+				&p.Deleted,
+				&p.CityID,
+				&p.TeamName,
+				&p.TeamShortName,
+				&p.RatingNumber)
+		if err != nil {
+			logger.Error().Stack().Err(err).Msg("failed to postgresql.GetTeam/queryGetPlayerByID")
+			return entity.GetTeamResponse{}, DecodeDatabaseError(stderr.New(errors.ErrGetPlayer))
+		}
+		players = append(players, p)
+	}
+	team.Players = players
+	return team, nil
+}
 
-// func (db *RWDBOperation) GetTeamsByCity(logger zerolog.Logger, ctx context.Context, team entity.Team) (int64, error) {
-// 	var id int64
+func (db *RDBOperation) GetTeams(logger zerolog.Logger, ctx context.Context, onlyFree bool) ([]entity.TeamShort, error) {
+	// const query := `SELECT id, name, short_name FROM teams WHERE ($1::boolean IS NOT TRUE OR league_id IS NULL) ORDER BY id`
+	query := `SELECT id, name, short_name FROM teams`
+	if onlyFree {
+		query += " WHERE league_id IS NULL"
+	}
+	query += " ORDER BY id"
 
-// 	err := db.db.QueryRow(ctx, queryGetTeamsByCity,
-// 		team.ID,
-// 	).Scan(&id)
-// 	if err != nil {
-// 		logger.Error().Err(err).Msg("failed to GetTeamsByCity")
-// 		return 0, DecodeDatabaseError(err)
-// 	}
+	rows, err := db.db.Query(ctx, query) // , onlyFree
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to GetTeams")
+		return nil, DecodeDatabaseError(err)
+	}
+	defer rows.Close()
 
-// 	return id, nil
-// }
+	var teams []entity.TeamShort
 
-// func (db *RWDBOperation) GetTeamsByLeague(logger zerolog.Logger, ctx context.Context, team entity.Team) (int64, error) {
-// 	var id int64
+	for rows.Next() {
+		var team entity.TeamShort
 
-// 	err := db.db.QueryRow(ctx, queryGetTeamsByLeague,
-// 		team.ID,
-// 	).Scan(&id)
-// 	if err != nil {
-// 		logger.Error().Err(err).Msg("failed to GetTeamsByLeague")
-// 		return 0, DecodeDatabaseError(err)
-// 	}
+		err = rows.Scan(&team.ID, &team.Name, &team.ShortName)
+		if err != nil {
+			logger.Error().Err(err).Msg("failed to scan team list")
+			return nil, DecodeDatabaseError(err)
+		}
 
-// 	return id, nil
-// }
+		teams = append(teams, team)
+	}
+	count := len(teams)
 
-// func (db *RWDBOperation) GetTeamVsTeamTable(logger zerolog.Logger, ctx context.Context, team entity.Team) (int64, error) {
+	if count == 0 {
+		logger.Error().Err(err).Msg("No teams found")
+		return nil, stderr.New(errors.ErrGetTeams)
+	}
+
+	return teams, nil
+}
+
+func (db *RDBOperation) GetTeamsByCity(logger zerolog.Logger, ctx context.Context, onlyFree bool, cityID int64) ([]entity.TeamShort, error) {
+	const query = `SELECT id, name, short_name FROM teams WHERE ($1::boolean IS NOT TRUE OR league_id IS NULL) AND city_id = $2 ORDER BY id`
+
+	rows, err := db.db.Query(ctx, query, onlyFree, cityID)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to GetTeamsByCity")
+		return nil, DecodeDatabaseError(err)
+	}
+	defer rows.Close()
+
+	var teams []entity.TeamShort
+
+	for rows.Next() {
+		var team entity.TeamShort
+
+		err = rows.Scan(&team.ID, &team.Name, &team.ShortName)
+		if err != nil {
+			logger.Error().Err(err).Msg("failed to scan team list")
+			return nil, DecodeDatabaseError(err)
+		}
+
+		teams = append(teams, team)
+	}
+	count := len(teams)
+
+	if count == 0 {
+		logger.Error().Err(err).Msg("No teams found")
+		return nil, stderr.New(errors.ErrGetTeams)
+	}
+
+	return teams, nil
+
+}
+
+func (db *RDBOperation) GetTeamsByLeague(logger zerolog.Logger, ctx context.Context, leagueID int64) ([]entity.TeamByLeague, error) {
+	const query = `SELECT t.name, t.short_name, t.avatar, t.city_id, COALESCE(ARRAY_AGG(ptl.player_id) FILTER (WHERE ptl.player_id IS NOT NULL), ARRAY[]::int8[])
+	FROM teams t
+	LEFT JOIN players_teams_links ptl ON ptl.team_id = t.id
+	WHERE ($1::boolean IS NOT TRUE OR t.league_id IS NULL)
+	AND t.league_id = $1
+	GROUP BY t.id
+	ORDER BY t.id`
+
+	rows, err := db.db.Query(ctx, query, leagueID)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to GetTeamsByLeague")
+		return nil, DecodeDatabaseError(err)
+	}
+	defer rows.Close()
+
+	var teams []entity.TeamByLeague
+
+	for rows.Next() {
+		var team entity.TeamByLeague
+
+		err = rows.Scan(&team.Name, &team.ShortName, &team.Avatar, &team.CityId, &team.Players)
+		if err != nil {
+			logger.Error().Err(err).Msg("failed to scan team list")
+			return nil, DecodeDatabaseError(err)
+		}
+
+		teams = append(teams, team)
+	}
+
+	if len(teams) == 0 {
+		logger.Error().Msg("No teams found")
+		return nil, stderr.New(errors.ErrGetTeams)
+	}
+
+	return teams, nil
+}
+
+// func (db *RDBOperation) GetTeamVsTeamTable(logger zerolog.Logger, ctx context.Context, team entity.Team) (int64, error) {
 // 	var id int64
 
 // 	err := db.db.QueryRow(ctx, queryGetTeamVsTeamTable,
@@ -116,7 +237,7 @@ func (db *RWDBOperation) UpdateTeam(logger zerolog.Logger, ctx context.Context, 
 	}
 	if team.Avatar != nil {
 		fields = append(fields, fmt.Sprintf("avatar = $%d", index))
-		values = append(values, *team.Avatar)
+		values = append(values, team.Avatar)
 		index++
 	}
 	if team.CityId != nil {

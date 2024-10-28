@@ -6,10 +6,10 @@ import (
 )
 
 type Endpoints struct {
-	GetTeam endpoint.Endpoint
-	// GetTeams             endpoint.Endpoint
-	// GetTeamsByCity       endpoint.Endpoint
-	// GetTeamsByLeague     endpoint.Endpoint
+	GetTeam          endpoint.Endpoint
+	GetTeams         endpoint.Endpoint
+	GetTeamsByCity   endpoint.Endpoint
+	GetTeamsByLeague endpoint.Endpoint
 	// GetTeamVsTeamTable   endpoint.Endpoint
 	Create               endpoint.Endpoint
 	Update               endpoint.Endpoint
@@ -20,10 +20,10 @@ type Endpoints struct {
 
 func MakeEndpoints(s team.IService) Endpoints {
 	return Endpoints{
-		// GetTeam: makeGetTeam(s),
-		// GetTeams:             makeGetTeams(s),
-		// GetTeamsByCity:       makeGetTeamsByCity(s),
-		// GetTeamsByLeague:     makeGetTeamsByLeague(s),
+		GetTeam:          makeGetTeam(s),
+		GetTeams:         makeGetTeams(s),
+		GetTeamsByCity:   makeGetTeamsByCity(s),
+		GetTeamsByLeague: makeGetTeamsByLeague(s),
 		// GetTeamVsTeamTable:   makeGetTeamVsTeamTable(s),
 		Create:               makeCreate(s),
 		Update:               makeUpdate(s),

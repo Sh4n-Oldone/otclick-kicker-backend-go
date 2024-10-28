@@ -63,7 +63,7 @@ func ValidateCreateUserRequest(request *entity.CreateUserRequest) error {
 }
 
 func ValidateCreateMatchRequest(request *entity.CreateMatchRequest) error {
-	if request.Date == nil {
+	if request.Date.IsZero() {
 		err := error_templates.New("invalid request fields", errors.New("invalid request fields"), codes.InvalidArgument, http.StatusBadRequest)
 		return error_templates.WrapErrorDetail(err, fmt.Sprintf("wrong value of parameter %T", request.Date))
 	}

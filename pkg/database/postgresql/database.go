@@ -18,8 +18,8 @@ type RWDBOperationer interface {
 	UpdateUser(logger zerolog.Logger, ctx context.Context, user entity.User) error
 
 	CreateMatch(logger zerolog.Logger, ctx context.Context, match entity.Match) (id int64, err error)
-	UpdateMatch(logger zerolog.Logger, ctx context.Context, match entity.Match) error
-	DeleteMatch(logger zerolog.Logger, ctx context.Context, id int64) error
+	UpdateMatch(logger zerolog.Logger, ctx context.Context, match entity.Match) (bool, error)
+	DeleteMatch(logger zerolog.Logger, ctx context.Context, id int64) (bool, error)
 
 	CreatePlayer(logger zerolog.Logger, ctx context.Context, player entities.CreatePlayerRequest) (int, error)
 	DeletePlayer(logger zerolog.Logger, ctx context.Context, playerID int) error
@@ -81,6 +81,10 @@ type RDBOperationer interface {
 	FindGames(logger zerolog.Logger, ctx context.Context, request entities.FindGameRequest) ([]entities.FindGame, error)
 	GetGamesYears(logger zerolog.Logger, ctx context.Context) (entity.GetGamesYearsResponse, error)
 	GetComingGames(logger zerolog.Logger, ctx context.Context) ([]entities.ComingGame, error)
+	GetTeam(logger zerolog.Logger, ctx context.Context, teamID int64) (entity.GetTeamResponse, error)
+	GetTeams(logger zerolog.Logger, ctx context.Context, onlyFree bool) ([]entity.TeamShort, error)
+	GetTeamsByCity(logger zerolog.Logger, ctx context.Context, onlyFree bool, cityID int64) ([]entity.TeamShort, error)
+	GetTeamsByLeague(logger zerolog.Logger, ctx context.Context, leagueID int64) ([]entity.TeamByLeague, error)
 }
 
 type dbp struct {

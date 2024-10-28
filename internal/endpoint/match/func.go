@@ -33,8 +33,8 @@ func makeCreate(s match.IService) endpoint.Endpoint {
 			return nil, err
 		}
 
-		response := &struct{
-			Id int64 `json:"id"`
+		response := &struct {
+			Id int64 `json:"matchId"`
 		}{}
 
 		response.Id = *id
@@ -56,16 +56,16 @@ func makeUpdate(s match.IService) endpoint.Endpoint {
 
 		match := helpers.ConvertUpdateMatchRequestToMatch(request.(*entity.UpdateMatchRequest))
 
-		err = s.Update(ctx, *match)
+		res, err := s.Update(ctx, *match)
 		if err != nil {
-			return nil, err
+			return res, err
 		}
 
-		response := &struct{
-			Id int64 `json:"id"`
+		response := &struct {
+			Success bool `json:"success"`
 		}{}
 
-		response.Id = match.ID
+		response.Success = res
 
 		return response, nil
 	}
@@ -76,12 +76,17 @@ func makeDelete(s match.IService) endpoint.Endpoint {
 		// reqID, ctx := middleware.GetRequestID(ctx)
 		// serviceLogger := s.GetLogger().With().Str("Source", "makeCreate").Logger()
 
-		err := s.Delete(ctx, request.(*entity.DeleteMatchRequest).ID)
+		res, err := s.Delete(ctx, request.(*entity.DeleteMatchRequest).ID)
 		if err != nil {
-			return nil, err
+			return res, err
 		}
 
-		return nil, nil
+		response := &struct {
+			Success bool `json:"success"`
+		}{}
+
+		response.Success = res
+
+		return response, nil
 	}
 }
-
