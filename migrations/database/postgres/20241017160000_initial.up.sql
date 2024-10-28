@@ -7,12 +7,6 @@ CREATE TABLE IF NOT EXISTS cities (
     deleted_at timestamptz DEFAULT NULL
 );
 
-INSERT INTO cities (name, ru)
-values
-    ('St.Peterburg', 'Санкт-Петербург'),
-    ('Moscow', 'Москва'),
-    ('Voronezh', 'Воронеж');
-
 CREATE TABLE IF NOT EXISTS tables (
     id SMALLSERIAL PRIMARY KEY,
     name VARCHAR NOT NULL UNIQUE,
