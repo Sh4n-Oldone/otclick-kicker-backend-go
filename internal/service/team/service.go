@@ -11,10 +11,10 @@ import (
 )
 
 type IService interface {
-	// GetTeam(ctx context.Context, teamID int64) (entity.GetTeamResponse, error)
-	// GetTeams(ctx context.Context, team entity.Team) (*int64, error)
-	// GetTeamsByCity(ctx context.Context, team entity.Team) (*int64, error)
-	// GetTeamsByLeague(ctx context.Context, team entity.Team) (*int64, error)
+	GetTeam(ctx context.Context, teamID int64) (entity.GetTeamResponse, error)
+	GetTeams(ctx context.Context, onlyFree bool) ([]entity.TeamShort, error)
+	GetTeamsByCity(ctx context.Context, onlyFree bool, cityID int64) ([]entity.TeamShort, error)
+	GetTeamsByLeague(ctx context.Context, leagueID int64) ([]entity.TeamByLeague, error)
 	// GetTeamVsTeamTable(ctx context.Context, team entity.Team) (*int64, error)
 
 	Create(ctx context.Context, team entity.CreateTeamRequest) (int64, error)

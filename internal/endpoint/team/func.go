@@ -29,110 +29,91 @@ import (
 // RemovePlayerFromTeam
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// func makeGetTeam(s team.IService) endpoint.Endpoint {
-// 	return func(ctx context.Context, request interface{}) (interface{}, error) {
-// 		reqID, ctx := middleware.GetRequestID(ctx)
-// 		serviceLogger := s.GetLogger().With().Str("Source", "makeGetTeam").Logger()
+func makeGetTeam(s team.IService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "makeGetTeam").Logger()
 
-// 		req, err := helpers.CastRequest[*entity.GetTeamRequest](request)
-// 		if err != nil {
-// 			serviceLogger.Error().Err(err).Msg("Failed to cast request")
-// 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
-// 		}
+		req, err := helpers.CastRequest[*entity.GetTeamRequest](request)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed to cast request")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
 
-// 		err = helpers.ValidateGetTeamRequest(req)
-// 		if err != nil {
-// 			serviceLogger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).Msg(errors.FailedValidateRequest)
-// 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
-// 		}
+		err = helpers.ValidateGetTeamRequest(req)
+		if err != nil {
+			serviceLogger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).Msg(errors.FailedValidateRequest)
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
 
-// 		response, err := s.GetTeam(ctx, req.ID)
-// 		if err != nil {
-// 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
-// 		}
-// 		// TeamFilledWithFullPlayers
-// 		//GetTeamResponse
-// 		return response, nil
-// 	}
-// }
+		response, err := s.GetTeam(ctx, req.ID)
+		if err != nil {
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
 
-// func makeGetTeams(s team.IService) endpoint.Endpoint {
-// 	return func(ctx context.Context, request interface{}) (interface{}, error) {
-// 		reqID, ctx := middleware.GetRequestID(ctx)
-// 		serviceLogger := s.GetLogger().With().Str("Source", "makeGetTeams").Logger()
+		return response, nil
+	}
+}
 
-// 		err := helpers.ValidateGetTeamsRequest(request.(*entity.GetTeamsRequest))
-// 		if err != nil {
-// 			serviceLogger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).Msg(errors.FailedValidateRequest)
-// 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
-// 		}
+func makeGetTeams(s team.IService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "makeGetTeams").Logger()
 
-// 		teamReq := helpers.ConvertGetTeamsRequestToTeam(request.(*entity.GetTeamsRequest))
+		req, err := helpers.CastRequest[*entity.GetTeamsRequest](request)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed to cast request")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
 
-// 		teamsResp, err := s.GetTeams(ctx, *teamReq)
-// 		if err != nil {
-// 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
-// 		}
-// 		// id
-// 		// teamName
-// 		// teamShortName
-// 		return teamsResp, nil
-// 	}
-// }
+		teamsResponse, err := s.GetTeams(ctx, req.OnlyFree)
+		if err != nil {
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
 
-// 3
-// func makeGetTeamsByCity(s team.IService) endpoint.Endpoint {
-// 	return func(ctx context.Context, request interface{}) (interface{}, error) {
-// 		reqID, ctx := middleware.GetRequestID(ctx)
-// 		serviceLogger := s.GetLogger().With().Str("Source", "makeGetTeamsByCity").Logger()
+		return teamsResponse, nil
+	}
+}
 
-// 		err := helpers.ValidateGetTeamsByCityRequest(request.(*entity.GetTeamsByCityRequest))
-// 		if err != nil {
-// 			serviceLogger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).Msg(errors.FailedValidateRequest)
-// 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
-// 		}
+func makeGetTeamsByCity(s team.IService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "makeGetTeamsByCity").Logger()
 
-// 		teamReq := helpers.ConvertGetTeamsByCityRequestToTeam(request.(*entity.GetTeamsByCityRequest))
+		req, err := helpers.CastRequest[*entity.GetTeamsByCityRequest](request)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed to cast request")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
 
-// 		teamsResp, err := s.GetTeamsByCity(ctx, *teamReq)
-// 		if err != nil {
-// 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
-// 		}
-// 		// id
-// 		// teamName
-// 		// teamShortName
-// 		return teamsResp, nil
-// 	}
-// }
+		teamsResponse, err := s.GetTeamsByCity(ctx, req.OnlyFree, req.CityID)
+		if err != nil {
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
 
-// 4
-// func makeGetTeamsByLeague(s team.IService) endpoint.Endpoint {
-// 	return func(ctx context.Context, request interface{}) (interface{}, error) {
-// 		reqID, ctx := middleware.GetRequestID(ctx)
-// 		serviceLogger := s.GetLogger().With().Str("Source", "makeGetTeamsByLeague").Logger()
+		return teamsResponse, nil
+	}
+}
 
-// 		err := helpers.ValidateGetTeamsByLeagueRequest(request.(*entity.GetTeamsByLeagueRequest))
-// 		if err != nil {
-// 			serviceLogger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).Msg(errors.FailedValidateRequest)
-// 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
-// 		}
+func makeGetTeamsByLeague(s team.IService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "makeGetTeamsByLeague").Logger()
 
-// 		teamReq := helpers.ConvertGetTeamsByLeagueRequestToTeam(request.(*entity.GetTeamsByLeagueRequest))
+		req, err := helpers.CastRequest[*entity.GetTeamsByLeagueRequest](request)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed to cast request")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
 
-// 		teamsResp, err := s.GetTeamsByLeague(ctx, *teamReq)
-// 		if err != nil {
-// 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
-// 		}
-// 		// type Team = {
-// 		// 	name: string;
-// 		// 	shortName: string;
-// 		// 	avatar?: string | undefined;
-// 		// 	cityId: number;
-// 		// 	players: Player[];
-// 		// }
-// 		return teamsResp, nil
-// 	}
-// }
+		teamsResponse, err := s.GetTeamsByLeague(ctx, req.LeagueID)
+		if err != nil {
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		return teamsResponse, nil
+	}
+}
 
 // 5
 // func makeGetTeamVsTeamTable(s team.IService) endpoint.Endpoint {
@@ -140,15 +121,19 @@ import (
 // 		reqID, ctx := middleware.GetRequestID(ctx)
 // 		serviceLogger := s.GetLogger().With().Str("Source", "makeGetTeamVsTeamTable").Logger()
 
-// 		err := helpers.ValidateGetTeamVsTeamTableRequest(request.(*entity.GetTeamVsTeamTableRequest))
+// 		req, err := helpers.CastRequest[*entity.GetTeamVsTeamTableRequest](request)
+// 		if err != nil {
+// 			serviceLogger.Error().Err(err).Msg("Failed to cast request")
+// 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+// 		}
+
+// 		err := helpers.ValidateGetTeamVsTeamTableRequest(req)
 // 		if err != nil {
 // 			serviceLogger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).Msg(errors.FailedValidateRequest)
 // 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 // 		}
 
-// 		teamReq := helpers.ConvertGetTeamVsTeamTableRequestToTeam(request.(*entity.GetTeamVsTeamTableRequest))
-
-// 		teamsResp, err := s.GetTeamVsTeamTable(ctx, *teamReq)
+// 		teamsResp, err := s.GetTeamVsTeamTable(ctx, req)
 // 		if err != nil {
 // 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 // 		}

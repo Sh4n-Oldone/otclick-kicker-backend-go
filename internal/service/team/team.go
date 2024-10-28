@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 )
 
 // GetTeam {id}
@@ -18,52 +19,103 @@ import (
 
 // AddPlayerIntoTeam
 // RemovePlayerFromTeam
+// //////////////////////////////////////////////////////////////////////////////////////////////////////////////
+func (s *Service) GetTeam(ctx context.Context, teamID int64) (entity.GetTeamResponse, error) {
+	logger := s.logger.With().Interface("service", "GetTeam").Logger()
 
-// func (s *Service) GetTeam(ctx context.Context, teamID int64) (entity.GetTeamResponse, error) {
-// 	logger := s.logger.With().Interface("service", "GetTeam").Logger()
+	response, err := s.rdbOperations.GetTeam(logger, ctx, teamID)
+	if err != nil {
+		return response, err
+	}
 
-// 	response, err := s.rdbOperations.GetTeam(logger, ctx, teamID)
-// 	if err != nil {
-// 		return response, err
-// 	}
+	if err := s.addPlayersProperties(ctx, response.Players); err != nil {
+		logger.Error().Err(err).Msg("Failed to add player properties")
+		return response, err
+	}
 
-// 	return response, nil
-// }
+	return response, nil
+}
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+func (s *Service) addPlayersProperties(ctx context.Context, players []entity.PlayerGetTeam) error {
+	logger := s.logger.With().Interface("service", "addPlayersProperties").Logger()
+	timeout, cancel := context.WithTimeout(ctx, s.config.RDB.MaxIdleConnectionTimeout)
+	defer cancel()
 
-// func (s *Service) GetTeams(ctx context.Context, team entity.Team) (*int64, error) {
-// 	logger := s.logger.With().Interface("service", "GetTeams").Logger()
+	for i := range players {
+		p := &players[i] // Создаём указатель на текущий элемент массива
 
-// 	id, err := s.rdbOperations.GetTeams(logger, ctx, team)
-// 	if err != nil {
-// 		return nil, err
-// 	}
+		matches, err := s.rdbOperations.GetMatchesByPlayerID(logger, timeout, p.ID)
+		if err != nil {
+			return err
+		}
 
-// 	return &id, nil
-// }
+		propertyCounting(p, matches)
+	}
 
-// func (s *Service) GetTeamsByCity(ctx context.Context, team entity.Team) (*int64, error) {
-// 	logger := s.logger.With().Interface("service", "GetTeamsByCity").Logger()
+	return nil
+}
 
-// 	id, err := s.rdbOperations.GetTeamsByCity(logger, ctx, team)
-// 	if err != nil {
-// 		return nil, err
-// 	}
+func propertyCounting(player *entity.PlayerGetTeam, matches []entities.Match) {
+	playersGames := make(map[int]struct{})
 
-// 	return &id, nil
-// }
+	var (
+		goalsScoredNumber   int
+		goalsConcededNumber int
+	)
 
-// func (s *Service) GetTeamsByLeague(ctx context.Context, team entity.Team) (*int64, error) {
-// 	logger := s.logger.With().Interface("service", "GetTeamsByLeague").Logger()
+	for _, match := range matches {
+		playersGames[match.GameID] = struct{}{}
 
-// 	id, err := s.rdbOperations.GetTeamsByLeague(logger, ctx, team)
-// 	if err != nil {
-// 		return nil, err
-// 	}
+		if match.Player1Team1ID == player.ID || match.Player2Team1ID == player.ID {
+			goalsScoredNumber += match.ScoreTeam1
+			goalsConcededNumber += match.ScoreTeam2
+		}
+		if match.Player1Team2ID == player.ID || match.Player2Team2ID == player.ID {
+			goalsScoredNumber += match.ScoreTeam2
+			goalsConcededNumber += match.ScoreTeam1
+		}
+	}
 
-// 	return &id, nil
-// }
+	player.MatchesPlayed = len(matches)
+	player.GamesPlayedNumber = len(playersGames)
+	player.GoalsScoredNumber = goalsScoredNumber
+	player.GoalsConcededNumber = goalsConcededNumber
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+func (s *Service) GetTeams(ctx context.Context, onlyFree bool) ([]entity.TeamShort, error) {
+	logger := s.logger.With().Interface("service", "GetTeams").Logger()
+
+	teams, err := s.rdbOperations.GetTeams(logger, ctx, onlyFree)
+	if err != nil {
+		return nil, err
+	}
+
+	return teams, nil
+}
+
+func (s *Service) GetTeamsByCity(ctx context.Context, onlyFree bool, cityID int64) ([]entity.TeamShort, error) {
+	logger := s.logger.With().Interface("service", "GetTeamsByCity").Logger()
+
+	teams, err := s.rdbOperations.GetTeamsByCity(logger, ctx, onlyFree, cityID)
+	if err != nil {
+		return nil, err
+	}
+
+	return teams, nil
+}
+
+func (s *Service) GetTeamsByLeague(ctx context.Context, leagueID int64) ([]entity.TeamByLeague, error) {
+	logger := s.logger.With().Interface("service", "GetTeamsByLeague").Logger()
+
+	teams, err := s.rdbOperations.GetTeamsByLeague(logger, ctx, leagueID)
+	if err != nil {
+		return nil, err
+	}
+
+	return teams, nil
+}
 
 // func (s *Service) GetTeamVsTeamTable(ctx context.Context, team entity.Team) (*int64, error) {
 // 	logger := s.logger.With().Interface("service", "GetTeamVsTeamTable").Logger()

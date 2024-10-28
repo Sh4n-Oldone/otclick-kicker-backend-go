@@ -2,7 +2,7 @@ package postgresql
 
 import (
 	"context"
-	stdrerr "errors"
+	stderr "errors"
 	"github.com/rs/zerolog"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
@@ -33,8 +33,8 @@ func (db *RWDBOperation) CreateMatch(logger zerolog.Logger, ctx context.Context,
 	return id, nil
 }
 
-func (db *RWDBOperation) UpdateMatch(logger zerolog.Logger, ctx context.Context, match entity.Match) error {
-	_, err := db.db.Exec(ctx, queryUpdateMatch,
+func (db *RWDBOperation) UpdateMatch(logger zerolog.Logger, ctx context.Context, match entity.Match) (bool, error) {
+	result, err := db.db.Exec(ctx, queryUpdateMatch,
 		match.Date,
 		match.GameID,
 		match.Team1ID,
@@ -48,21 +48,33 @@ func (db *RWDBOperation) UpdateMatch(logger zerolog.Logger, ctx context.Context,
 		match.ID,
 	)
 	if err != nil {
-		logger.Error().Err(err).Msg("failed to update Match record")
-		return DecodeDatabaseError(err)
+		logger.Error().Err(err).Msg("failed to update match record")
+		return false, DecodeDatabaseError(err)
 	}
 
-	return nil
+	rowsAffected := result.RowsAffected()
+	if rowsAffected == 0 {
+		logger.Error().Err(err).Msg("failed to get affected rows")
+		return false, stderr.New("Failed to update match, it does not exist")
+	}
+
+	return true, nil
 }
 
-func (db *RWDBOperation) DeleteMatch(logger zerolog.Logger, ctx context.Context, id int64) error {
-	_, err := db.db.Exec(ctx, queryDeleteMatch, id)
+func (db *RWDBOperation) DeleteMatch(logger zerolog.Logger, ctx context.Context, id int64) (bool, error) {
+	result, err := db.db.Exec(ctx, queryDeleteMatch, id)
 	if err != nil {
-		logger.Error().Err(err).Msg("failed to delete Match record")
-		return DecodeDatabaseError(err)
+		logger.Error().Err(err).Msg("failed to delete match record")
+		return false, DecodeDatabaseError(err)
 	}
 
-	return nil
+	rowsAffected := result.RowsAffected()
+	if rowsAffected == 0 {
+		logger.Error().Err(err).Msg("failed to get affected rows")
+		return false, stderr.New("Failed to delete match, it does not exist")
+	}
+
+	return true, nil
 }
 
 func (db *RDBOperation) GetMatchesByPlayerID(logger zerolog.Logger, ctx context.Context, playerID int) ([]entities.Match, error) {
@@ -79,7 +91,7 @@ func (db *RDBOperation) GetMatchesByPlayerID(logger zerolog.Logger, ctx context.
 	rows, err := db.db.Query(ctx, query, playerID)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to postgresql.GetMatchesByPlayerID")
-		return nil, DecodeDatabaseError(stdrerr.New(errors.ErrGetMatches))
+		return nil, DecodeDatabaseError(stderr.New(errors.ErrGetMatches))
 	}
 	defer rows.Close()
 
@@ -89,7 +101,7 @@ func (db *RDBOperation) GetMatchesByPlayerID(logger zerolog.Logger, ctx context.
 			&m.Player1Team2ID, &m.Player2Team2ID, &m.ScoreTeam1, &m.ScoreTeam2)
 		if err != nil {
 			logger.Error().Err(err).Msg("failed to postgresql.GetMatchesByPlayerID")
-			return nil, DecodeDatabaseError(stdrerr.New(errors.ErrGetMatches))
+			return nil, DecodeDatabaseError(stderr.New(errors.ErrGetMatches))
 		}
 
 		matches = append(matches, m)

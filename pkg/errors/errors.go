@@ -55,4 +55,5 @@ const (
 	ErrDeleteMatch         = "ошибка удаления матча"
 	ErrUpdateGame          = "ошибка обновления данных игры"
 	ErrUpdateMatch         = "ошибка обновления данных матча"
+	ErrGetTeams            = "команды не найдены"
 )

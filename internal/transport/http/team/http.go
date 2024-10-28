@@ -26,10 +26,10 @@ func NewServer(endpoints team.Endpoints, options []kithttp.ServerOption, cfg *co
 	r.Use(custom_middleware.HeaderHandler)
 
 	//Actual
-	// r.Get("/teams/{id}", kithttp.NewServer(endpoints.GetTeam, decodeGetTeamRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
-	// r.Get("/teams", kithttp.NewServer(endpoints.GetTeams, decodeGetTeamsRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
-	// r.Get("/teams/cities/{city_id}", kithttp.NewServer(endpoints.GetTeamsByCity, decodeGetTeamsByCityRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
-	// r.Get("/teams/league/{league_id}", kithttp.NewServer(endpoints.GetTeamsByLeague, decodeGetTeamsByLeagueRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.Get("/teams/{id}", kithttp.NewServer(endpoints.GetTeam, decodeGetTeamRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.Get("/teams", kithttp.NewServer(endpoints.GetTeams, decodeGetTeamsRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.Get("/teams/cities/{city_id}", kithttp.NewServer(endpoints.GetTeamsByCity, decodeGetTeamsByCityRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.Get("/teams/leagues/{league_id}", kithttp.NewServer(endpoints.GetTeamsByLeague, decodeGetTeamsByLeagueRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 	// r.Get("/teams/vs/{city_id}", kithttp.NewServer(endpoints.GetTeamVsTeamTable, decodeGetTeamVsTeamTableRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 	//todo: Авторизация для Create
 	r.Post("/teams", kithttp.NewServer(endpoints.Create, decodeCreateRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
