@@ -20,7 +20,7 @@ func makeGetList(s place.IService) endpoint.Endpoint {
 		// reqID, ctx := middleware.GetRequestID(ctx)
 		logger := s.GetLogger().With().Str("Source", "makeGetList Place").Logger()
 
-		req, err := helpers.CastRequest[entity.GetPlaceListRequest](request)
+		req, err := helpers.CastRequest[*entity.GetPlaceListRequest](request)
 		if err != nil {
 			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.FailedCastRequest)
 			return nil, err
@@ -41,13 +41,13 @@ func makeCreate(s place.IService) endpoint.Endpoint {
 		// reqID, ctx := middleware.GetRequestID(ctx)
 		logger := s.GetLogger().With().Str("Source", "makeCreate Place").Logger()
 
-		req, err := helpers.CastRequest[entity.CreatePlaceRequest](request)
+		req, err := helpers.CastRequest[*entity.CreatePlaceRequest](request)
 		if err != nil {
 			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.FailedCastRequest)
 			return nil, err
 		}
 
-		err = helpers.ValidateCreatePlaceRequest(&req)
+		err = helpers.ValidateCreatePlaceRequest(req)
 		if err != nil {
 			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.FailedValidateRequest)
 			return nil, err
@@ -85,13 +85,13 @@ func makeUpdate(s place.IService) endpoint.Endpoint {
 		// reqID, ctx := middleware.GetRequestID(ctx)
 		logger := s.GetLogger().With().Str("Source", "makeUpdate Place").Logger()
 
-		req, err := helpers.CastRequest[entity.UpdatePlaceRequest](request)
+		req, err := helpers.CastRequest[*entity.UpdatePlaceRequest](request)
 		if err != nil {
 			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.FailedCastRequest)
 			return nil, err
 		}
 
-		err = helpers.ValidateUpdatePlaceRequest(&req)
+		err = helpers.ValidateUpdatePlaceRequest(req)
 		if err != nil {
 			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.FailedValidateRequest)
 			return nil, err
@@ -130,13 +130,13 @@ func makeDelete(s place.IService) endpoint.Endpoint {
 		// reqID, ctx := middleware.GetRequestID(ctx)
 		logger := s.GetLogger().With().Str("Source", "makeDelete Place").Logger()
 
-		req, err := helpers.CastRequest[entity.DeletePlaceRequest](request)
+		req, err := helpers.CastRequest[*entity.DeletePlaceRequest](request)
 		if err != nil {
 			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.FailedCastRequest)
 			return nil, err
 		}
 
-		err = helpers.ValidateDeletePlaceRequest(&req)
+		err = helpers.ValidateDeletePlaceRequest(req)
 		if err != nil {
 			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.FailedValidateRequest)
 			return nil, err

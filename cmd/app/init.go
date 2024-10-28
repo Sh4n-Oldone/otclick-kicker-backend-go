@@ -42,6 +42,15 @@ import (
 	epTeam "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/team"
 	srvTeam "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/team"
 
+	epPlace "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/place"
+	srvPlace "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/place"
+
+	epTable "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/table"
+	srvTable "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/table"
+
+	epBar "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/bar"
+	srvBar "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/bar"
+
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/healthchecker"
 
 	tpHTTP "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http"
@@ -284,6 +293,9 @@ func initEndpoints(
 	teamSrv := srvTeam.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
 	leagueSrv := srvLeague.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
 	gameSrv := srvGame.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
+	tableSrv := srvTable.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
+	barSrv := srvBar.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
+	placeSrv := srvPlace.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
 
 	return endpoint.ServicesEndpoints{
 		CityEP:   epCity.MakeEndpoints(citySrv),
@@ -294,5 +306,8 @@ func initEndpoints(
 		TeamEP:   epTeam.MakeEndpoints(teamSrv),
 		LeagueEP: epLeague.MakeEndpoints(leagueSrv),
 		GameEP:   epGame.MakeEndpoints(gameSrv),
+		TableEP:  epTable.MakeEndpoints(tableSrv),
+		BarEP:    epBar.MakeEndpoints(barSrv),
+		PlaceEP:  epPlace.MakeEndpoints(placeSrv),
 	}
 }
