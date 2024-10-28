@@ -2,10 +2,17 @@ package game
 
 import (
 	"context"
+	stderr "errors"
 	"github.com/go-kit/kit/endpoint"
+	"google.golang.org/grpc/codes"
+	"net/http"
+
+	cnst "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/constant"
+
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/game"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/middleware"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/helpers"
 )
@@ -128,6 +135,19 @@ func makeUpdateFutureGame(s game.IService) endpoint.Endpoint {
 		if err != nil {
 			serviceLogger.Error().Err(err).Msg("Failed to cast request")
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		// Captain-Flow
+		// limitations for the role 'captain'
+		// if teamID of captain not equal team1 or team2 from request then user unauthorized error
+		role := ctx.Value(cnst.RoleNameContextKey)
+		teamID := ctx.Value(cnst.TeamIDContextKey)
+		rTeam1ID := int64(req.Team1ID)
+		rTeam2ID := int64(req.Team2ID)
+		if role == cnst.CaptainRole && teamID != rTeam1ID && teamID != rTeam2ID {
+			serviceLogger.Error().Err(err).Msg("Failed to captain request")
+			err = error_templates.New(errors.WrongUserRole, stderr.New(errors.WrongUserRole), codes.Unauthenticated, http.StatusUnauthorized)
+			return nil, err
 		}
 
 		err = s.UpdateFutureGame(ctx, req)
