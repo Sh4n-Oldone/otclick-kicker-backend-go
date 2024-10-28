@@ -12,7 +12,7 @@ import (
 
 type IService interface {
 	Create(ctx context.Context, request entity.CreateUserRequest) (*int64, error)
-	Login(ctx context.Context, user entity.User) (*string, error)
+	Login(ctx context.Context, user entity.User) (*int64, *string, *int64, *string, error)
 	ChangePassword(ctx context.Context, userOld, userNew entity.User) error
 	CheckAuth(ctx context.Context, userID int64, token string) (*bool, *string, *int64, error)
 	GetUser(ctx context.Context, userID int64) (*entity.User, error)

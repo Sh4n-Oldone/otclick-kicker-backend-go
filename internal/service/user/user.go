@@ -45,25 +45,25 @@ func (s *Service) Create(ctx context.Context, request entity.CreateUserRequest) 
 	return id, nil
 }
 
-func (s *Service) Login(ctx context.Context, user entity.User) (*string, error) {
+func (s *Service) Login(ctx context.Context, user entity.User) (*int64, *string, *int64, *string, error) {
 	logger := s.logger.With().Interface("service", "Login").Logger()
 
 	_user, err := s.rdbOperations.GetUser(logger, ctx, nil, &user.Email)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, nil, err
 	}
 
 	err = crypt.ComparePasswordAndHash([]byte(user.Password), []byte(_user.Password), []byte(s.config.Secret.Salt))
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, nil, err
 	}
 
 	token, err := jwt.NewToken(*_user, s.config.Token.AccessTTL, s.config.Secret.Key)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, nil, err
 	}
 
-	return &token, nil
+	return &_user.ID, &_user.Role.Name, &_user.Team.ID, &token, nil
 }
 
 func (s *Service) ChangePassword(ctx context.Context, userOld, userNew entity.User) error {
