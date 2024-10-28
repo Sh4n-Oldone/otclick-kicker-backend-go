@@ -2,9 +2,14 @@ package team
 
 import (
 	"context"
+	"errors"
+	"net/http"
+	"strconv"
 
+	"google.golang.org/grpc/codes"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
 )
 
 // GetTeam {id}
@@ -117,17 +122,204 @@ func (s *Service) GetTeamsByLeague(ctx context.Context, leagueID int64) ([]entit
 	return teams, nil
 }
 
+// ///////////////////////////////////////////////////////////////////////////////////
+// ///////////////////////////////////////////////////////////////////////////////////
+// ///////////////////////////////////////////////////////////////////////////////////
+
 func (s *Service) GetTeamVsTeamTable(ctx context.Context, cityID, year int64) (entity.GetTeamVsTeamTableResponse, error) {
 	logger := s.logger.With().Interface("service", "GetTeamVsTeamTable").Logger()
+	leagues, err := s.rdbOperations.FetchLeagues(logger, ctx, cityID)
 
-	resp, err := s.rdbOperations.GetTeamVsTeamTable(logger, ctx, cityID, year)
 	if err != nil {
-		return entity.GetTeamVsTeamTableResponse{}, err
+		logger.Error().Err(err).Msg("error GetTeamVsTeamTable")
+		return entity.GetTeamVsTeamTableResponse{Message: "database error"}, err
 	}
 
-	return resp, nil
+	if len(leagues) == 0 {
+		logger.Error().Err(err).Msg("No leagues found")
+		return entity.GetTeamVsTeamTableResponse{Message: "No leagues found"}, error_templates.New("No leagues found", errors.New("No leagues found"), codes.NotFound, http.StatusNotFound)
+	}
+
+	var data []entity.Data
+
+	for _, league := range leagues {
+		var dataItem entity.Data
+		dataItem.LeagueID = league.ID
+		dataItem.LeagueName = league.Name
+
+		dataItem.Table.Columns = append(dataItem.Table.Columns, entity.Column{Uid: "teamShortName", Name: "Команда"})
+
+		// 'SELECT id, short_name FROM teams WHERE league_id = $1', league.ID
+		teams, err := s.rdbOperations.FetchTeams(logger, ctx, league.ID)
+		if err != nil {
+			logger.Error().Err(err).Msg("error get teams")
+			return entity.GetTeamVsTeamTableResponse{Message: "database error"}, err
+		}
+		if len(teams) == 0 {
+			continue
+		}
+		noGames, err := s.rdbOperations.TeamsHaveNoGames(logger, ctx, teams, year)
+		if err != nil {
+			logger.Error().Err(err).Msg("database error")
+			return entity.GetTeamVsTeamTableResponse{Message: "database error"}, err
+		}
+		if noGames { // если нет игр в лиге
+			for _, team := range teams { // голы заполняем нулями
+				var bodyItem entity.Body
+
+				bodyItem.Id = team.ID
+				bodyItem.TeamShortName = team.ShortName
+				bodyItem.Score = 0
+				bodyItem.DifferenceInScore = 0
+				bodyItem.GamesPlayed = 0
+				bodyItem.GamesToPlay = int64((len(teams) - 1) * 2)
+				for _, t := range teams { // и отображаем нулевой счет
+					var cell entity.TableCell
+
+					cell.Game1ID = 0
+					cell.Game2ID = 0
+					cell.Score1 = "0:0"
+					cell.Score2 = "0:0"
+
+					bodyItem.TableCell[t.ShortName] = cell
+				}
+				dataItem.Table.Body = append(dataItem.Table.Body, bodyItem)
+			}
+			continue
+		}
+		// ////////////////
+		for _, team := range teams {
+			var bodyItem entity.Body
+			bodyItem.TableCell = make(map[string]entity.TableCell, 0)
+
+			bodyItem.Id = team.ID
+			bodyItem.TeamShortName = team.ShortName
+			bodyItem.Score = 0
+			bodyItem.DifferenceInScore = 0
+			bodyItem.GamesPlayed = 0
+			bodyItem.GamesToPlay = int64((len(teams) - 1) * 2)
+			for _, t := range teams {
+				var cell entity.TableCell
+
+				cell.Game1ID = 0
+				cell.Game2ID = 0
+				cell.Score1 = "0:0"
+				cell.Score2 = "0:0"
+
+				if t.ID == team.ID {
+					bodyItem.TableCell[t.ShortName] = cell
+					continue //команда сама с собой не играет
+				}
+				gamesHome, err := s.rdbOperations.FetchGames(logger, ctx, team.ID, t.ID, cityID, year)
+				if err != nil {
+					logger.Error().Err(err).Msg("database error")
+					return entity.GetTeamVsTeamTableResponse{Message: "database error"}, err
+				}
+				gamesOut, err := s.rdbOperations.FetchGames(logger, ctx, t.ID, team.ID, cityID, year)
+				if err != nil {
+					logger.Error().Err(err).Msg("database error")
+					return entity.GetTeamVsTeamTableResponse{Message: "database error"}, err
+				}
+
+				if len(gamesHome) == 0 && len(gamesOut) == 0 { //если нет ни домашних ни выездных игр
+					bodyItem.TableCell[t.ShortName] = cell
+					continue
+				}
+				if len(gamesHome) != 0 { // если есть дом
+					cell.Game1ID = int64(gamesHome[0].ID)
+				}
+				if len(gamesOut) != 0 { // если есть выезд
+					cell.Game2ID = int64(gamesOut[0].ID)
+				}
+
+				gamesHomeMatches, err := s.rdbOperations.FetchMatches(logger, ctx, cell.Game1ID)
+				if err != nil {
+					logger.Error().Err(err).Msg("database error")
+					return entity.GetTeamVsTeamTableResponse{Message: "database error"}, err
+				}
+				gamesOutMatches, err := s.rdbOperations.FetchMatches(logger, ctx, cell.Game2ID)
+				if err != nil {
+					logger.Error().Err(err).Msg("database error")
+					return entity.GetTeamVsTeamTableResponse{Message: "database error"}, err
+				}
+
+				var match1Team1Score int64 = 0
+				var match1Team2Score int64 = 0
+
+				var match2Team1Score int64 = 0
+				var match2Team2Score int64 = 0
+
+				if len(gamesHomeMatches) != 0 {
+					for _, match := range gamesHomeMatches {
+						if match.Team1ID == int(team.ID) {
+							match1Team1Score += int64(match.ScoreTeam1)
+							match1Team2Score += int64(match.ScoreTeam2)
+						} else {
+							match1Team1Score += int64(match.ScoreTeam2)
+							match1Team2Score += int64(match.ScoreTeam1)
+						}
+					}
+					bodyItem.GamesToPlay -= 1
+					bodyItem.GamesPlayed += 1
+				}
+
+				if len(gamesOutMatches) != 0 {
+					for _, match := range gamesOutMatches {
+						if match.Team2ID == int(t.ID) {
+							match2Team1Score += int64(match.ScoreTeam1)
+							match2Team2Score += int64(match.ScoreTeam2)
+						} else {
+							match2Team1Score += int64(match.ScoreTeam2)
+							match2Team2Score += int64(match.ScoreTeam1)
+						}
+					}
+					bodyItem.GamesToPlay -= 1
+					bodyItem.GamesPlayed += 1
+				}
+
+				cell.Score1 = strconv.FormatInt(match1Team1Score, 10) + ":" + strconv.FormatInt(match1Team2Score, 10)
+				cell.Score2 = strconv.FormatInt(match2Team1Score, 10) + ":" + strconv.FormatInt(match2Team2Score, 10)
+
+				bodyItem.Score = resumScore(bodyItem.Score, match1Team1Score, match1Team2Score)
+				bodyItem.DifferenceInScore += (match1Team1Score - match1Team2Score + match2Team1Score - match2Team2Score)
+				bodyItem.TableCell[t.ShortName] = cell
+			}
+			dataItem.Table.Body = append(dataItem.Table.Body, bodyItem)
+
+		}
+		dataItem.Table.Columns = append(dataItem.Table.Columns, entity.Column{Uid: "score", Name: "Очки"})
+		dataItem.Table.Columns = append(dataItem.Table.Columns, entity.Column{Uid: "differenceInScore", Name: "+/-"})
+		dataItem.Table.Columns = append(dataItem.Table.Columns, entity.Column{Uid: "gamesPlayed", Name: "Игры"})
+		dataItem.Table.Columns = append(dataItem.Table.Columns, entity.Column{Uid: "gamesToPlay", Name: "Осталось"})
+
+		data = append(data, dataItem)
+
+	}
+
+	var response entity.GetTeamVsTeamTableResponse
+	response.Data = data
+	response.Message = "OK"
+	return response, nil
 }
 
+func resumScore(score, team1Score, team2Score int64) int64 {
+	if team1Score < 1 && team2Score < 1 {
+		return score
+	}
+
+	if team1Score == team2Score {
+		return score // both team got +2 instead?
+	}
+
+	if team1Score > team2Score {
+		return score + 2
+	}
+
+	return score // -2 ?
+}
+
+// ///////////////////////////////////////////////////////////////////////////////////
+// ///////////////////////////////////////////////////////////////////////////////////
 // ///////////////////////////////////////////////////////////////////////////////////
 func (s *Service) Create(ctx context.Context, team entity.CreateTeamRequest) (int64, error) {
 	logger := s.logger.With().Interface("service", "Create").Logger()

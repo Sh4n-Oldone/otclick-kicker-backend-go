@@ -3,8 +3,10 @@ package postgresql
 import (
 	"context"
 	stderr "errors"
+
 	"github.com/rs/zerolog"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 
 	"fmt"
@@ -167,7 +169,9 @@ func (db *RDBOperation) GetTeamsByLeague(logger zerolog.Logger, ctx context.Cont
 	return teams, nil
 }
 
-// //////////////////////////////////////////////////////////////////////////////////
+// ///////////////////////////////////////////////////////////////////////////////////
+// ///////////////////////////////////////////////////////////////////////////////////
+// ///////////////////////////////////////////////////////////////////////////////////
 
 func (db *RDBOperation) GetTeamVsTeamTable(logger zerolog.Logger, ctx context.Context, cityID, year int64) (entity.GetTeamVsTeamTableResponse, error) {
 
@@ -188,6 +192,130 @@ func (db *RDBOperation) GetTeamVsTeamTable(logger zerolog.Logger, ctx context.Co
 	return res, nil
 }
 
+func (db *RDBOperation) FetchLeagues(logger zerolog.Logger, ctx context.Context, cityID int64) ([]entity.League, error) {
+	rows, err := db.db.Query(ctx, "SELECT id, name FROM leagues WHERE city_id = $1", cityID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var leagues []entity.League
+	for rows.Next() {
+		var league entity.League
+		err = rows.Scan(&league.ID, &league.Name)
+		if err != nil {
+			return nil, err
+		}
+		leagues = append(leagues, league)
+	}
+
+	return leagues, nil
+}
+
+func (db *RDBOperation) FetchTeams(logger zerolog.Logger, ctx context.Context, leagueID int64) ([]entity.Team, error) {
+	rows, err := db.db.Query(ctx, "SELECT id, short_name FROM teams WHERE league_id = $1", leagueID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var teams []entity.Team
+	for rows.Next() {
+		var team entity.Team
+		err = rows.Scan(&team.ID, &team.ShortName)
+		if err != nil {
+			return nil, err
+		}
+		teams = append(teams, team)
+	}
+
+	return teams, nil
+}
+
+func (db *RDBOperation) FetchGames(logger zerolog.Logger, ctx context.Context, teamID1, teamID2, cityID, year int64) ([]entities.ComingGame, error) {
+	const query = `SELECT id FROM games WHERE team1_id = $1 AND team2_id = $2 AND city_id = $3 AND EXTRACT(year FROM date) = $4`
+
+	rows, err := db.db.Query(ctx, query, teamID1, teamID2, cityID, year)
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var games []entities.ComingGame
+	for rows.Next() {
+		var game entities.ComingGame
+		err = rows.Scan(&game.ID)
+		if err != nil {
+			return nil, err
+		}
+		games = append(games, game)
+	}
+
+	return games, nil
+}
+
+func (db *RDBOperation) FetchMatches(logger zerolog.Logger, ctx context.Context, gameID int64) ([]entities.Match, error) {
+	const query = `SELECT team1_id, team2_id, score_team1, score_team2 FROM matches
+					WHERE game_id = $1
+					ORDER BY id`
+
+	rows, err := db.db.Query(ctx, query, gameID)
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var matches []entities.Match
+	for rows.Next() {
+		var match entities.Match
+		err = rows.Scan(
+			&match.Team1ID,
+			&match.Team2ID,
+			&match.ScoreTeam1,
+			&match.ScoreTeam2)
+		if err != nil {
+			return nil, err
+		}
+		matches = append(matches, match)
+	}
+
+	return matches, nil
+}
+
+// /////////////////////////
+func (db *RDBOperation) TeamsHaveNoGames(logger zerolog.Logger, ctx context.Context, teams []entity.Team, year int64) (bool, error) {
+	const queryGame = `SELECT id FROM games WHERE (team1_id = $1 OR team2_id = $1)
+					AND EXTRACT(year FROM date) = $2
+					`
+	for _, team := range teams {
+		rows, err := db.db.Query(ctx, queryGame, team.ID, year)
+		if err != nil {
+			return false, err
+		}
+		defer rows.Close()
+
+		var games []entities.ComingGame
+		for rows.Next() {
+			var game entities.ComingGame
+			err = rows.Scan(&game.ID)
+			if err != nil {
+				return false, err
+			}
+			games = append(games, game)
+		}
+		if len(games) >= 0 {
+			return false, nil
+		}
+
+	}
+
+	return true, nil
+}
+
+// //////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////////
 // //////////////////////////////////////////////////////////////////////////////////
 func (db *RWDBOperation) CreateTeam(logger zerolog.Logger, ctx context.Context, team entity.CreateTeamRequest) (int64, error) {
 	var id int64

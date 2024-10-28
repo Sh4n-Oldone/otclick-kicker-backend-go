@@ -133,35 +133,32 @@ func decodeGetTeamsByLeagueRequest(_ context.Context, r *http.Request) (interfac
 	return request, nil
 }
 
-// GetTeamVsTeamTable{city_id}{year}
 func decodeGetTeamVsTeamTableRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	request := &entity.GetTeamVsTeamTableRequest{}
 
-	idParam := chi.URLParam(r, "city_id")
-	if idParam == "" {
+	cityIdParam := r.URL.Query().Get("cityId")
+	if cityIdParam == "" {
 		err := stderr.New(errors.EmptyParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
-	// {city_id}
-	city_id, err := strconv.ParseInt(idParam, 10, 64)
+	cityID, err := strconv.ParseInt(cityIdParam, 10, 64)
 	if err != nil {
 		err := stderr.New(errors.WrongParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
-	idParam2 := chi.URLParam(r, "year")
-	if idParam == "" {
+	yearParam := r.URL.Query().Get("year")
+	if yearParam == "" {
 		err := stderr.New(errors.EmptyParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
-	// {year}
-	year, err := strconv.ParseInt(idParam2, 10, 64)
+	year, err := strconv.ParseInt(yearParam, 10, 64)
 	if err != nil {
 		err := stderr.New(errors.WrongParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
-	request.CityID = city_id
+	request.CityID = cityID
 	request.Year = year
 
 	return request, nil
