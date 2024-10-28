@@ -6,8 +6,8 @@ type Place struct {
 	ID        int64 `db:"id" json:"id"`
 	Bar       Bar
 	Table     Table
-	UpdatedAt time.Time  `json:"updated_at" db:"updated_at"`
-	DeletedAt *time.Time `json:"deleted_at,omitempty" db:"deleted_at"`
+	UpdatedAt time.Time  `json:"updatedAt" db:"updated_at"`
+	DeletedAt *time.Time `json:"deletedAt,omitempty" db:"deleted_at"`
 }
 
 type GetPlaceListRequest struct {
@@ -29,14 +29,14 @@ type GetPlaceResponse struct {
 }
 
 type CreatePlaceRequest struct {
-	BarID   int64 `json:"bar_id"`
-	TableID int64 `json:"table_id"`
+	BarID   int64 `json:"barId"`
+	TableID int64 `json:"tableId"`
 }
 
 type UpdatePlaceRequest struct {
 	ID      int64 `json:"id"`
-	BarID   int64 `json:"bar_id"`
-	TableID int64 `json:"table_id"`
+	BarID   int64 `json:"barId"`
+	TableID int64 `json:"tableId"`
 }
 
 type DeletePlaceRequest struct {

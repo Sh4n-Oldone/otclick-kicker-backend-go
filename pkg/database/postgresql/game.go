@@ -517,3 +517,78 @@ func (db *RDBOperation) GetComingGames(logger zerolog.Logger, ctx context.Contex
 
 	return games, nil
 }
+
+func (db *RDBOperation) GetFutureGames(logger zerolog.Logger, ctx context.Context, cityID int) ([]entity.ShortGame, error) {
+	const query string = `
+		SELECT g.id, 
+		       g.date,
+		       g.city_id,
+		       l.id,
+		       l.name,
+		       g.team1_id, 
+		       t1.short_name, 
+		       t1.name, 
+		       g.team2_id, 
+		       t2.short_name, 
+		       t2.name
+		FROM games g
+		JOIN teams t1 ON g.team1_id = t1.id
+		JOIN teams t2 ON g.team2_id = t2.id
+		LEFT JOIN leagues l ON t1.league_id = l.id AND t2.league_id = l.id  -- лиги привязаны к командам а не к играм, поэтому лиги у команд должны совпадать, внимательнее тут
+		WHERE g.date > CURRENT_DATE AND g.city_id = $1
+		ORDER BY g.date;
+	`
+
+	rows, err := db.db.Query(ctx, query, cityID)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to postgresql.GetFutureGames")
+		return nil, DecodeDatabaseError(stderr.New(errors.ErrGetGameList))
+	}
+	defer rows.Close()
+
+	games := make([]entity.ShortGame, 0)
+
+	for rows.Next() {
+		var g entity.ShortGame
+		var t1 entity.TeamShort
+		var t2 entity.TeamShort
+
+		err = rows.Scan(
+			&g.ID,
+			&g.Date,
+			&g.CityID,
+			&g.LeagueID,
+			&g.LeagueName,
+			&t1.ID,
+			&t1.ShortName,
+			&t1.Name,
+			&t2.ID,
+			&t2.ShortName,
+			&t2.Name,
+		)
+
+		g.Teams = []entity.TeamShort{t1, t2}
+
+		games = append(games, g)
+	}
+
+	return games, nil
+}
+
+func (db *RWDBOperation) CreateFutureGame(logger zerolog.Logger, ctx context.Context, request entity.CreateFutureGameRequest) (int, error) {
+	const query string = `
+		INSERT INTO games (city_id, date, team1_id, team2_id)
+		VALUES ($1, $2, $3, $4)
+		RETURNING id;
+	`
+
+	var id int
+
+	err := db.db.QueryRow(ctx, query, request.CityID, request.Date, request.Team1ID, request.Team2ID).Scan(&id)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to postgresql.CreateFutureGame")
+		return 0, DecodeDatabaseError(stderr.New(errors.ErrCreateGame))
+	}
+
+	return id, nil
+}

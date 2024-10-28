@@ -9,6 +9,7 @@ import (
 
 	cnst "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/constant"
 
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/game"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/middleware"
@@ -184,6 +185,48 @@ func makeGetComingGames(s game.IService) endpoint.Endpoint {
 		resp, err := s.GetComingGames(ctx)
 		if err != nil {
 			serviceLogger.Error().Err(err).Msg("Failed to game.UpdateFutureGame")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		return resp, nil
+	}
+}
+
+func makeGetFutureGames(s game.IService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "game.makeGetFutureGames").Logger()
+
+		cityID, err := helpers.CastRequest[int](request)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed to cast request")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		resp, err := s.GetFutureGames(ctx, cityID)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed to game.GetFutureGames")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		return resp, nil
+	}
+}
+
+func makeCreateFutureGame(s game.IService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "game.makeCreateFutureGame").Logger()
+
+		req, err := helpers.CastRequest[entity.CreateFutureGameRequest](request)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed to cast request")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		resp, err := s.CreateFutureGame(ctx, req)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed to game.CreateFutureGame")
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 

@@ -11,8 +11,8 @@ type User struct {
 type CreateUserRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
-	RoleName string `json:"role_name"`
-	TeamID   string `json:"team_id,omitempty"`
+	RoleName string `json:"roleName"`
+	TeamID   string `json:"teamId,omitempty"`
 }
 
 type CreateUserResponse struct {
@@ -28,7 +28,7 @@ type LoginUserRequest struct {
 type ChangePasswordRequest struct {
 	Email       string `json:"email"`
 	Password    string `json:"password"`
-	NewPassword string `json:"new_password"`
+	NewPassword string `json:"newPassword"`
 }
 
 type CheckAuthRequest struct {

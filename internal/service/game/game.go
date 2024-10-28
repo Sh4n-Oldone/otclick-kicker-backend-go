@@ -107,3 +107,29 @@ func (s *Service) GetComingGames(ctx context.Context) (entities.GetComingGamesRe
 
 	return entities.GetComingGamesResponse{ComingGames: games}, nil
 }
+
+func (s *Service) GetFutureGames(ctx context.Context, cityID int) (entity.GetFutureGamesResponse, error) {
+	logger := s.logger.With().Interface("service", "game.GetFutureGames").Logger()
+	timeout, cancel := context.WithTimeout(ctx, s.config.RDB.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	games, err := s.rdbOperations.GetFutureGames(logger, timeout, cityID)
+	if err != nil {
+		return entity.GetFutureGamesResponse{}, err
+	}
+
+	return entity.GetFutureGamesResponse{Games: games}, nil
+}
+
+func (s *Service) CreateFutureGame(ctx context.Context, request entity.CreateFutureGameRequest) (entity.CreateFutureGameResponse, error) {
+	logger := s.logger.With().Interface("service", "game.CreateFutureGame").Logger()
+	timeout, cancel := context.WithTimeout(ctx, s.config.RWDB.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	id, err := s.rwdbOperations.CreateFutureGame(logger, timeout, request)
+	if err != nil {
+		return entity.CreateFutureGameResponse{}, err
+	}
+
+	return entity.CreateFutureGameResponse{ID: id}, nil
+}
