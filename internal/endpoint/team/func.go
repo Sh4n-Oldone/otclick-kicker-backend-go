@@ -115,33 +115,32 @@ func makeGetTeamsByLeague(s team.IService) endpoint.Endpoint {
 	}
 }
 
-// 5
-// func makeGetTeamVsTeamTable(s team.IService) endpoint.Endpoint {
-// 	return func(ctx context.Context, request interface{}) (interface{}, error) {
-// 		reqID, ctx := middleware.GetRequestID(ctx)
-// 		serviceLogger := s.GetLogger().With().Str("Source", "makeGetTeamVsTeamTable").Logger()
+func makeGetTeamVsTeamTable(s team.IService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "makeGetTeamVsTeamTable").Logger()
 
-// 		req, err := helpers.CastRequest[*entity.GetTeamVsTeamTableRequest](request)
-// 		if err != nil {
-// 			serviceLogger.Error().Err(err).Msg("Failed to cast request")
-// 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
-// 		}
+		req, err := helpers.CastRequest[*entity.GetTeamVsTeamTableRequest](request)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed to cast request")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
 
-// 		err := helpers.ValidateGetTeamVsTeamTableRequest(req)
-// 		if err != nil {
-// 			serviceLogger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).Msg(errors.FailedValidateRequest)
-// 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
-// 		}
+		// err := helpers.ValidateGetTeamVsTeamTableRequest(req)
+		// if err != nil {
+		// 	serviceLogger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).Msg(errors.FailedValidateRequest)
+		// 	return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		// }
 
-// 		teamsResp, err := s.GetTeamVsTeamTable(ctx, req)
-// 		if err != nil {
-// 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
-// 		}
+		teamsResp, err := s.GetTeamVsTeamTable(ctx, req.CityID, req.Year)
+		if err != nil {
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
 
-// 		// TLeaguesTables
-// 		return teamsResp, nil
-// 	}
-// }
+		// TLeaguesTables
+		return teamsResp, nil
+	}
+}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -194,10 +193,15 @@ func makeUpdate(s team.IService) endpoint.Endpoint {
 			return nil, err
 		}
 
-		response, err := s.Update(ctx, *req)
+		res, err := s.Update(ctx, *req)
 		if err != nil {
-			return response, err
+			return res, err
 		}
+
+		response := &struct {
+			Success bool `json:"success"`
+		}{}
+		response.Success = res
 
 		return response, nil
 	}
@@ -220,10 +224,15 @@ func makeDelete(s team.IService) endpoint.Endpoint {
 			return nil, err
 		}
 
-		response, err := s.Delete(ctx, req.ID)
+		res, err := s.Delete(ctx, req.ID)
 		if err != nil {
-			return response, err
+			return res, err
 		}
+
+		response := &struct {
+			Success bool `json:"success"`
+		}{}
+		response.Success = res
 
 		return response, nil
 	}
@@ -248,10 +257,15 @@ func makeAddPlayerIntoTeam(s team.IService) endpoint.Endpoint {
 			return false, err
 		}
 
-		response, err := s.AddPlayerIntoTeam(ctx, req.PlayerID, req.TeamID)
+		res, err := s.AddPlayerIntoTeam(ctx, req.PlayerID, req.TeamID)
 		if err != nil {
-			return response, err
+			return res, err
 		}
+
+		response := &struct {
+			Success bool `json:"success"`
+		}{}
+		response.Success = res
 
 		return response, nil
 	}
@@ -274,10 +288,15 @@ func makeRemovePlayerFromTeam(s team.IService) endpoint.Endpoint {
 			return false, err
 		}
 
-		response, err := s.RemovePlayerFromTeam(ctx, req.PlayerID, req.TeamID)
+		res, err := s.RemovePlayerFromTeam(ctx, req.PlayerID, req.TeamID)
 		if err != nil {
-			return response, err
+			return res, err
 		}
+
+		response := &struct {
+			Success bool `json:"success"`
+		}{}
+		response.Success = res
 
 		return response, nil
 	}

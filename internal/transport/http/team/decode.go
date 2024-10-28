@@ -135,26 +135,39 @@ func decodeGetTeamsByLeagueRequest(_ context.Context, r *http.Request) (interfac
 	return request, nil
 }
 
-// // GetTeamVsTeamTable{city_id}
-// func decodeGetTeamVsTeamTableRequest(_ context.Context, r *http.Request) (interface{}, error) {
-// 	request := &entity.GetTeamVsTeamTableRequest{}
+// GetTeamVsTeamTable{city_id}{year}
+func decodeGetTeamVsTeamTableRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	request := &entity.GetTeamVsTeamTableRequest{}
 
-// 	idParam := chi.URLParam(r, "id")
-// 	if idParam == "" {
-// 		err := stderr.New(errors.EmptyParameterError)
-// 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
-// 	}
-// 	// {city_id}
-// 	id, err := strconv.ParseInt(idParam, 10, 64)
-// 	if err != nil {
-// 		err := stderr.New(errors.WrongParameterError)
-// 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
-// 	}
+	idParam := chi.URLParam(r, "city_id")
+	if idParam == "" {
+		err := stderr.New(errors.EmptyParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	// {city_id}
+	city_id, err := strconv.ParseInt(idParam, 10, 64)
+	if err != nil {
+		err := stderr.New(errors.WrongParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
 
-// 	request.ID = id
+	idParam2 := chi.URLParam(r, "year")
+	if idParam == "" {
+		err := stderr.New(errors.EmptyParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	// {year}
+	year, err := strconv.ParseInt(idParam2, 10, 64)
+	if err != nil {
+		err := stderr.New(errors.WrongParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
 
-// 	return request, nil
-// }
+	request.CityID = city_id
+	request.Year = year
+
+	return request, nil
+}
 
 ////////////////////////////////////////////////////////////////////////////////////
 

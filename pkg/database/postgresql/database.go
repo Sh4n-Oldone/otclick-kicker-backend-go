@@ -89,6 +89,7 @@ type RDBOperationer interface {
 	GetTeams(logger zerolog.Logger, ctx context.Context, onlyFree bool) ([]entity.TeamShort, error)
 	GetTeamsByCity(logger zerolog.Logger, ctx context.Context, onlyFree bool, cityID int64) ([]entity.TeamShort, error)
 	GetTeamsByLeague(logger zerolog.Logger, ctx context.Context, leagueID int64) ([]entity.TeamByLeague, error)
+	GetTeamVsTeamTable(logger zerolog.Logger, ctx context.Context, cityID, year int64) (entity.GetTeamVsTeamTableResponse, error)
 }
 
 type dbp struct {

@@ -117,16 +117,16 @@ func (s *Service) GetTeamsByLeague(ctx context.Context, leagueID int64) ([]entit
 	return teams, nil
 }
 
-// func (s *Service) GetTeamVsTeamTable(ctx context.Context, team entity.Team) (*int64, error) {
-// 	logger := s.logger.With().Interface("service", "GetTeamVsTeamTable").Logger()
+func (s *Service) GetTeamVsTeamTable(ctx context.Context, cityID, year int64) (entity.GetTeamVsTeamTableResponse, error) {
+	logger := s.logger.With().Interface("service", "GetTeamVsTeamTable").Logger()
 
-// 	id, err := s.rdbOperations.GetTeamVsTeamTable(logger, ctx, team)
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	resp, err := s.rdbOperations.GetTeamVsTeamTable(logger, ctx, cityID, year)
+	if err != nil {
+		return entity.GetTeamVsTeamTableResponse{}, err
+	}
 
-// 	return &id, nil
-// }
+	return resp, nil
+}
 
 // ///////////////////////////////////////////////////////////////////////////////////
 func (s *Service) Create(ctx context.Context, team entity.CreateTeamRequest) (int64, error) {
