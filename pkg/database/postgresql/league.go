@@ -3,6 +3,7 @@ package postgresql
 import (
 	"context"
 	stderr "errors"
+	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog"
 	"strconv"
 
@@ -145,9 +146,15 @@ func (db *RWDBOperation) UpdateLeague(logger zerolog.Logger, ctx context.Context
 }
 
 func (db *RWDBOperation) DeleteLeague(logger zerolog.Logger, ctx context.Context, id int64) error {
-	_, err := db.db.Exec(ctx, queryDeleteLeague, id)
+	res, err := db.db.Exec(ctx, queryDeleteLeague, id)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to delete League record")
+		return DecodeDatabaseError(err)
+	}
+
+	if res.RowsAffected() == 0 {
+		err = pgx.ErrNoRows
+		logger.Error().Stack().Err(err).Msg("failed find to postgresql.DeleteLeague")
 		return DecodeDatabaseError(err)
 	}
 
