@@ -113,39 +113,47 @@ func decodeFindPlayersRequest(_ context.Context, r *http.Request) (interface{}, 
 	defer bytebufferpool.Put(buf)
 
 	paramLeagueID := r.URL.Query().Get("league")
-	leagueID, err := strconv.Atoi(paramLeagueID)
-	if err != nil || leagueID <= 0 {
-		err = stderr.New(errors.WrongParameterError)
-		return nil, error_templates.New(err.Error(), err, http.StatusBadRequest, http.StatusBadRequest)
+	if paramLeagueID != "" {
+		leagueID, err := strconv.Atoi(paramLeagueID)
+		if err != nil || leagueID <= 0 {
+			err = stderr.New(errors.WrongParameterError)
+			return nil, error_templates.New(err.Error(), err, http.StatusBadRequest, http.StatusBadRequest)
+		}
+		request.LeagueID = &leagueID
 	}
-	request.LeagueID = &leagueID
 
 	paramFindAny := r.URL.Query().Get("findAny")
 	request.FindAny = &paramFindAny
 
 	paramGamesPlayedNumber := r.URL.Query().Get("gamesPlayedNumber")
-	gamesPlayedNumber, err := strconv.Atoi(paramGamesPlayedNumber)
-	if err != nil || gamesPlayedNumber <= 0 {
-		err = stderr.New(errors.WrongParameterError)
-		return nil, error_templates.New(err.Error(), err, http.StatusBadRequest, http.StatusBadRequest)
+	if paramGamesPlayedNumber != "" {
+		gamesPlayedNumber, err := strconv.Atoi(paramGamesPlayedNumber)
+		if err != nil || gamesPlayedNumber <= 0 {
+			err = stderr.New(errors.WrongParameterError)
+			return nil, error_templates.New(err.Error(), err, http.StatusBadRequest, http.StatusBadRequest)
+		}
+		request.GamesPlayedNumber = &gamesPlayedNumber
 	}
-	request.GamesPlayedNumber = &gamesPlayedNumber
 
 	paramRating := r.URL.Query().Get("rating")
-	rating, err := strconv.Atoi(paramRating)
-	if err != nil || rating <= 0 {
-		err = stderr.New(errors.WrongParameterError)
-		return nil, error_templates.New(err.Error(), err, http.StatusBadRequest, http.StatusBadRequest)
+	if paramRating != "" {
+		rating, err := strconv.Atoi(paramRating)
+		if err != nil || rating <= 0 {
+			err = stderr.New(errors.WrongParameterError)
+			return nil, error_templates.New(err.Error(), err, http.StatusBadRequest, http.StatusBadRequest)
+		}
+		request.Rating = &rating
 	}
-	request.Rating = &rating
 
 	paramCityID := r.URL.Query().Get("cityId")
-	cityID, err := strconv.Atoi(paramCityID)
-	if err != nil || cityID <= 0 {
-		err = stderr.New(errors.WrongParameterError)
-		return nil, error_templates.New(err.Error(), err, http.StatusBadRequest, http.StatusBadRequest)
+	if paramCityID != "" {
+		cityID, err := strconv.Atoi(paramCityID)
+		if err != nil || cityID <= 0 {
+			err = stderr.New(errors.WrongParameterError)
+			return nil, error_templates.New(err.Error(), err, http.StatusBadRequest, http.StatusBadRequest)
+		}
+		request.CityID = &cityID
 	}
-	request.CityID = &cityID
 
 	var trueValue = true
 	var falseValue = false
@@ -154,7 +162,6 @@ func decodeFindPlayersRequest(_ context.Context, r *http.Request) (interface{}, 
 	if paramWithDeleted == "true" {
 		request.WithDeleted = &trueValue
 	}
-
 	if paramWithDeleted == "false" {
 		request.WithDeleted = &falseValue
 	}
@@ -163,7 +170,6 @@ func decodeFindPlayersRequest(_ context.Context, r *http.Request) (interface{}, 
 	if paramOnlyFree == "true" {
 		request.OnlyFree = &trueValue
 	}
-
 	if paramOnlyFree == "false" {
 		request.OnlyFree = &falseValue
 	}
@@ -172,7 +178,6 @@ func decodeFindPlayersRequest(_ context.Context, r *http.Request) (interface{}, 
 	if paramKeepSimple == "true" {
 		request.KeepSimple = &trueValue
 	}
-
 	if paramKeepSimple == "false" {
 		request.KeepSimple = &falseValue
 	}
