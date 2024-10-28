@@ -112,14 +112,69 @@ func decodeFindPlayersRequest(_ context.Context, r *http.Request) (interface{}, 
 	buf := bytebufferpool.Get()
 	defer bytebufferpool.Put(buf)
 
-	_, err := io.Copy(buf, r.Body) // buf.ReadFrom(r.Body)
-	if err != nil {
-		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	paramLeagueID := r.URL.Query().Get("league")
+	leagueID, err := strconv.Atoi(paramLeagueID)
+	if err != nil || leagueID <= 0 {
+		err = stderr.New(errors.WrongParameterError)
+		return nil, error_templates.New(err.Error(), err, http.StatusBadRequest, http.StatusBadRequest)
+	}
+	request.LeagueID = &leagueID
+
+	paramFindAny := r.URL.Query().Get("findAny")
+	request.FindAny = &paramFindAny
+
+	paramGamesPlayedNumber := r.URL.Query().Get("gamesPlayedNumber")
+	gamesPlayedNumber, err := strconv.Atoi(paramGamesPlayedNumber)
+	if err != nil || gamesPlayedNumber <= 0 {
+		err = stderr.New(errors.WrongParameterError)
+		return nil, error_templates.New(err.Error(), err, http.StatusBadRequest, http.StatusBadRequest)
+	}
+	request.GamesPlayedNumber = &gamesPlayedNumber
+
+	paramRating := r.URL.Query().Get("rating")
+	rating, err := strconv.Atoi(paramRating)
+	if err != nil || rating <= 0 {
+		err = stderr.New(errors.WrongParameterError)
+		return nil, error_templates.New(err.Error(), err, http.StatusBadRequest, http.StatusBadRequest)
+	}
+	request.Rating = &rating
+
+	paramCityID := r.URL.Query().Get("cityId")
+	cityID, err := strconv.Atoi(paramCityID)
+	if err != nil || cityID <= 0 {
+		err = stderr.New(errors.WrongParameterError)
+		return nil, error_templates.New(err.Error(), err, http.StatusBadRequest, http.StatusBadRequest)
+	}
+	request.CityID = &cityID
+
+	var trueValue = true
+	var falseValue = false
+
+	paramWithDeleted := r.URL.Query().Get("withDeleted")
+	if paramWithDeleted == "true" {
+		request.WithDeleted = &trueValue
 	}
 
-	err = json.Unmarshal(buf.Bytes(), &request)
-	if err != nil {
-		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	if paramWithDeleted == "false" {
+		request.WithDeleted = &falseValue
+	}
+
+	paramOnlyFree := r.URL.Query().Get("onlyFree")
+	if paramOnlyFree == "true" {
+		request.OnlyFree = &trueValue
+	}
+
+	if paramOnlyFree == "false" {
+		request.OnlyFree = &falseValue
+	}
+
+	paramKeepSimple := r.URL.Query().Get("keepSimple")
+	if paramKeepSimple == "true" {
+		request.KeepSimple = &trueValue
+	}
+
+	if paramKeepSimple == "false" {
+		request.KeepSimple = &falseValue
 	}
 
 	return request, nil
