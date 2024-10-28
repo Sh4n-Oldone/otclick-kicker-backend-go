@@ -66,7 +66,7 @@ func makeGetTeams(s team.IService) endpoint.Endpoint {
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
-		teamsResponse, err := s.GetTeams(ctx, req.OnlyFree)
+		teamsResponse, err := s.GetTeams(ctx, req.CityId, req.OnlyFree)
 		if err != nil {
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}

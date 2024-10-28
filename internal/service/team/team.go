@@ -84,10 +84,10 @@ func propertyCounting(player *entity.PlayerGetTeam, matches []entities.Match) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-func (s *Service) GetTeams(ctx context.Context, onlyFree bool) ([]entity.TeamShort, error) {
+func (s *Service) GetTeams(ctx context.Context, cityId int64, onlyFree bool) ([]entity.TeamShort, error) {
 	logger := s.logger.With().Interface("service", "GetTeams").Logger()
 
-	teams, err := s.rdbOperations.GetTeams(logger, ctx, onlyFree)
+	teams, err := s.rdbOperations.GetTeams(logger, ctx, cityId, onlyFree)
 	if err != nil {
 		return nil, err
 	}

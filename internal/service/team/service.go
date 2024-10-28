@@ -12,7 +12,7 @@ import (
 
 type IService interface {
 	GetTeam(ctx context.Context, teamID int64) (entity.GetTeamResponse, error)
-	GetTeams(ctx context.Context, onlyFree bool) ([]entity.TeamShort, error)
+	GetTeams(ctx context.Context, cityId int64, onlyFree bool) ([]entity.TeamShort, error)
 	GetTeamsByCity(ctx context.Context, onlyFree bool, cityID int64) ([]entity.TeamShort, error)
 	GetTeamsByLeague(ctx context.Context, leagueID int64) ([]entity.TeamByLeague, error)
 	GetTeamVsTeamTable(ctx context.Context, cityID, year int64) (entity.GetTeamVsTeamTableResponse, error)

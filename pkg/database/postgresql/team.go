@@ -75,15 +75,15 @@ func (db *RDBOperation) GetTeam(logger zerolog.Logger, ctx context.Context, team
 	return team, nil
 }
 
-func (db *RDBOperation) GetTeams(logger zerolog.Logger, ctx context.Context, onlyFree bool) ([]entity.TeamShort, error) {
+func (db *RDBOperation) GetTeams(logger zerolog.Logger, ctx context.Context, cityID int64, onlyFree bool) ([]entity.TeamShort, error) {
 	// const query := `SELECT id, name, short_name FROM teams WHERE ($1::boolean IS NOT TRUE OR league_id IS NULL) ORDER BY id`
-	query := `SELECT id, name, short_name FROM teams`
+	query := `SELECT id, name, short_name FROM teams WHERE city_id = $1`
 	if onlyFree {
-		query += " WHERE league_id IS NULL"
+		query += " AND league_id IS NULL"
 	}
 	query += " ORDER BY id"
 
-	rows, err := db.db.Query(ctx, query) // , onlyFree
+	rows, err := db.db.Query(ctx, query, cityID) // , onlyFree
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to GetTeams")
 		return nil, DecodeDatabaseError(err)
