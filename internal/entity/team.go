@@ -34,6 +34,7 @@ type TeamShort struct { // ByCity
 }
 
 type TeamByLeague struct {
+	Id        int64   `db:"id" json:"id"`
 	Name      string  `db:"name" json:"name"`
 	ShortName string  `db:"short_name" json:"shortName"`
 	Avatar    []byte  `json:"avatar,omitempty"`

@@ -136,7 +136,7 @@ func (db *RDBOperation) GetTeamsByCity(logger zerolog.Logger, ctx context.Contex
 }
 
 func (db *RDBOperation) GetTeamsByLeague(logger zerolog.Logger, ctx context.Context, leagueID int64) ([]entity.TeamByLeague, error) {
-	const query = `SELECT t.name, t.short_name, t.avatar, t.city_id, COALESCE(ARRAY_AGG(ptl.player_id) FILTER (WHERE ptl.player_id IS NOT NULL), ARRAY[]::int8[])
+	const query = `SELECT t.id, t.name, t.short_name, t.avatar, t.city_id, COALESCE(ARRAY_AGG(ptl.player_id) FILTER (WHERE ptl.player_id IS NOT NULL), ARRAY[]::int8[])
 	FROM teams t
 	LEFT JOIN players_teams_links ptl ON ptl.team_id = t.id
 	WHERE t.league_id = $1
@@ -155,7 +155,7 @@ func (db *RDBOperation) GetTeamsByLeague(logger zerolog.Logger, ctx context.Cont
 	for rows.Next() {
 		var team entity.TeamByLeague
 
-		err = rows.Scan(&team.Name, &team.ShortName, &team.Avatar, &team.CityId, &team.Players)
+		err = rows.Scan(&team.Id, &team.Name, &team.ShortName, &team.Avatar, &team.CityId, &team.Players)
 		if err != nil {
 			logger.Error().Err(err).Msg("failed to scan team list")
 			return nil, DecodeDatabaseError(err)
