@@ -35,5 +35,7 @@ func NewServer(endpoints user.Endpoints, options []kithttp.ServerOption, cfg *co
 	r.With(custom_middleware.Auth(cfg, service)).
 		Put("/users/change-password", kithttp.NewServer(endpoints.ChangePassword, decodeChangePasswordRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 
+	r.Get("/users/check-auth", kithttp.NewServer(endpoints.CheckAuth, decodeCheckAuthRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+
 	return r
 }

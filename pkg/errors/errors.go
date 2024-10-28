@@ -11,6 +11,9 @@ const (
 	ErrNoTeam             = "отсутствует id команды в запросе"
 	ErrNoDate             = "отсутствует дата игры в запросе"
 	ErrWrongDate          = "некорректная дата игры в запросе"
+	WrongUserRole		  = "некорректная роль пользователя"
+	FailedParseJWTToken	  = "ошибка расшифровки JWT токена"
+	FailedGetUserData		  = "ошибка получения данных пользователя"
 )
 
 // Database errors

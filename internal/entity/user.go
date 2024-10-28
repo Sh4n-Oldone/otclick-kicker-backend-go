@@ -30,3 +30,14 @@ type ChangePasswordRequest struct {
 	Password    string `json:"password"`
 	NewPassword string `json:"new_password"`
 }
+
+type CheckAuthRequest struct {
+	UserID int64
+	Token  string
+}
+
+type CheckAuthResponse struct {
+	IsAuthenticated bool 	`json:"isAuthenticated"`
+	Role 			string 	`json:"role"`
+	TeamID 			int64 	`json:"teamId"`
+}

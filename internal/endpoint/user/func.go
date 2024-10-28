@@ -104,3 +104,30 @@ func makeChangePassword(s user.IService) endpoint.Endpoint {
 		return nil, nil
 	}
 }
+
+func makeCheckAuth(s user.IService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		// reqID, ctx := middleware.GetRequestID(ctx)
+		logger := s.GetLogger().With().Str("Source", "makeCheckAuth").Logger()
+
+		req, err := helpers.CastRequest[*entity.CheckAuthRequest](request)
+		if err != nil {
+			logger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).Msg(errors.FailedCastRequest)
+			return nil, err
+		}
+
+		isAuth, role, teamID, err := s.CheckAuth(ctx, req.UserID, req.Token)
+		if err != nil {
+			return nil, err
+		}
+
+		response := &entity.CheckAuthResponse{
+			IsAuthenticated: *isAuth,
+			Role: *role,
+			TeamID: *teamID,
+		}
+
+		return response, nil
+	}
+}
+

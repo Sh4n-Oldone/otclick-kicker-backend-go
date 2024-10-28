@@ -10,6 +10,7 @@ type Endpoints struct {
 	Create         endpoint.Endpoint
 	Login          endpoint.Endpoint
 	ChangePassword endpoint.Endpoint
+	CheckAuth	   endpoint.Endpoint
 }
 
 func MakeEndpoints(s user.IService) Endpoints {
@@ -17,5 +18,6 @@ func MakeEndpoints(s user.IService) Endpoints {
 		Create:         makeCreate(s),
 		Login:          makeLogin(s),
 		ChangePassword: makeChangePassword(s),
+		CheckAuth: 		makeCheckAuth(s),
 	}
 }
