@@ -103,12 +103,6 @@ func (db *RDBOperation) GetTeams(logger zerolog.Logger, ctx context.Context, onl
 
 		teams = append(teams, team)
 	}
-	count := len(teams)
-
-	if count == 0 {
-		logger.Error().Err(err).Msg("No teams found")
-		return nil, stderr.New(errors.ErrGetTeams)
-	}
 
 	return teams, nil
 }
@@ -135,12 +129,6 @@ func (db *RDBOperation) GetTeamsByCity(logger zerolog.Logger, ctx context.Contex
 		}
 
 		teams = append(teams, team)
-	}
-	count := len(teams)
-
-	if count == 0 {
-		logger.Error().Err(err).Msg("No teams found")
-		return nil, stderr.New(errors.ErrGetTeams)
 	}
 
 	return teams, nil
@@ -175,11 +163,6 @@ func (db *RDBOperation) GetTeamsByLeague(logger zerolog.Logger, ctx context.Cont
 		}
 
 		teams = append(teams, team)
-	}
-
-	if len(teams) == 0 {
-		logger.Error().Msg("No teams found")
-		return nil, stderr.New(errors.ErrGetTeams)
 	}
 
 	return teams, nil
