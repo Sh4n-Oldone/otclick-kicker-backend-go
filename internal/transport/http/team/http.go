@@ -30,7 +30,8 @@ func NewServer(endpoints team.Endpoints, options []kithttp.ServerOption, cfg *co
 	r.Get("/teams", kithttp.NewServer(endpoints.GetTeams, decodeGetTeamsRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 	r.Get("/teams/cities/{city_id}", kithttp.NewServer(endpoints.GetTeamsByCity, decodeGetTeamsByCityRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 	r.Get("/teams/leagues/{league_id}", kithttp.NewServer(endpoints.GetTeamsByLeague, decodeGetTeamsByLeagueRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
-	r.Get("/teams/vs/{city_id}", kithttp.NewServer(endpoints.GetTeamVsTeamTable, decodeGetTeamVsTeamTableRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	// r.Get("/teams/vs/{city_id}/{year}", kithttp.NewServer(endpoints.GetTeamVsTeamTable, decodeGetTeamVsTeamTableRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.Get("/teams/vs", kithttp.NewServer(endpoints.GetTeamVsTeamTable, decodeGetTeamVsTeamTableRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 
 	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
 		Post("/teams", kithttp.NewServer(endpoints.Create, decodeCreateRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)

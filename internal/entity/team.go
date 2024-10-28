@@ -101,11 +101,6 @@ type GetTeamVsTeamTableRequest struct {
 	// WithoutEmpty bool  `json:" withoutEmpty"`
 }
 
-type GetTeamVsTeamTableResponse struct {
-	// CityID int64 `json:"cityId"`
-	// Year   int64 `json:"year"`
-}
-
 // //////////////////////////////////
 // используется в entity/user.go
 type Team struct {
@@ -118,3 +113,78 @@ type Team struct {
 }
 
 // /////////////////////////////////////////////////////////////////////
+type GetTeamVsTeamTableResponse struct {
+	Data    []Data `json:"data"`
+	Message string `json:"message"`
+}
+
+type Data struct {
+	LeagueID   int64       `json:"id"`
+	LeagueName string      `json:"name"`
+	Table      TableLeague `json:"table"`
+}
+
+type TableLeague struct {
+	Columns []Column `json:"columns"`
+	Body    []Body   `json:"body"`
+}
+
+type Column struct {
+	Uid  string `json:"uid"`
+	Name string `json:"name"`
+}
+
+type TableCell struct {
+	Game1ID int64  `json:"game1Id"`
+	Game2ID int64  `json:"game2Id"`
+	Score1  string `json:"score1"`
+	Score2  string `json:"score2"`
+}
+
+type Body struct {
+	Id                int64  `json:"id"`
+	TeamShortName     string `json:"teamShortName"`
+	Score             int64  `json:"score"`
+	DifferenceInScore int64  `json:"differenceInScore"`
+	GamesPlayed       int64  `json:"gamesPlayed"`
+	GamesToPlay       int64  `json:"gamesToPlay"`
+	TableCell         map[string]TableCell
+}
+
+// {
+// 	"data": [
+// 	  {
+// 		"id": "",
+// 		"name": "",
+// 		"table": {
+// 		  "columns": [
+// 			{
+// 			  "uid": "",
+// 			  "name": ""
+// 			},
+// 			...
+// 		  ],
+// 		  "body": [
+// 			{
+// 			  "id": "",
+// 			  "teamShortName": "",
+// 			  "score": "",
+// 			  "differenceInScore": "",
+// 			  "gamesPlayed": "",
+// 			  "gamesToPlay": "",
+// 			  "FS": {
+// 				"match1Id": 0,
+// 				"match2Id": 0,
+// 				"score1": "0:0",
+// 				"score2": "0:0"
+// 			  },
+// 			  ...
+// 			},
+// 			...
+// 		  ]
+// 		}
+// 	  },
+// 	  ...
+// 	]
+// 	"message": "OK"
+//   }
