@@ -32,11 +32,12 @@ type TeamShort struct { // ByCity
 	Name      string `db:"name" json:"name"`
 	ShortName string `db:"short_name" json:"shortName"`
 }
+
 type TeamByLeague struct {
 	Name      string  `db:"name" json:"name"`
-	ShortName string  `db:"short_name" json:"short_name"`
+	ShortName string  `db:"short_name" json:"shortName"`
 	Avatar    []byte  `json:"avatar,omitempty"`
-	CityId    *int64  `db:"city_id" json:"city_id"`
+	CityId    *int64  `db:"city_id" json:"cityId"`
 	Players   []int64 `json:"players"`
 }
 
@@ -91,6 +92,19 @@ type GetTeamsByLeagueRequest struct {
 }
 
 // //////////////////////////////////
+
+type GetTeamVsTeamTableRequest struct {
+	CityID int64 `json:"cityId"`
+	Year   int64 `json:"year"`
+	// WithoutEmpty bool  `json:" withoutEmpty"`
+}
+
+type GetTeamVsTeamTableResponse struct {
+	// CityID int64 `json:"cityId"`
+	// Year   int64 `json:"year"`
+}
+
+// //////////////////////////////////
 // используется в entity/user.go
 type Team struct {
 	ID        int64  `json:"id" db:"id"`
@@ -100,3 +114,5 @@ type Team struct {
 	League    League
 	City      City
 }
+
+// /////////////////////////////////////////////////////////////////////

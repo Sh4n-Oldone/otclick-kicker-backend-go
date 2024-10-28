@@ -185,19 +185,26 @@ func (db *RDBOperation) GetTeamsByLeague(logger zerolog.Logger, ctx context.Cont
 	return teams, nil
 }
 
-// func (db *RDBOperation) GetTeamVsTeamTable(logger zerolog.Logger, ctx context.Context, team entity.Team) (int64, error) {
-// 	var id int64
+// //////////////////////////////////////////////////////////////////////////////////
 
-// 	err := db.db.QueryRow(ctx, queryGetTeamVsTeamTable,
-// 		team.ID,
-// 	).Scan(&id)
-// 	if err != nil {
-// 		logger.Error().Err(err).Msg("failed to GetTeamVsTeamTable")
-// 		return 0, DecodeDatabaseError(err)
-// 	}
+func (db *RDBOperation) GetTeamVsTeamTable(logger zerolog.Logger, ctx context.Context, cityID, year int64) (entity.GetTeamVsTeamTableResponse, error) {
 
-// 	return id, nil
-// }
+	const query = ""
+
+	rows, err := db.db.Query(ctx, query, cityID, year)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to GetTeamVsTeamTable")
+		return entity.GetTeamVsTeamTableResponse{}, DecodeDatabaseError(err)
+	}
+	for rows.Next() {
+
+	}
+	defer rows.Close()
+
+	res := entity.GetTeamVsTeamTableResponse{}
+
+	return res, nil
+}
 
 // //////////////////////////////////////////////////////////////////////////////////
 func (db *RWDBOperation) CreateTeam(logger zerolog.Logger, ctx context.Context, team entity.CreateTeamRequest) (int64, error) {
