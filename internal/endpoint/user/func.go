@@ -54,16 +54,18 @@ func makeLogin(s user.IService) endpoint.Endpoint {
 
 		user := helpers.ConvertLoginUserRequestToUser(req)
 
-		token, err := s.Login(ctx, *user)
+		uID, uRole, uTeamID, token, err := s.Login(ctx, *user)
 		if err != nil {
 			return nil, err
 		}
 
-		response := &struct {
-			Token string `json:"token"`
-		}{}
-
-		response.Token = *token
+		response := &entity.LoginUserResponse {
+			Message: "Access Granted",
+			ID: *uID,
+			Token: *token,
+			Role: *uRole,
+			TeamID: *uTeamID,
+		}
 
 		return response, nil
 	}
