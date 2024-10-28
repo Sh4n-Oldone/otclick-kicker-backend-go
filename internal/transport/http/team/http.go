@@ -31,13 +31,17 @@ func NewServer(endpoints team.Endpoints, options []kithttp.ServerOption, cfg *co
 	r.Get("/teams/cities/{city_id}", kithttp.NewServer(endpoints.GetTeamsByCity, decodeGetTeamsByCityRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 	r.Get("/teams/leagues/{league_id}", kithttp.NewServer(endpoints.GetTeamsByLeague, decodeGetTeamsByLeagueRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 	// r.Get("/teams/vs/{city_id}", kithttp.NewServer(endpoints.GetTeamVsTeamTable, decodeGetTeamVsTeamTableRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
-	//todo: Авторизация для Create
-	r.Post("/teams", kithttp.NewServer(endpoints.Create, decodeCreateRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
-	r.Put("/teams", kithttp.NewServer(endpoints.Update, decodeUpdateRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
-	r.Delete("/teams/{id}", kithttp.NewServer(endpoints.Delete, decodeDeleteRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
+		Post("/teams", kithttp.NewServer(endpoints.Create, decodeCreateRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
+		Put("/teams", kithttp.NewServer(endpoints.Update, decodeUpdateRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
+		Delete("/teams/{id}", kithttp.NewServer(endpoints.Delete, decodeDeleteRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 
-	r.Post("/teams/add-player", kithttp.NewServer(endpoints.AddPlayerIntoTeam, decodeAddPlayerIntoTeamRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
-	r.Post("/teams/remove-player", kithttp.NewServer(endpoints.RemovePlayerFromTeam, decodeRemovePlayerFromTeamRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
+		Post("/teams/add-player", kithttp.NewServer(endpoints.AddPlayerIntoTeam, decodeAddPlayerIntoTeamRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
+		Post("/teams/remove-player", kithttp.NewServer(endpoints.RemovePlayerFromTeam, decodeRemovePlayerFromTeamRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 
 	return r
 }

@@ -1,8 +1,8 @@
 package entity
 
 type PlayerTeam struct {
-	PlayerID int64 `db:"player_id" json:"player_id"`
-	TeamID   int64 `db:"team_id" json:"team_id"`
+	PlayerID int64 `db:"player_id" json:"playerId"`
+	TeamID   int64 `db:"team_id" json:"teamId"`
 }
 
 type PlayerGetTeam struct {
@@ -17,7 +17,7 @@ type PlayerGetTeam struct {
 	GoalsScoredNumber   int     `json:"goalsScoredNumber"`
 	GoalsConcededNumber int     `json:"goalsConcededNumber"`
 	GamesPlayedNumber   int     `json:"gamesPlayedNumber"`
-	RatingNumber        *int    `json:"raitingNumber"`
+	RatingNumber        *int    `json:"ratingNumber"`
 	ActivePlayer        bool    `json:"activePlayer"`
 	Deleted             bool    `json:"deleted"`
 	CityID              *int64  `json:"cityId"`
@@ -30,7 +30,7 @@ type PlayerGetTeam struct {
 type TeamShort struct { // ByCity
 	ID        int64  `db:"id" json:"id"`
 	Name      string `db:"name" json:"name"`
-	ShortName string `db:"short_name" json:"short_name"`
+	ShortName string `db:"short_name" json:"shortName"`
 }
 type TeamByLeague struct {
 	Name      string  `db:"name" json:"name"`
@@ -44,9 +44,9 @@ type TeamByLeague struct {
 type GetTeamResponse struct { //TeamFilledWithFullPlayers
 	ID        int64           `db:"id" json:"id"`
 	Name      string          `db:"name" json:"name"`
-	ShortName string          `db:"short_name" json:"short_name"`
+	ShortName string          `db:"short_name" json:"shortName"`
 	Avatar    []byte          `json:"avatar,omitempty"`
-	CityId    *int64          `db:"city_id" json:"city_id"`
+	CityId    *int64          `db:"city_id" json:"cityId"`
 	Players   []PlayerGetTeam `db:"players" json:"players"`
 }
 
@@ -54,19 +54,19 @@ type GetTeamResponse struct { //TeamFilledWithFullPlayers
 
 type CreateTeamRequest struct {
 	Name      string `db:"name" json:"name"`
-	ShortName string `db:"short_name" json:"short_name"`
+	ShortName string `db:"short_name" json:"shortName"`
 	Avatar    []byte `json:"avatar,omitempty"`
-	CityId    *int64 `db:"city_id" json:"city_id"`
-	LeagueID  *int64 `db:"league_id" json:"league_id"`
+	CityId    *int64 `db:"city_id" json:"cityId"`
+	LeagueID  *int64 `db:"league_id" json:"leagueId"`
 }
 
 type UpdateTeamRequest struct {
 	ID        int64   `db:"id" json:"id"`
 	Name      *string `db:"name" json:"name"`
-	ShortName *string `db:"short_name" json:"short_name"`
+	ShortName *string `db:"short_name" json:"shortName"`
 	Avatar    []byte  `json:"avatar,omitempty"`
-	CityId    *int64  `db:"city_id" json:"city_id"`
-	LeagueID  *int64  `db:"league_id" json:"league_id"`
+	CityId    *int64  `db:"city_id" json:"cityId"`
+	LeagueID  *int64  `db:"league_id" json:"leagueId"`
 }
 
 type DeleteTeamRequest struct {
@@ -95,7 +95,7 @@ type GetTeamsByLeagueRequest struct {
 type Team struct {
 	ID        int64  `json:"id" db:"id"`
 	Name      string `json:"name" db:"name"`
-	ShortName string `json:"short_name" db:"short_name"`
+	ShortName string `json:"short_name" db:"shortName"`
 	Avatar    []byte `json:"avatar,omitempty"`
 	League    League
 	City      City

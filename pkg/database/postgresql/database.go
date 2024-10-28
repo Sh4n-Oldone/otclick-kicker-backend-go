@@ -44,10 +44,12 @@ type RWDBOperationer interface {
 	CreateLeague(logger zerolog.Logger, ctx context.Context, league entity.League, teams []int64) (id int64, err error)
 	UpdateLeague(logger zerolog.Logger, ctx context.Context, league entity.League, teams []int64) error
 	DeleteLeague(logger zerolog.Logger, ctx context.Context, id int64) error
+
 	CreatePlayedGame(logger zerolog.Logger, ctx context.Context, request entities.CreateGameRequest) (entities.CreateGameResponse, error)
 	DeleteGame(logger zerolog.Logger, ctx context.Context, gameID int) error
 	UpdateGame(logger zerolog.Logger, ctx context.Context, request entities.UpdateGameRequest) error
 	UpdateFutureGame(logger zerolog.Logger, ctx context.Context, request entities.UpdateFutureGameRequest) error
+	CreateFutureGame(logger zerolog.Logger, ctx context.Context, request entity.CreateFutureGameRequest) (int, error)
 }
 
 // RDBOperationer is the interface that implemented by the RDBOperation structure.
@@ -77,10 +79,12 @@ type RDBOperationer interface {
 	GetPlaceList(logger zerolog.Logger, ctx context.Context, barID, tableID *int64, withDelete bool) ([]entity.Place, error)
 	GetPlaceByID(logger zerolog.Logger, ctx context.Context, id int64) (*entity.Place, error)
 	GetLeagueList(logger zerolog.Logger, ctx context.Context, cityID int64) ([]entity.League, error)
+
 	GetGame(logger zerolog.Logger, ctx context.Context, gameID int) (entities.GetGameResponse, error)
 	FindGames(logger zerolog.Logger, ctx context.Context, request entities.FindGameRequest) ([]entities.FindGame, error)
 	GetGamesYears(logger zerolog.Logger, ctx context.Context) (entity.GetGamesYearsResponse, error)
 	GetComingGames(logger zerolog.Logger, ctx context.Context) ([]entities.ComingGame, error)
+	GetFutureGames(logger zerolog.Logger, ctx context.Context, cityID int) ([]entity.ShortGame, error)
 	GetTeam(logger zerolog.Logger, ctx context.Context, teamID int64) (entity.GetTeamResponse, error)
 	GetTeams(logger zerolog.Logger, ctx context.Context, onlyFree bool) ([]entity.TeamShort, error)
 	GetTeamsByCity(logger zerolog.Logger, ctx context.Context, onlyFree bool, cityID int64) ([]entity.TeamShort, error)

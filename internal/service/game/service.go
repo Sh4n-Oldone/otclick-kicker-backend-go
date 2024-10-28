@@ -18,6 +18,8 @@ type IService interface {
 	UpdateFutureGame(ctx context.Context, request entities.UpdateFutureGameRequest) error
 	GetGamesYears(ctx context.Context) (entity.GetGamesYearsResponse, error)
 	GetComingGames(ctx context.Context) (entities.GetComingGamesResponse, error)
+	GetFutureGames(ctx context.Context, cityID int) (entity.GetFutureGamesResponse, error)
+	CreateFutureGame(ctx context.Context, request entity.CreateFutureGameRequest) (entity.CreateFutureGameResponse, error)
 
 	GetLogger() *zerolog.Logger
 }

@@ -6,7 +6,7 @@ type City struct {
 	ID        int64      `db:"id" json:"id"`
 	Name      string     `db:"name" json:"name"`
 	Ru        string     `db:"ru" json:"ru"`
-	DeletedAt *time.Time `json:"deleted_at" db:"deleted_at"`
+	DeletedAt *time.Time `json:"deletedAt" db:"deleted_at"`
 }
 
 type GetCityListRequest struct {
@@ -16,14 +16,14 @@ type GetCityListRequest struct {
 type CreateCityRequest struct {
 	Name      string     `db:"name" json:"name"`
 	Ru        string     `db:"ru" json:"ru"`
-	DeletedAt *time.Time `json:"deleted_at" db:"deleted_at"`
+	DeletedAt *time.Time `json:"deletedAt" db:"deleted_at"`
 }
 
 type UpdateCityRequest struct {
 	ID        int64      `db:"id" json:"id"`
 	Name      string     `db:"name" json:"name"`
 	Ru        string     `db:"ru" json:"ru"`
-	DeletedAt *time.Time `json:"deleted_at" db:"deleted_at"`
+	DeletedAt *time.Time `json:"deletedAt" db:"deleted_at"`
 }
 
 type DeleteCityRequest struct {

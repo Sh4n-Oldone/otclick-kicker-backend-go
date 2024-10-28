@@ -30,9 +30,12 @@ func NewServer(endpoints game.Endpoints, options []kithttp.ServerOption, cfg *co
 	r.Get("/games/played/{id}", kithttp.NewServer(endpoints.Get, decodeIdParamRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 	r.Get("/games/years", kithttp.NewServer(endpoints.GetYears, decodeGamesYearsRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 	r.Get("/games/coming", kithttp.NewServer(endpoints.GetComingGames, decodeGetComingGamesRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.Get("/games/future", kithttp.NewServer(endpoints.GetFutureGames, decodeGetFutureGamesRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 
 	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
 		Post("/games/played", kithttp.NewServer(endpoints.Create, decodeCreateRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
+		Post("/games/future", kithttp.NewServer(endpoints.CreateFutureGame, decodeCreateFutureGameRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
 		Delete("/games/played/{id}", kithttp.NewServer(endpoints.Delete, decodeIdParamRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
