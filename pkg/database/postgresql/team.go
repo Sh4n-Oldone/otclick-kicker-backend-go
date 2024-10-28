@@ -139,8 +139,7 @@ func (db *RDBOperation) GetTeamsByLeague(logger zerolog.Logger, ctx context.Cont
 	const query = `SELECT t.name, t.short_name, t.avatar, t.city_id, COALESCE(ARRAY_AGG(ptl.player_id) FILTER (WHERE ptl.player_id IS NOT NULL), ARRAY[]::int8[])
 	FROM teams t
 	LEFT JOIN players_teams_links ptl ON ptl.team_id = t.id
-	WHERE ($1::boolean IS NOT TRUE OR t.league_id IS NULL)
-	AND t.league_id = $1
+	WHERE t.league_id = $1
 	GROUP BY t.id
 	ORDER BY t.id`
 
