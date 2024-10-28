@@ -96,7 +96,12 @@ func initHTTPRouter(config *config.Configuration) *chi.Mux {
 	router.Use(middleware.Recoverer)
 	router.Use(middleware.StripSlashes)
 	if config.HTTP.CorsEnabled == false {
-		router.Use(cors.Handler(cors.Options{}))
+		router.Use(cors.Handler(cors.Options{
+			AllowedOrigins:   []string{"*"},
+			AllowedMethods:   []string{"HEAD", "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
+			AllowedHeaders:   []string{"*"},
+			AllowCredentials: true,
+		}))
 	}
 
 	pongResponse := []byte("pong")
