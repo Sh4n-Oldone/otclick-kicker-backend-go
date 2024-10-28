@@ -79,7 +79,8 @@ type GetTeamRequest struct {
 }
 
 type GetTeamsRequest struct {
-	OnlyFree bool `json:"onlyFree"`
+	CityId   int64 `json:"cityId"`
+	OnlyFree bool  `json:"onlyFree"`
 }
 
 type GetTeamsByCityRequest struct {

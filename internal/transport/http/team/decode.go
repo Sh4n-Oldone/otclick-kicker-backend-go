@@ -56,8 +56,6 @@ func decodeGetTeamRequest(_ context.Context, r *http.Request) (interface{}, erro
 // // GetTeams
 func decodeGetTeamsRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	request := &entity.GetTeamsRequest{}
-	buf := bytebufferpool.Get()
-	defer bytebufferpool.Put(buf)
 
 	var onlyFree bool = false
 	onlyFreeParam := r.URL.Query().Get("onlyFree")
@@ -65,14 +63,14 @@ func decodeGetTeamsRequest(_ context.Context, r *http.Request) (interface{}, err
 		onlyFree = true
 	}
 
-	_, err := io.Copy(buf, r.Body)
-	if err != nil {
-		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
-	}
-
-	err = json.Unmarshal(buf.Bytes(), &request)
-	if err != nil {
-		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	cityIdParam := r.URL.Query().Get("cityId")
+	if cityIdParam != "" {
+		cityID, err := strconv.ParseInt(cityIdParam, 10, 64)
+		if err != nil {
+			err := stderr.New(errors.WrongParameterError)
+			return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+		request.CityId = cityID
 	}
 
 	request.OnlyFree = onlyFree
