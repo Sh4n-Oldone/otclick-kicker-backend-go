@@ -20,7 +20,7 @@ func makeGetList(s bar.IService) endpoint.Endpoint {
 		// reqID, ctx := middleware.GetRequestID(ctx)
 		logger := s.GetLogger().With().Str("Source", "makeGetList Bar").Logger()
 
-		req, err := helpers.CastRequest[entity.GetBarListRequest](request)
+		req, err := helpers.CastRequest[*entity.GetBarListRequest](request)
 		if err != nil {
 			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.FailedCastRequest)
 			return nil, err
@@ -41,13 +41,13 @@ func makeCreate(s bar.IService) endpoint.Endpoint {
 		// reqID, ctx := middleware.GetRequestID(ctx)
 		logger := s.GetLogger().With().Str("Source", "makeCreate Bar").Logger()
 
-		req, err := helpers.CastRequest[entity.CreateBarRequest](request)
+		req, err := helpers.CastRequest[*entity.CreateBarRequest](request)
 		if err != nil {
 			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.FailedCastRequest)
 			return nil, err
 		}
 
-		err = helpers.ValidateCreateBarRequest(&req)
+		err = helpers.ValidateCreateBarRequest(req)
 		if err != nil {
 			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.FailedValidateRequest)
 			return nil, err
@@ -57,8 +57,8 @@ func makeCreate(s bar.IService) endpoint.Endpoint {
 			ID: req.CityID,
 		}
 		entity := &entity.Bar{
-			City: *rel,
-			Name: req.Name,
+			City:        *rel,
+			Name:        req.Name,
 			Description: req.Description,
 		}
 
@@ -68,7 +68,7 @@ func makeCreate(s bar.IService) endpoint.Endpoint {
 			return nil, err
 		}
 
-		response := &struct{
+		response := &struct {
 			ID int64 `json:"id"`
 		}{}
 
@@ -83,13 +83,13 @@ func makeUpdate(s bar.IService) endpoint.Endpoint {
 		// reqID, ctx := middleware.GetRequestID(ctx)
 		logger := s.GetLogger().With().Str("Source", "makeUpdate Bar").Logger()
 
-		req, err := helpers.CastRequest[entity.UpdateBarRequest](request)
+		req, err := helpers.CastRequest[*entity.UpdateBarRequest](request)
 		if err != nil {
 			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.FailedCastRequest)
 			return nil, err
 		}
 
-		err = helpers.ValidateUpdateBarRequest(&req)
+		err = helpers.ValidateUpdateBarRequest(req)
 		if err != nil {
 			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.FailedValidateRequest)
 			return nil, err
@@ -99,9 +99,9 @@ func makeUpdate(s bar.IService) endpoint.Endpoint {
 			ID: req.CityID,
 		}
 		entity := &entity.Bar{
-			ID: req.ID,
-			City: *rel,
-			Name: req.Name,
+			ID:          req.ID,
+			City:        *rel,
+			Name:        req.Name,
 			Description: req.Description,
 		}
 
@@ -111,7 +111,7 @@ func makeUpdate(s bar.IService) endpoint.Endpoint {
 			return nil, err
 		}
 
-		response := &struct{
+		response := &struct {
 			ID int64 `json:"id"`
 		}{}
 
@@ -126,13 +126,13 @@ func makeDelete(s bar.IService) endpoint.Endpoint {
 		// reqID, ctx := middleware.GetRequestID(ctx)
 		logger := s.GetLogger().With().Str("Source", "makeDelete Bar").Logger()
 
-		req, err := helpers.CastRequest[entity.DeleteBarRequest](request)
+		req, err := helpers.CastRequest[*entity.DeleteBarRequest](request)
 		if err != nil {
 			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.FailedCastRequest)
 			return nil, err
 		}
 
-		err = helpers.ValidateDeleteBarRequest(&req)
+		err = helpers.ValidateDeleteBarRequest(req)
 		if err != nil {
 			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.FailedValidateRequest)
 			return nil, err

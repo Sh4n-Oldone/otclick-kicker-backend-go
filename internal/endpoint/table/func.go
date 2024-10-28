@@ -20,7 +20,7 @@ func makeGetList(s table.IService) endpoint.Endpoint {
 		// reqID, ctx := middleware.GetRequestID(ctx)
 		logger := s.GetLogger().With().Str("Source", "makeGetList Table").Logger()
 
-		req, err := helpers.CastRequest[entity.GetTableListRequest](request)
+		req, err := helpers.CastRequest[*entity.GetTableListRequest](request)
 		if err != nil {
 			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.FailedCastRequest)
 			return nil, err
@@ -41,13 +41,13 @@ func makeCreate(s table.IService) endpoint.Endpoint {
 		// reqID, ctx := middleware.GetRequestID(ctx)
 		logger := s.GetLogger().With().Str("Source", "makeCreate Table").Logger()
 
-		req, err := helpers.CastRequest[entity.CreateTableRequest](request)
+		req, err := helpers.CastRequest[*entity.CreateTableRequest](request)
 		if err != nil {
 			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.FailedCastRequest)
 			return nil, err
 		}
 
-		err = helpers.ValidateCreateTableRequest(&req)
+		err = helpers.ValidateCreateTableRequest(req)
 		if err != nil {
 			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.FailedValidateRequest)
 			return nil, err
@@ -63,7 +63,7 @@ func makeCreate(s table.IService) endpoint.Endpoint {
 			return nil, err
 		}
 
-		response := &struct{
+		response := &struct {
 			ID int64 `json:"id"`
 		}{}
 
@@ -78,20 +78,20 @@ func makeUpdate(s table.IService) endpoint.Endpoint {
 		// reqID, ctx := middleware.GetRequestID(ctx)
 		logger := s.GetLogger().With().Str("Source", "makeUpdate Table").Logger()
 
-		req, err := helpers.CastRequest[entity.UpdateTableRequest](request)
+		req, err := helpers.CastRequest[*entity.UpdateTableRequest](request)
 		if err != nil {
 			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.FailedCastRequest)
 			return nil, err
 		}
 
-		err = helpers.ValidateUpdateTableRequest(&req)
+		err = helpers.ValidateUpdateTableRequest(req)
 		if err != nil {
 			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.FailedValidateRequest)
 			return nil, err
 		}
 
 		entity := &entity.Table{
-			ID: req.ID,
+			ID:   req.ID,
 			Name: req.Name,
 		}
 
@@ -101,7 +101,7 @@ func makeUpdate(s table.IService) endpoint.Endpoint {
 			return nil, err
 		}
 
-		response := &struct{
+		response := &struct {
 			ID int64 `json:"id"`
 		}{}
 
@@ -116,13 +116,13 @@ func makeDelete(s table.IService) endpoint.Endpoint {
 		// reqID, ctx := middleware.GetRequestID(ctx)
 		logger := s.GetLogger().With().Str("Source", "makeDelete Table").Logger()
 
-		req, err := helpers.CastRequest[entity.DeleteTableRequest](request)
+		req, err := helpers.CastRequest[*entity.DeleteTableRequest](request)
 		if err != nil {
 			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.FailedCastRequest)
 			return nil, err
 		}
 
-		err = helpers.ValidateDeleteTableRequest(&req)
+		err = helpers.ValidateDeleteTableRequest(req)
 		if err != nil {
 			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.FailedValidateRequest)
 			return nil, err
