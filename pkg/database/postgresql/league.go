@@ -119,6 +119,7 @@ func (db *RWDBOperation) UpdateLeague(logger zerolog.Logger, ctx context.Context
 		return DecodeDatabaseError(err)
 	}
 
+	// убираем league_id из всех команд этой лиги
 	_, err = tx.Exec(ctx, queryDeleteTeamsLeagueID, league.ID)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to update League record")
@@ -126,6 +127,7 @@ func (db *RWDBOperation) UpdateLeague(logger zerolog.Logger, ctx context.Context
 		return DecodeDatabaseError(err)
 	}
 	for _, teamID := range teams {
+		// добавляем league_id в переданные команды
 		_, err = tx.Exec(ctx, queryUpdateTeamsLeagueID, league.ID, teamID)
 		if err != nil {
 			logger.Error().Stack().Err(err).Msg("failed to update League record")
@@ -145,7 +147,29 @@ func (db *RWDBOperation) UpdateLeague(logger zerolog.Logger, ctx context.Context
 }
 
 func (db *RWDBOperation) DeleteLeague(logger zerolog.Logger, ctx context.Context, id int64) error {
-	res, err := db.db.Exec(ctx, queryDeleteLeague, id)
+	tx, err := db.db.Begin(ctx)
+	if err != nil {
+		logger.Error().Stack().Err(err).Msg("failed to delete League record")
+		return DecodeDatabaseError(err)
+	}
+
+	// убираем league_id из всех команд этой лиги
+	_, err = tx.Exec(ctx, queryDeleteTeamsLeagueID, id)
+	if err != nil {
+		logger.Error().Stack().Err(err).Msg("failed to delete League record")
+		_ = tx.Rollback(ctx)
+		return DecodeDatabaseError(err)
+	}
+
+	// удаляем рейтинг
+	_, err = tx.Exec(ctx, queryDeleteRatingByLeagueID, id)
+	if err != nil {
+		logger.Error().Stack().Err(err).Msg("failed to delete League record")
+		_ = tx.Rollback(ctx)
+		return DecodeDatabaseError(err)
+	}
+
+	res, err := tx.Exec(ctx, queryDeleteLeague, id)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to delete League record")
 		return DecodeDatabaseError(err)
@@ -154,6 +178,13 @@ func (db *RWDBOperation) DeleteLeague(logger zerolog.Logger, ctx context.Context
 	if res.RowsAffected() == 0 {
 		err = pgx.ErrNoRows
 		logger.Error().Stack().Err(err).Msg("failed find to postgresql.DeleteLeague")
+		return DecodeDatabaseError(err)
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		logger.Error().Stack().Err(err).Msg("failed to delete League record")
+		_ = tx.Rollback(ctx)
 		return DecodeDatabaseError(err)
 	}
 
