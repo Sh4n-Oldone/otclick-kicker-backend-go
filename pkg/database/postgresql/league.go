@@ -105,7 +105,7 @@ func (db *RWDBOperation) UpdateLeague(logger zerolog.Logger, ctx context.Context
 			_ = tx.Rollback(ctx)
 			return DecodeDatabaseError(err)
 		}
-		if teamLeagueID != nil {
+		if teamLeagueID != nil && *teamLeagueID != league.ID {
 			logger.Error().Stack().Err(err).Msg("Failed to update League record, team " + strconv.FormatInt(teamID, 10) + " is already in another league")
 			_ = tx.Rollback(ctx)
 			return stderr.New(errors.ErrTeamAlreadyInLeague)
@@ -119,14 +119,13 @@ func (db *RWDBOperation) UpdateLeague(logger zerolog.Logger, ctx context.Context
 		return DecodeDatabaseError(err)
 	}
 
+	_, err = tx.Exec(ctx, queryDeleteTeamsLeagueID, league.ID)
+	if err != nil {
+		logger.Error().Stack().Err(err).Msg("failed to update League record")
+		_ = tx.Rollback(ctx)
+		return DecodeDatabaseError(err)
+	}
 	for _, teamID := range teams {
-		_, err = tx.Exec(ctx, queryDeleteTeamsLeagueID, league.ID)
-		if err != nil {
-			logger.Error().Stack().Err(err).Msg("failed to update League record")
-			_ = tx.Rollback(ctx)
-			return DecodeDatabaseError(err)
-		}
-
 		_, err = tx.Exec(ctx, queryUpdateTeamsLeagueID, league.ID, teamID)
 		if err != nil {
 			logger.Error().Stack().Err(err).Msg("failed to update League record")
