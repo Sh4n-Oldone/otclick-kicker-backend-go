@@ -109,6 +109,20 @@ func migrateCities(ctx context.Context, oldDB, newDB *pgxpool.Pool) error {
 		}
 	}
 
+	_, err = newDB.Exec(ctx, `DO $$
+	DECLARE
+		maxid bigint;
+	BEGIN
+		SELECT MAX(id) INTO maxid FROM cities;
+		EXECUTE 'ALTER SEQUENCE cities_id_seq RESTART WITH ' || maxid+1;
+	END;
+	$$ language plpgsql;`)
+
+	if err != nil {
+		println(err)
+		return err
+	}
+
 	return nil
 }
 
@@ -169,6 +183,15 @@ func migratePlayers(ctx context.Context, oldDB, newDB *pgxpool.Pool) error {
 
 	}
 
+	_, err = newDB.Exec(ctx, `DO $$
+	DECLARE
+		maxid bigint;
+	BEGIN
+		SELECT MAX(id) INTO maxid FROM players;
+		EXECUTE 'ALTER SEQUENCE players_id_seq RESTART WITH ' || maxid+1;
+	END;
+	$$ language plpgsql;`)
+
 	return nil
 }
 
@@ -224,6 +247,15 @@ func migrateTeams(ctx context.Context, oldDB, newDB *pgxpool.Pool) error {
 		}
 	}
 
+	_, err = newDB.Exec(ctx, `DO $$
+	DECLARE
+		maxid bigint;
+	BEGIN
+		SELECT MAX(id) INTO maxid FROM teams;
+		EXECUTE 'ALTER SEQUENCE teams_id_seq RESTART WITH ' || maxid+1;
+	END;
+	$$ language plpgsql;`)
+
 	return nil
 }
 
@@ -276,6 +308,15 @@ func migrateLeagues(ctx context.Context, oldDB, newDB *pgxpool.Pool) error {
 			}
 		}
 	}
+
+	_, err = newDB.Exec(ctx, `DO $$
+	DECLARE
+		maxid bigint;
+	BEGIN
+		SELECT MAX(id) INTO maxid FROM leagues;
+		EXECUTE 'ALTER SEQUENCE leagues_id_seq RESTART WITH ' || maxid+1;
+	END;
+	$$ language plpgsql;`)
 
 	return nil
 }
