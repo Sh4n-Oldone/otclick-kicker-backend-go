@@ -16,6 +16,7 @@ type Endpoints struct {
 	GetComingGames   endpoint.Endpoint
 	GetFutureGames   endpoint.Endpoint
 	CreateFutureGame endpoint.Endpoint
+	GetTeamGames     endpoint.Endpoint
 }
 
 func MakeEndpoints(s game.IService) Endpoints {
@@ -30,5 +31,6 @@ func MakeEndpoints(s game.IService) Endpoints {
 		GetComingGames:   makeGetComingGames(s),
 		GetFutureGames:   makeGetFutureGames(s),
 		CreateFutureGame: makeCreateFutureGame(s),
+		GetTeamGames:     makeGetTeamGames(s),
 	}
 }

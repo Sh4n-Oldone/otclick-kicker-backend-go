@@ -608,3 +608,49 @@ func (db *RWDBOperation) CreateFutureGame(logger zerolog.Logger, ctx context.Con
 
 	return id, nil
 }
+
+func (db *RDBOperation) GetTeamGames(logger zerolog.Logger, ctx context.Context, teamID int) ([]entity.TeamGame, error) {
+	const query string = `
+		select 
+		    g.id, 
+		    t.id,
+		    t.name,
+		    t.short_name,
+		    p.id,
+		    b.id,
+		    b.name, 
+		    tbl.id,
+		   	tbl.name,
+			g.date
+		from teams t
+		left join games g on g.team2_id = t.id AND g.date >= CURRENT_DATE
+		LEFT JOIN places p ON g.place_id = p.id
+		LEFT JOIN bars b ON p.bar_id = b.id
+		LEFT JOIN tables tbl ON p.table_id = tbl.id
+		WHERE t.league_id = (SELECT t.league_id FROM teams t WHERE id = $1)
+    		AND t.id != $1;
+	`
+
+	games := make([]entity.TeamGame, 0)
+
+	rows, err := db.db.Query(ctx, query, teamID)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to postgresql.GetTeamGames")
+		return nil, DecodeDatabaseError(stderr.New(errors.ErrGetGameList))
+	}
+
+	for rows.Next() {
+		var game entity.TeamGame
+
+		err = rows.Scan(&game.ID, &game.Team.ID, &game.Team.Name, &game.Team.ShortName, &game.Place.ID,
+			&game.Place.Bar.ID, &game.Place.Bar.Name, &game.Place.Table.ID, &game.Place.Table.Name, &game.Date)
+		if err != nil {
+			logger.Error().Err(err).Msg("failed to postgresql.GetTeamGames")
+			return nil, DecodeDatabaseError(stderr.New(errors.ErrGetGameList))
+		}
+
+		games = append(games, game)
+	}
+
+	return games, nil
+}

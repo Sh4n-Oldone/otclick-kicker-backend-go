@@ -294,3 +294,16 @@ func (s *Service) CreateFutureGame(ctx context.Context, request entity.CreateFut
 
 	return entity.CreateFutureGameResponse{ID: id}, nil
 }
+
+func (s *Service) GetTeamGames(ctx context.Context, teamID int) (entity.GetTeamGamesResponse, error) {
+	logger := s.logger.With().Interface("service", "game.GetTeamGames").Logger()
+	timeout, cancel := context.WithTimeout(ctx, s.config.RDB.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	games, err := s.rdbOperations.GetTeamGames(logger, timeout, teamID)
+	if err != nil {
+		return entity.GetTeamGamesResponse{}, nil
+	}
+
+	return entity.GetTeamGamesResponse{Games: games}, nil
+}

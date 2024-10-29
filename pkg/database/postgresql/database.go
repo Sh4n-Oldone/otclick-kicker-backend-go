@@ -88,6 +88,7 @@ type RDBOperationer interface {
 	GetGamesYears(logger zerolog.Logger, ctx context.Context) (entity.GetGamesYearsResponse, error)
 	GetComingGames(logger zerolog.Logger, ctx context.Context) ([]entities.ComingGame, error)
 	GetFutureGames(logger zerolog.Logger, ctx context.Context, cityID int) ([]entity.ShortGame, error)
+	GetTeamGames(logger zerolog.Logger, ctx context.Context, teamID int) ([]entity.TeamGame, error)
 	GetTeam(logger zerolog.Logger, ctx context.Context, teamID int64) (entity.GetTeamResponse, error)
 	GetTeams(logger zerolog.Logger, ctx context.Context, cityId int64, onlyFree bool) ([]entity.TeamShort, error)
 	GetTeamsByCity(logger zerolog.Logger, ctx context.Context, onlyFree bool, cityID int64) ([]entity.TeamShort, error)

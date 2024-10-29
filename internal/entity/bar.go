@@ -11,6 +11,11 @@ type Bar struct {
 	DeletedAt   *time.Time `json:"deletedAt,omitempty" db:"deleted_at"`
 }
 
+type BarShort struct {
+	ID   *int64  `db:"id" json:"id"`
+	Name *string `db:"name" json:"name"`
+}
+
 type GetBarListRequest struct {
 	CityID      *int64
 	WithDeleted bool
