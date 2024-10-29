@@ -128,7 +128,7 @@ func decodeFindPlayersRequest(_ context.Context, r *http.Request) (interface{}, 
 	paramGamesPlayedNumber := r.URL.Query().Get("gamesPlayedNumber")
 	if paramGamesPlayedNumber != "" {
 		gamesPlayedNumber, err := strconv.Atoi(paramGamesPlayedNumber)
-		if err != nil || gamesPlayedNumber <= 0 {
+		if err != nil || gamesPlayedNumber < 0 {
 			err = stderr.New(errors.WrongParameterError)
 			return nil, error_templates.New(err.Error(), err, http.StatusBadRequest, http.StatusBadRequest)
 		}
@@ -138,7 +138,7 @@ func decodeFindPlayersRequest(_ context.Context, r *http.Request) (interface{}, 
 	paramRating := r.URL.Query().Get("rating")
 	if paramRating != "" {
 		rating, err := strconv.Atoi(paramRating)
-		if err != nil || rating <= 0 {
+		if err != nil || rating < 0 {
 			err = stderr.New(errors.WrongParameterError)
 			return nil, error_templates.New(err.Error(), err, http.StatusBadRequest, http.StatusBadRequest)
 		}
