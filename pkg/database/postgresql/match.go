@@ -33,7 +33,7 @@ func (db *RWDBOperation) CreateMatch(logger zerolog.Logger, ctx context.Context,
 	return id, nil
 }
 
-func (db *RWDBOperation) UpdateMatch(logger zerolog.Logger, ctx context.Context, match entity.Match) (bool, error) {
+func (db *RWDBOperation) UpdateMatch(logger zerolog.Logger, ctx context.Context, match entity.Match) error {
 	result, err := db.db.Exec(ctx, queryUpdateMatch,
 		match.Date,
 		match.GameID,
@@ -49,16 +49,16 @@ func (db *RWDBOperation) UpdateMatch(logger zerolog.Logger, ctx context.Context,
 	)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to update match record")
-		return false, DecodeDatabaseError(err)
+		return DecodeDatabaseError(err)
 	}
 
 	rowsAffected := result.RowsAffected()
 	if rowsAffected == 0 {
 		logger.Error().Err(err).Msg("failed to get affected rows")
-		return false, stderr.New("Failed to update match, it does not exist")
+		return stderr.New("Failed to update match, it does not exist")
 	}
 
-	return true, nil
+	return nil
 }
 
 func (db *RWDBOperation) DeleteMatch(logger zerolog.Logger, ctx context.Context, id int64) (bool, error) {

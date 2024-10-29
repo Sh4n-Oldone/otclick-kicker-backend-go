@@ -56,16 +56,16 @@ func makeUpdate(s match.IService) endpoint.Endpoint {
 
 		match := helpers.ConvertUpdateMatchRequestToMatch(request.(*entity.UpdateMatchRequest))
 
-		res, err := s.Update(ctx, *match)
+		err = s.Update(ctx, *match)
 		if err != nil {
-			return res, err
+			return nil, err
 		}
 
 		response := &struct {
 			Success bool `json:"success"`
 		}{}
 
-		response.Success = res
+		response.Success = true
 
 		return response, nil
 	}

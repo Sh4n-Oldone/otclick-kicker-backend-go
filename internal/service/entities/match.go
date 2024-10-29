@@ -26,6 +26,14 @@ type GamesMatch struct {
 	Player2Team2Id *int      `json:"player2Team2Id"`
 	ScoreTeam1     int       `json:"scoreTeam1" validate:"required,gte=0"`
 	ScoreTeam2     int       `json:"scoreTeam2" validate:"required,gte=0"`
+	Player1Team1RateBefore *int    `db:"player1_team1_rate_before" json:"player1Team1IdRateBefore"`
+	Player2Team1RateBefore *int    `db:"player2_team1_rate_before" json:"player2Team1IdRateBefore"`
+	Player1Team2RateBefore *int    `db:"player1_team2_rate_before" json:"player1Team2IdRateBefore"`
+	Player2Team2RateBefore *int    `db:"player2_team2_rate_before" json:"player2Team2IdRateBefore"`
+	Player1Team1RateAfter *int    `db:"player1_team1_rate_after" json:"player1Team1IdRateAfter"`
+	Player2Team1RateAfter *int    `db:"player2_team1_rate_after" json:"player2Team1IdRateAfter"`
+	Player1Team2RateAfter *int    `db:"player1_team2_rate_after" json:"player1Team2IdRateAfter"`
+	Player2Team2RateAfter *int    `db:"player2_team2_rate_after" json:"player2Team2IdRateAfter"`
 }
 
 type FullMatch struct {

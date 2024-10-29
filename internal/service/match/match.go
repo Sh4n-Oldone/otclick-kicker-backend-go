@@ -17,15 +17,15 @@ func (s *Service) Create(ctx context.Context, match entity.Match) (*int64, error
 	return &id, nil
 }
 
-func (s *Service) Update(ctx context.Context, match entity.Match) (bool, error) {
+func (s *Service) Update(ctx context.Context, match entity.Match) error {
 	logger := s.logger.With().Interface("service", "Update").Logger()
 
-	res, err := s.rwdbOperations.UpdateMatch(logger, ctx, match)
+	err := s.rwdbOperations.UpdateMatch(logger, ctx, match)
 	if err != nil {
-		return res, err
+		return err
 	}
 
-	return res, nil
+	return nil
 }
 
 func (s *Service) Delete(ctx context.Context, id int64) (bool, error) {

@@ -58,8 +58,16 @@ func (db *RWDBOperation) CreatePlayedGame(logger zerolog.Logger, ctx context.Con
 		                            player1_team2_id,
 		                            player2_team2_id,
 		                            score_team1,
-		                            score_team2)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		                            score_team2,
+		                            player1_team1_rate_before,
+		                            player1_team2_rate_before,
+		                            player2_team1_rate_before,
+		                            player2_team2_rate_before,
+		                            player1_team1_rate_after,
+		                            player1_team2_rate_after,
+		                            player2_team1_rate_after,
+		                            player2_team2_rate_after)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
 		RETURNING id;
 	`
 
@@ -92,7 +100,15 @@ func (db *RWDBOperation) CreatePlayedGame(logger zerolog.Logger, ctx context.Con
 			match.Player1Team2Id,
 			match.Player2Team2Id,
 			match.ScoreTeam1,
-			match.ScoreTeam2).
+			match.ScoreTeam2,
+			match.Player1Team1RateBefore,
+			match.Player1Team2RateBefore,
+			match.Player2Team1RateBefore,
+			match.Player2Team2RateBefore,
+			match.Player1Team1RateAfter,
+			match.Player1Team2RateAfter,
+			match.Player2Team1RateAfter,
+			match.Player2Team2RateAfter).
 			Scan(&matchId)
 		if err != nil {
 			_ = tx.Rollback(ctx)
