@@ -20,10 +20,9 @@ type CreateCityRequest struct {
 }
 
 type UpdateCityRequest struct {
-	ID        int64      `db:"id" json:"id"`
-	Name      string     `db:"name" json:"name"`
-	Ru        string     `db:"ru" json:"ru"`
-	DeletedAt *time.Time `json:"deletedAt" db:"deleted_at"`
+	ID   int64  `db:"id" json:"id"`
+	Name string `db:"name" json:"name"`
+	Ru   string `db:"ru" json:"ru"`
 }
 
 type DeleteCityRequest struct {

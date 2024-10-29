@@ -12,10 +12,9 @@ func ConvertCreateCityRequestToCity(request *entity.CreateCityRequest) *entity.C
 
 func ConvertUpdateCityRequestToCity(request *entity.UpdateCityRequest) *entity.City {
 	return &entity.City{
-		ID:        request.ID,
-		Name:      request.Name,
-		Ru:        request.Ru,
-		DeletedAt: request.DeletedAt,
+		ID:   request.ID,
+		Name: request.Name,
+		Ru:   request.Ru,
 	}
 }
 

@@ -52,7 +52,7 @@ func (db *RWDBOperation) CreateCity(logger zerolog.Logger, ctx context.Context, 
 }
 
 func (db *RWDBOperation) UpdateCity(logger zerolog.Logger, ctx context.Context, city entity.City) error {
-	res, err := db.db.Exec(ctx, queryUpdateCity, city.Name, city.Ru, city.DeletedAt, city.ID)
+	res, err := db.db.Exec(ctx, queryUpdateCity, city.Name, city.Ru, city.ID)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to update City record")
 		return DecodeDatabaseError(err)

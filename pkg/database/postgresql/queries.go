@@ -25,9 +25,8 @@ const (
 		UPDATE cities
 		SET 
 		    name = $1,
-    		ru = $2,
-			deleted = $3
-		WHERE id = $4;`
+    		ru = $2
+		WHERE id = $3;`
 
 	queryDeleteCity string = `UPDATE cities SET deleted_at = NOW() WHERE id = $1;`
 	// <--

@@ -67,7 +67,8 @@ CREATE TABLE IF NOT EXISTS players (
 CREATE TABLE IF NOT EXISTS rating (
     player_id int references players(id),
     league_id int references leagues(id),
-    value INT DEFAULT 1000 CHECK (value BETWEEN 0 AND 10000)
+    value INT DEFAULT 1000 CHECK (value BETWEEN 0 AND 10000),
+    primary key (player_id, league_id)
 );
 
 CREATE TABLE IF NOT EXISTS players_teams_links (
