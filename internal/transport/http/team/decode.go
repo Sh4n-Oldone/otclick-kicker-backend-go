@@ -169,11 +169,22 @@ func decodeGetTeamVsTeamTableRequest(_ context.Context, r *http.Request) (interf
 // Create
 func decodeCreateRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	request := &entity.CreateTeamRequest{}
-
 	buf := bytebufferpool.Get()
 	defer bytebufferpool.Put(buf)
 
-	_, err := io.Copy(buf, r.Body)
+	cityIdParam := r.URL.Query().Get("cityId")
+	if cityIdParam == "" {
+		err := stderr.New(errors.EmptyParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	cityId, err := strconv.ParseInt(cityIdParam, 10, 64)
+	if err != nil {
+		err := stderr.New(errors.WrongParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	_, err = io.Copy(buf, r.Body)
 	if err != nil {
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
@@ -183,6 +194,7 @@ func decodeCreateRequest(_ context.Context, r *http.Request) (interface{}, error
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
+	request.CityId = &cityId
 	return request, nil
 }
 
