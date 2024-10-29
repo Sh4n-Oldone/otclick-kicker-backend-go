@@ -9,6 +9,11 @@ type Table struct {
 	DeletedAt *time.Time `json:"deletedAt,omitempty" db:"deleted_at"`
 }
 
+type TableShort struct {
+	ID   *int64  `db:"id" json:"id"`
+	Name *string `db:"name" json:"name"`
+}
+
 type GetTableListRequest struct {
 	WithDeleted bool
 }

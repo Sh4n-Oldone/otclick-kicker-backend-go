@@ -33,3 +33,14 @@ type CreateFutureGameRequest struct {
 type CreateFutureGameResponse struct {
 	ID int `json:"id"`
 }
+
+type GetTeamGamesResponse struct {
+	Games []TeamGame `json:"games"`
+}
+
+type TeamGame struct {
+	ID    *int       `json:"id,omitempty"`
+	Team  TeamShort  `json:"team"`
+	Place PlaceShort `json:"place"`
+	Date  *time.Time `json:"date,omitempty"`
+}

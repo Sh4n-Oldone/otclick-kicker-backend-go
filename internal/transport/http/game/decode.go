@@ -227,3 +227,19 @@ func decodeCreateFutureGameRequest(_ context.Context, r *http.Request) (interfac
 
 	return request, nil
 }
+
+func decodeGetTeamIDRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	paramID := chi.URLParam(r, "team_id")
+	if paramID == "" {
+		err := stderr.New(errors.EmptyParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	id, err := strconv.Atoi(paramID)
+	if err != nil || id <= 0 {
+		err = stderr.New(errors.WrongParameterError)
+		return nil, error_templates.New(err.Error(), err, http.StatusBadRequest, http.StatusBadRequest)
+	}
+
+	return id, nil
+}

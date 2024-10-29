@@ -13,8 +13,8 @@ import (
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/game"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/middleware"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/helpers"
 )
 
@@ -227,6 +227,27 @@ func makeCreateFutureGame(s game.IService) endpoint.Endpoint {
 		resp, err := s.CreateFutureGame(ctx, req)
 		if err != nil {
 			serviceLogger.Error().Err(err).Msg("Failed to game.CreateFutureGame")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		return resp, nil
+	}
+}
+
+func makeGetTeamGames(s game.IService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "game.makeGetTeamGames").Logger()
+
+		teamID, err := helpers.CastRequest[int](request)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed to cast request")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		resp, err := s.GetTeamGames(ctx, teamID)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed to game.GetTeamGames")
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 

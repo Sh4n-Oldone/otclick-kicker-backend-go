@@ -10,6 +10,12 @@ type Place struct {
 	DeletedAt *time.Time `json:"deletedAt,omitempty" db:"deleted_at"`
 }
 
+type PlaceShort struct {
+	ID    *int64     `db:"id" json:"id"`
+	Bar   BarShort   `db:"bar" json:"bat"`
+	Table TableShort `db:"table" json:"tabe"`
+}
+
 type GetPlaceListRequest struct {
 	BarID       *int64
 	TableID     *int64
