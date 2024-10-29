@@ -27,7 +27,14 @@ func (db *RDBOperation) GetBarList(logger zerolog.Logger, ctx context.Context, c
 		queryName += "WithDeleted"
 	}
 
-	rows, err := db.db.Query(ctx, queries[queryName], cityID)	
+	var err error
+	var rows pgx.Rows
+	if cityID != nil {
+		rows, err = db.db.Query(ctx, queries[queryName], cityID)	
+	} else {
+		rows, err = db.db.Query(ctx, queries[queryName])	
+	}
+
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.GetBarList")
 		return nil, DecodeDatabaseError(err)
@@ -40,7 +47,7 @@ func (db *RDBOperation) GetBarList(logger zerolog.Logger, ctx context.Context, c
 		var rel entity.City
 		var entity entity.Bar
 
-		err = rows.Scan(&entity.ID, &entity.Name, &entity.Description, &entity.DeletedAt, &rel.ID)
+		err = rows.Scan(&entity.ID, &rel.ID, &entity.Name, &entity.Description, &entity.UpdatedAt, &entity.DeletedAt)
 		if err != nil {
 			logger.Error().Stack().Err(err).Msg("failed scan to postgresql.GetBarList")
 			return nil, DecodeDatabaseError(err)
@@ -100,7 +107,7 @@ func (db *RWDBOperation) UpdateBar(logger zerolog.Logger, ctx context.Context, e
 }
 
 func (db *RWDBOperation) DeleteBar(logger zerolog.Logger, ctx context.Context, id int64) error {
-	res, err := db.db.Exec(ctx, queryDeleteCity, id)
+	res, err := db.db.Exec(ctx, queryDeleteBar, id)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.CreateBar")
 		return DecodeDatabaseError(err)

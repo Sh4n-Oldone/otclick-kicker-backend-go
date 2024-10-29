@@ -12,7 +12,7 @@ import (
 
 type IService interface {
 	Create(ctx context.Context, match entity.Match) (*int64, error)
-	Update(ctx context.Context, match entity.Match) (bool, error)
+	Update(ctx context.Context, match entity.Match) error
 	Delete(ctx context.Context, id int64) (bool, error)
 
 	GetLogger() *zerolog.Logger

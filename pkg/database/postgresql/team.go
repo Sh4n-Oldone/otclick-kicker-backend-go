@@ -18,7 +18,7 @@ import (
 func (db *RDBOperation) GetTeam(logger zerolog.Logger, ctx context.Context, teamID int64) (entity.GetTeamResponse, error) {
 	team := entity.GetTeamResponse{}
 
-	const queryGetTeam = `SELECT t.id, t.name, t.short_name, t.avatar, t.city_id,
+	const queryGetTeam = `SELECT t.id, t.name, t.short_name, t.avatar, t.city_id, t.league_id, 
 	COALESCE(ARRAY_AGG(ptl.player_id ORDER BY ptl.player_id) FILTER (WHERE ptl.player_id IS NOT NULL), ARRAY[]::int8[])
 	FROM teams t
 	LEFT JOIN players_teams_links ptl ON ptl.team_id = t.id
@@ -26,7 +26,7 @@ func (db *RDBOperation) GetTeam(logger zerolog.Logger, ctx context.Context, team
 	GROUP BY t.id`
 
 	var playerIDs []int64
-	err := db.db.QueryRow(ctx, queryGetTeam, teamID).Scan(&team.ID, &team.Name, &team.ShortName, &team.Avatar, &team.CityId, &playerIDs)
+	err := db.db.QueryRow(ctx, queryGetTeam, teamID).Scan(&team.ID, &team.Name, &team.ShortName, &team.Avatar, &team.CityId, &team.LeagueId, &playerIDs)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to GetTeam")
 		return entity.GetTeamResponse{}, DecodeDatabaseError(err)

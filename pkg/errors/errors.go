@@ -14,6 +14,7 @@ const (
 	WrongUserRole		  = "некорректная роль пользователя"
 	FailedParseJWTToken	  = "ошибка расшифровки JWT токена"
 	FailedGetUserData		  = "ошибка получения данных пользователя"
+	FailedGameByTeamsLeagueMismatch = "ошибка совмещения команд из разных лиг"
 )
 
 // Database errors

@@ -68,7 +68,8 @@ CREATE TABLE IF NOT EXISTS rating (
     player_id int references players(id),
     league_id int references leagues(id),
     value INT DEFAULT 1000 CHECK (value BETWEEN 0 AND 10000),
-    primary key (player_id, league_id)
+    updated_at timestamptz default now() not null,
+    PRIMARY KEY(player_id, league_id)
 );
 
 CREATE TABLE IF NOT EXISTS players_teams_links (
@@ -97,7 +98,16 @@ CREATE TABLE IF NOT EXISTS matches (
     player1_team2_id INT REFERENCES players(id),
     player2_team2_id INT REFERENCES players(id),
     score_team1 INT DEFAULT 0,
-    score_team2 INT DEFAULT 0
+    score_team2 INT DEFAULT 0,
+    player1_team1_rate_before INT DEFAULT 0,
+    player2_team1_rate_before INT DEFAULT 0,
+    player1_team2_rate_before INT DEFAULT 0,
+    player2_team2_rate_before INT DEFAULT 0,
+    player1_team1_rate_after INT DEFAULT 0,
+    player2_team1_rate_after INT DEFAULT 0,
+    player1_team2_rate_after INT DEFAULT 0,
+    player2_team2_rate_after INT DEFAULT 0,
+    updated_at timestamptz default now() not null
 );
 
 CREATE TABLE IF NOT EXISTS user_roles (
