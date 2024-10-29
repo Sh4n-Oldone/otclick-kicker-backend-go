@@ -163,8 +163,8 @@ func (db *RDBOperation) GetPlayersByTeamID(logger zerolog.Logger, ctx context.Co
 
 func (db *RDBOperation) FindPlayers(logger zerolog.Logger, ctx context.Context, player entities.FindPlayersRequest) ([]entities.Player, error) {
 	const query string = `
-		SELECT
-			DISTINCT(p.id),
+		SELECT DISTINCT
+			p.id,
 			p.name,
 			p.second_name,
 			p.last_name,
@@ -176,30 +176,38 @@ func (db *RDBOperation) FindPlayers(logger zerolog.Logger, ctx context.Context, 
 			t.name AS team_name,
 			t.short_name AS team_short_name
 		FROM players p
-				 LEFT JOIN public.players_teams_links ptl ON p.id = ptl.player_id
-				 LEFT JOIN public.teams t ON t.id = ptl.team_id
-				 LEFT JOIN public.rating r ON r.player_id = p.id
+		LEFT JOIN players_teams_links ptl ON p.id = ptl.player_id
+		LEFT JOIN teams t ON t.id = ptl.team_id
+		LEFT JOIN rating r ON r.player_id = p.id AND ($1::int IS NULL OR r.league_id = $1)
 		WHERE 
-		    ($1::int IS NULL OR t.league_id = $1) -- LeagueID
-		  	AND ($2::varchar IS NULL OR (p.name ILIKE $2 OR p.second_name ILIKE $2 OR p.last_name ILIKE $2)) -- FindAny
-		  	AND ($3::int IS NULL OR (
-    			SELECT COUNT(*) 
-    			FROM games g 
-    			WHERE g.id IN (
-					SELECT m.game_id 
-					FROM matches m 
-					WHERE m.player1_team1_id = p.id 
-					   OR m.player2_team1_id = p.id 
-					   OR m.player1_team2_id = p.id 
-					   OR m.player2_team2_id = p.id)) = $3) -- GamesPlayedNumber
-		  	AND ($4::int IS NULL OR r.value >= $4) -- Rating
-		  	AND ($5::int IS NULL OR p.city_id = $5) -- CityID
-		  	AND(
-        		($6::bool IS NULL AND p.deleted_at IS NULL) OR -- Если $6 NULL, выбираем только тех у кого deleted_at NULL
-        		($6::bool = TRUE) OR -- Если $6 TRUE, выбираем всех
-        		($6::bool = FALSE AND p.deleted_at IS NULL) -- Если $6 FALSE, выбираем только тех у кого deleted_at NULL
-    		)
-			AND ($7::bool IS NULL OR NOT EXISTS (SELECT * FROM public.players_teams_links WHERE ptl.player_id = p.id) = $7); -- OnlyFree
+			($2::varchar IS NULL OR 
+				(LOWER(COALESCE(p.name, '')) LIKE LOWER('%' || $2 || '%') OR 
+				 LOWER(COALESCE(p.second_name, '')) LIKE LOWER('%' || $2 || '%') OR 
+				 LOWER(COALESCE(p.last_name, '')) LIKE LOWER('%' || $2 || '%'))
+			)
+			AND ($3::int IS NULL OR (
+				SELECT COUNT(DISTINCT g.id)
+				FROM games g
+				JOIN matches m ON m.game_id = g.id
+				WHERE m.player1_team1_id = p.id 
+				   OR m.player2_team1_id = p.id 
+				   OR m.player1_team2_id = p.id 
+				   OR m.player2_team2_id = p.id
+			) = $3)
+			AND ($4::int IS NULL OR r.value >= $4)
+			AND ($5::int IS NULL OR p.city_id = $5)
+			AND (
+				CASE 
+					WHEN $6::bool IS NULL OR $6::bool = FALSE THEN p.deleted_at IS NULL
+					ELSE TRUE
+				END
+			)
+			AND (
+				CASE 
+					WHEN $7::bool IS TRUE THEN ptl.player_id IS NULL
+					ELSE TRUE
+				END
+			);
 	`
 
 	var players []entities.Player
