@@ -294,7 +294,7 @@ func ValidateUpdateLeagueRequest(request *entity.UpdateLeagueRequest) error {
 }
 
 func NewCustomValidator() *validator.Validate {
-	validate := validator.New()
+	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	_ = validate.RegisterValidation("valid-date", validateDate)
 

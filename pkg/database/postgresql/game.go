@@ -333,7 +333,8 @@ func (db *RWDBOperation) UpdateGame(logger zerolog.Logger, ctx context.Context, 
 			player1_team2_id = $7,
 			player2_team2_id = COALESCE($8, player2_team2_id),
 			score_team1 = $9,
-			score_team2 = $10
+			score_team2 = $10,
+			updated_at = NOW()
 		WHERE id = $1 AND game_id = $11;
 	`
 
@@ -349,9 +350,15 @@ func (db *RWDBOperation) UpdateGame(logger zerolog.Logger, ctx context.Context, 
 		     player1_team2_id,
 		     player2_team2_id,
 		     score_team1,
-		     score_team2
+		     score_team2,
+		     updated_at
 		     )
-		VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);
+		VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW());
+	`
+
+	const query4 string = `
+		DELETE FROM public.matches m
+    	WHERE m.game_id = $2 AND m.id NOT IN (SELECT unnest($1::int[]));
 	`
 
 	tx, err := db.db.Begin(ctx)
@@ -373,6 +380,21 @@ func (db *RWDBOperation) UpdateGame(logger zerolog.Logger, ctx context.Context, 
 		return DecodeDatabaseError(stderr.New(errors.ErrUpdateGame))
 	}
 
+	ids := make([]int, 0)
+	for _, match := range game.Matches {
+		if match.ID != nil {
+			ids = append(ids, *match.ID)
+		}
+	}
+
+	_, err = tx.Exec(ctx, query4, ids, game.ID)
+	if err != nil {
+		_ = tx.Rollback(ctx)
+		err = stderr.New(errors.ErrDeleteMatch)
+		logger.Error().Err(err).Msg("failed to delete match in postgresql.UpdateGame")
+		return DecodeDatabaseError(err)
+	}
+
 	for _, match := range game.Matches {
 		//если id матча нет создаем новый
 		if match.ID == nil {
@@ -385,14 +407,14 @@ func (db *RWDBOperation) UpdateGame(logger zerolog.Logger, ctx context.Context, 
 			}
 			// если id матча есть то обновляем
 		} else {
-			tag, err = tx.Exec(ctx, query2, match.ID, match.Date, match.Team1ID, match.Team2ID, match.Player1Team1Id,
+			tag2, err := tx.Exec(ctx, query2, match.ID, match.Date, match.Team1ID, match.Team2ID, match.Player1Team1Id,
 				match.Player2Team1Id, match.Player1Team2Id, match.Player2Team2Id, match.ScoreTeam1, match.ScoreTeam2, game.ID)
 			if err != nil {
 				_ = tx.Rollback(ctx)
 				logger.Error().Err(err).Msg("failed to update match in postgresql.UpdateGame")
 				return DecodeDatabaseError(stderr.New(errors.ErrUpdateMatch))
 			}
-			if tag.RowsAffected() == 0 {
+			if tag2.RowsAffected() == 0 {
 				_ = tx.Rollback(ctx)
 				logger.Error().Err(err).Msg("failed to update match in postgresql.UpdateGame")
 				return DecodeDatabaseError(stderr.New(errors.ErrMatchNotFound))
