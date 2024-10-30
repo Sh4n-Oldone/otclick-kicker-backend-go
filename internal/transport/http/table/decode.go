@@ -79,5 +79,5 @@ func decodeDeleteRequest(_ context.Context, r *http.Request) (interface{}, error
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
-	return &entity.DeleteCityRequest{ ID: id, }, nil
+	return &entity.DeleteTableRequest{ ID: id, }, nil
 }
