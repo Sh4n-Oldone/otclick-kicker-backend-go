@@ -234,5 +234,6 @@ func buildFullPlayer(player entities.Player, matches []entities.Match, leagues [
 		TeamShortName:             player.TeamShortName,
 		CityID:                    player.CityID,
 		Leagues:                   leagueItems,
+		Rating:                    player.Rating,
 	}
 }

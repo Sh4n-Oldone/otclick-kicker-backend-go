@@ -20,4 +20,6 @@ const (
 	JwtClaimsAttrRoleName    = "role_name"
 	JwtClaimsAttrTeamID      = "team_id"
 	JwtClaimsAttrTokenExpire = "token_exp"
+
+	DefaultRating int = 1000
 )

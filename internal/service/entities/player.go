@@ -65,6 +65,7 @@ type Player struct {
 	TeamID        *int       `json:"teamId,omitempty"`
 	TeamName      *string    `json:"teamName,omitempty"`
 	TeamShortName *string    `json:"teamShortName,omitempty"`
+	Rating        *int       `json:"rating,omitempty"`
 }
 
 type FullPlayer struct {
@@ -84,6 +85,7 @@ type FullPlayer struct {
 	TeamShortName             *string      `json:"teamShortName"`
 	CityID                    *int         `json:"cityId"`
 	Leagues                   []LeagueItem `json:"leagues,omitempty"`
+	Rating                    *int         `json:"rating,omitempty"`
 }
 
 type LeagueItem struct {

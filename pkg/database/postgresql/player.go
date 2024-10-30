@@ -4,8 +4,10 @@ import (
 	"context"
 	stderr "errors"
 	"github.com/rs/zerolog"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/constant"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/helpers/pointer"
 )
 
 func (db *RWDBOperation) CreatePlayer(logger zerolog.Logger, ctx context.Context, p entities.CreatePlayerRequest) (int, error) {
@@ -174,11 +176,12 @@ func (db *RDBOperation) FindPlayers(logger zerolog.Logger, ctx context.Context, 
 			p.city_id,
 			t.id AS team_id,
 			t.name AS team_name,
-			t.short_name AS team_short_name
+			t.short_name AS team_short_name,
+			r.value AS rating
 		FROM players p
 		LEFT JOIN players_teams_links ptl ON p.id = ptl.player_id
-		LEFT JOIN teams t ON t.id = ptl.team_id
-		LEFT JOIN rating r ON r.player_id = p.id AND ($1::int IS NULL OR r.league_id = $1)
+		INNER JOIN teams t ON t.id = ptl.team_id AND ($1::int IS NULL OR t.league_id = $1)
+		LEFT JOIN rating r ON r.player_id = p.id
 		WHERE 
 			($2::varchar IS NULL OR 
 				(LOWER(COALESCE(p.name, '')) LIKE LOWER('%' || $2 || '%') OR 
@@ -222,10 +225,13 @@ func (db *RDBOperation) FindPlayers(logger zerolog.Logger, ctx context.Context, 
 	for rows.Next() {
 		var p entities.Player
 
-		err = rows.Scan(&p.ID, &p.Name, &p.SecondName, &p.LastName, &p.Avatar, &p.ActivePlayer, &p.DeletedAt, &p.CityID, &p.TeamID, &p.TeamName, &p.TeamShortName)
+		err = rows.Scan(&p.ID, &p.Name, &p.SecondName, &p.LastName, &p.Avatar, &p.ActivePlayer, &p.DeletedAt, &p.CityID, &p.TeamID, &p.TeamName, &p.TeamShortName, &p.Rating)
 		if err != nil {
 			logger.Error().Stack().Err(err).Msg("failed to postgresql.FindPlayers")
 			return nil, DecodeDatabaseError(stderr.New(errors.ErrGetPlayer))
+		}
+		if p.Rating == nil {
+			p.Rating = pointer.GetPointer(constant.DefaultRating)
 		}
 
 		players = append(players, p)
