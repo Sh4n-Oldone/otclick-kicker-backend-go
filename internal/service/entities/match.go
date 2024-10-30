@@ -56,12 +56,12 @@ type FullMatch struct {
 type NewMatch struct {
 	ID             *int      `json:"id"`
 	Date           time.Time `json:"date" validate:"required,valid-date"`
-	Team1ID        int       `json:"team1Id" validate:"gt=0"`
-	Team2ID        int       `json:"team2Id" validate:"gt=0"`
+	Team1ID        int       `json:"team1Id" validate:"required,gt=0"`
+	Team2ID        int       `json:"team2Id" validate:"required,gt=0"`
 	Player1Team1Id int       `json:"player1Team1Id" validate:"required,gt=0"`
 	Player2Team1Id *int      `json:"player2Team1Id"`
 	Player1Team2Id int       `json:"player1Team2Id" validate:"required,gt=0"`
 	Player2Team2Id *int      `json:"player2Team2Id"`
-	ScoreTeam1     int       `json:"scoreTeam1" validate:"required,gte=0"`
-	ScoreTeam2     int       `json:"scoreTeam2" validate:"required,gte=0"`
+	ScoreTeam1     *int      `json:"scoreTeam1" validate:"required,gte=0"`
+	ScoreTeam2     *int      `json:"scoreTeam2" validate:"required,gte=0"`
 }

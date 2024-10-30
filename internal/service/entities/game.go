@@ -43,7 +43,7 @@ type UpdateGameRequest struct {
 	Date    time.Time  `json:"date" validate:"required,valid-date"`
 	Team1ID int        `json:"team1Id" validate:"required,gt=0"`
 	Team2ID int        `json:"team2Id" validate:"required,gt=0"`
-	Matches []NewMatch `json:"matches" validate:"required,min=1"`
+	Matches []NewMatch `json:"matches" validate:"required,min=1,dive"`
 }
 
 type FindGameRequest struct {

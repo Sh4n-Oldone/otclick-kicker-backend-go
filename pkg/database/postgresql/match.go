@@ -84,7 +84,8 @@ func (db *RDBOperation) GetMatchesByPlayerID(logger zerolog.Logger, ctx context.
 		WHERE player1_team1_id = $1
 		   OR player2_team1_id = $1
 		   OR player1_team2_id = $1
-		   OR player2_team2_id = $1`
+		   OR player2_team2_id = $1
+		ORDER BY updated_at;`
 
 	matches := make([]entities.Match, 0)
 

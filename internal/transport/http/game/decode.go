@@ -99,6 +99,15 @@ func decodeUpdateRequest(_ context.Context, r *http.Request) (interface{}, error
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
+	if request.Matches != nil {
+		for _, match := range request.Matches {
+			if match.Team1ID != request.Team1ID || match.Team2ID != request.Team2ID {
+				err = stderr.New(errors.ValidationErr + ": " + "id команд в игре и матче не совпадают")
+				return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+			}
+		}
+	}
+
 	return request, nil
 }
 
