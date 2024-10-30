@@ -25,7 +25,8 @@ type ShortGame struct {
 
 type CreateFutureGameRequest struct {
 	CityID  int       `json:"cityId" validate:"required,gt=0"`
-	Date    time.Time `json:"date" validate:"required,valid-date"`
+	Date    time.Time `json:"date" validate:"valid-date"`
+	PlaceID int       `json:"placeId" validate:"gt=0"`
 	Team1ID int       `json:"team1Id" validate:"required,gt=0"`
 	Team2ID int       `json:"team2Id" validate:"required,gt=0"`
 }

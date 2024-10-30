@@ -12,7 +12,7 @@ type CreateUserRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 	RoleName string `json:"roleName"`
-	TeamID   string `json:"teamId,omitempty"`
+	TeamID   int64  `json:"teamId,omitempty"`
 }
 
 type CreateUserResponse struct {
@@ -25,12 +25,12 @@ type LoginUserRequest struct {
 	Password string `json:"password"`
 }
 
-type LoginUserResponse struct{
-	Message string 	`json:"message"`
-	ID 		int64	`json:"id"`
-	Token 	string	`json:"token"`
-	Role 	string	`json:"role"`
-	TeamID	int64	`json:"teamId"`
+type LoginUserResponse struct {
+	Message string `json:"message"`
+	ID      int64  `json:"id"`
+	Token   string `json:"token"`
+	Role    string `json:"role"`
+	TeamID  int64  `json:"teamId"`
 }
 
 type ChangePasswordRequest struct {
@@ -45,7 +45,7 @@ type CheckAuthRequest struct {
 }
 
 type CheckAuthResponse struct {
-	IsAuthenticated bool 	`json:"isAuthenticated"`
-	Role 			string 	`json:"role"`
-	TeamID 			int64 	`json:"teamId"`
+	IsAuthenticated bool   `json:"isAuthenticated"`
+	Role            string `json:"role"`
+	TeamID          int64  `json:"teamId"`
 }

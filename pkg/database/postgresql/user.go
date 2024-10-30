@@ -51,10 +51,18 @@ func (db *RWDBOperation) CreateUser(logger zerolog.Logger, ctx context.Context, 
 		return nil, nil
 	}
 
-	err := db.db.QueryRow(ctx, queryCreateUser, user.Email, user.Password, user.Role.ID).Scan(&id)
-	if err != nil {
-		logger.Error().Err(err).Msg("failed to create User record")
-		return nil, DecodeDatabaseError(err)
+	if user.Team != nil && user.Team.ID != 0 {
+		err := db.db.QueryRow(ctx, queryCreateUserWithTeamID, user.Email, user.Password, user.Role.ID, user.Team.ID).Scan(&id)
+		if err != nil {
+			logger.Error().Err(err).Msg("failed to create User record")
+			return nil, DecodeDatabaseError(err)
+		}
+	} else {
+		err := db.db.QueryRow(ctx, queryCreateUser, user.Email, user.Password, user.Role.ID).Scan(&id)
+		if err != nil {
+			logger.Error().Err(err).Msg("failed to create User record")
+			return nil, DecodeDatabaseError(err)
+		}
 	}
 
 	return &id, nil
