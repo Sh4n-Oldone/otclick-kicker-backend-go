@@ -90,6 +90,14 @@ func (db *RWDBOperation) CreatePlayedGame(logger zerolog.Logger, ctx context.Con
 
 	for _, match := range request.Matches {
 		var matchId int
+
+		if match.Player2Team1Id != nil && *match.Player2Team1Id == 0 {
+			match.Player2Team1Id = nil
+		}
+		if match.Player2Team2Id != nil && *match.Player2Team2Id == 0 {
+			match.Player2Team2Id = nil
+		}
+
 		err = tx.QueryRow(ctx, query2,
 			match.Date,
 			gameId,
