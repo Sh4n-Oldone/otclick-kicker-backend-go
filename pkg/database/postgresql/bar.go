@@ -12,10 +12,10 @@ import (
 
 func (db *RDBOperation) GetBarList(logger zerolog.Logger, ctx context.Context, cityID *int64, withDeleted bool) ([]entity.Bar, error) {
 
-	queries := map[string]string {
-		"queryGetBarList": queryGetBarList,
-		"queryGetBarListByCityID": queryGetBarListByCityID,
-		"queryGetBarListWithDeleted": queryGetBarListWithDeleted,
+	queries := map[string]string{
+		"queryGetBarList":                    queryGetBarList,
+		"queryGetBarListByCityID":            queryGetBarListByCityID,
+		"queryGetBarListWithDeleted":         queryGetBarListWithDeleted,
 		"queryGetBarListByCityIDWithDeleted": queryGetBarListByCityIDWithDeleted,
 	}
 
@@ -30,9 +30,9 @@ func (db *RDBOperation) GetBarList(logger zerolog.Logger, ctx context.Context, c
 	var err error
 	var rows pgx.Rows
 	if cityID != nil {
-		rows, err = db.db.Query(ctx, queries[queryName], cityID)	
+		rows, err = db.db.Query(ctx, queries[queryName], cityID)
 	} else {
-		rows, err = db.db.Query(ctx, queries[queryName])	
+		rows, err = db.db.Query(ctx, queries[queryName])
 	}
 
 	if err != nil {
@@ -77,7 +77,6 @@ func (db *RDBOperation) GetBarByID(logger zerolog.Logger, ctx context.Context, i
 	return &entity, nil
 }
 
-
 func (db *RWDBOperation) CreateBar(logger zerolog.Logger, ctx context.Context, entity entity.Bar) (*int64, error) {
 	var id int64
 
@@ -90,8 +89,8 @@ func (db *RWDBOperation) CreateBar(logger zerolog.Logger, ctx context.Context, e
 	return &id, nil
 }
 
-func (db *RWDBOperation) UpdateBar(logger zerolog.Logger, ctx context.Context, entity entity.Bar) error {
-	res, err := db.db.Exec(ctx, queryUpdateBar, entity.ID, entity.City.ID, entity.Name, entity.Description)
+func (db *RWDBOperation) UpdateBar(logger zerolog.Logger, ctx context.Context, entity entity.UpdateBarRequest) error {
+	res, err := db.db.Exec(ctx, queryUpdateBar, entity.ID, entity.Name, entity.Description)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.CreateBar")
 		return DecodeDatabaseError(err)

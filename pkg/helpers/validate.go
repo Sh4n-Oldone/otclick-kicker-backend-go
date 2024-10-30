@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/go-playground/validator/v10"
+
 	"net/http"
 	"net/mail"
 	"time"
@@ -12,6 +13,7 @@ import (
 
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
+	customerr "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 )
 
 func ValidateCreateCityRequest(request *entity.CreateCityRequest) error {
@@ -207,17 +209,20 @@ func ValidateUpdateBarRequest(request *entity.UpdateBarRequest) error {
 		err := error_templates.New("invalid request fields", errors.New("invalid request fields"), codes.InvalidArgument, http.StatusBadRequest)
 		return error_templates.WrapErrorDetail(err, fmt.Sprintf("wrong value of parameter %T", request.ID))
 	}
-	if request.CityID <= 0 {
-		err := error_templates.New("invalid request fields", errors.New("invalid request fields"), codes.InvalidArgument, http.StatusBadRequest)
-		return error_templates.WrapErrorDetail(err, fmt.Sprintf("wrong value of parameter %T", request.CityID))
+
+	if request.Name != nil {
+		if *request.Name == "" {
+			err := errors.New(customerr.ErrEmptyField)
+			err = error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+			return error_templates.WrapErrorDetail(err, fmt.Sprintf("wrong value of parameter %T", request.Name))
+		}
 	}
-	if request.Name == "" {
-		err := error_templates.New("invalid request fields", errors.New("invalid request fields"), codes.InvalidArgument, http.StatusBadRequest)
-		return error_templates.WrapErrorDetail(err, fmt.Sprintf("wrong value of parameter %T", request.Name))
-	}
-	if request.Description == "" {
-		err := error_templates.New("invalid request fields", errors.New("invalid request fields"), codes.InvalidArgument, http.StatusBadRequest)
-		return error_templates.WrapErrorDetail(err, fmt.Sprintf("wrong value of parameter %T", request.Description))
+	if request.Description != nil {
+		if *request.Description == "" {
+			err := errors.New(customerr.ErrEmptyField)
+			err = error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+			return error_templates.WrapErrorDetail(err, fmt.Sprintf("wrong value of parameter %T", request.Description))
+		}
 	}
 
 	return nil

@@ -32,10 +32,9 @@ type CreateBarRequest struct {
 }
 
 type UpdateBarRequest struct {
-	ID          int64  `json:"id"`
-	CityID      int64  `json:"cityId"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
+	ID          int64   `json:"id"`
+	Name        *string `json:"name"`
+	Description *string `json:"description"`
 }
 
 type DeleteBarRequest struct {

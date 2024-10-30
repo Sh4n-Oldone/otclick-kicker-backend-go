@@ -28,7 +28,7 @@ func (s *Service) Create(ctx context.Context, entity entity.Bar) (*int64, error)
 	return id, nil
 }
 
-func (s *Service) Update(ctx context.Context, entity entity.Bar) error {
+func (s *Service) Update(ctx context.Context, entity entity.UpdateBarRequest) error {
 	logger := s.logger.With().Interface("service", "Update").Logger()
 
 	err := s.rwdbOperations.UpdateBar(logger, ctx, entity)
