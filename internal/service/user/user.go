@@ -37,6 +37,10 @@ func (s *Service) Create(ctx context.Context, request entity.CreateUserRequest) 
 		Role:     role,
 	}
 
+	if request.TeamID != 0 {
+		user.Team = &entity.Team{ID: request.TeamID}
+	}
+
 	id, err := s.rwdbOperations.CreateUser(logger, ctx, *user)
 	if err != nil {
 		return nil, err
@@ -129,7 +133,7 @@ func (s *Service) CheckAuth(ctx context.Context, userID int64, token string) (*b
 		if !ok2 {
 			return nil, nil, nil, err
 		}
-		
+
 		// get user Email
 		ok2 = false
 		userEmail, ok2 := claims[cnst.JwtClaimsAttrUserEmail]
@@ -154,7 +158,7 @@ func (s *Service) CheckAuth(ctx context.Context, userID int64, token string) (*b
 		if user.ID != int64(userID) || user.Email != userEmail || user.Role.Name != role || user.Team.ID != int64(teamID) {
 			return nil, nil, nil, err
 		}
-	}	
+	}
 
 	auth := true
 

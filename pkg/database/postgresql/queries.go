@@ -67,6 +67,16 @@ const (
 			$3
 		) RETURNING id;`
 
+	queryCreateUserWithTeamID string = `
+		INSERT INTO users (email, password, role_id, team_id)
+		VALUES
+		(
+			$1,
+			$2,
+			$3,
+			$4
+		) RETURNING id;`
+
 	queryUpdateUser string = `
 		UPDATE users 
 		SET 

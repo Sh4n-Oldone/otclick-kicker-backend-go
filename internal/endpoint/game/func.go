@@ -144,8 +144,7 @@ func makeUpdateFutureGame(s game.IService) endpoint.Endpoint {
 		role := ctx.Value(cnst.RoleNameContextKey)
 		teamID := ctx.Value(cnst.TeamIDContextKey)
 		rTeam1ID := int64(req.Team1ID)
-		rTeam2ID := int64(req.Team2ID)
-		if role == cnst.CaptainRole && teamID != rTeam1ID && teamID != rTeam2ID {
+		if role == cnst.CaptainRole && teamID != rTeam1ID {
 			serviceLogger.Error().Err(err).Msg("Failed to captain request")
 			err = error_templates.New(errors.WrongUserRole, stderr.New(errors.WrongUserRole), codes.Unauthenticated, http.StatusUnauthorized)
 			return nil, err
@@ -222,6 +221,18 @@ func makeCreateFutureGame(s game.IService) endpoint.Endpoint {
 		if err != nil {
 			serviceLogger.Error().Err(err).Msg("Failed to cast request")
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		// Captain-Flow
+		// limitations for the role 'captain'
+		// if teamID of captain not equal team1 or team2 from request then user unauthorized error
+		role := ctx.Value(cnst.RoleNameContextKey)
+		teamID := ctx.Value(cnst.TeamIDContextKey)
+		rTeam1ID := int64(req.Team1ID)
+		if role == cnst.CaptainRole && teamID != rTeam1ID {
+			serviceLogger.Error().Err(err).Msg("Failed to captain request")
+			err = error_templates.New(errors.WrongUserRole, stderr.New(errors.WrongUserRole), codes.Unauthenticated, http.StatusUnauthorized)
+			return nil, err
 		}
 
 		resp, err := s.CreateFutureGame(ctx, req)
