@@ -281,6 +281,7 @@ func (s *Service) GetTeamVsTeamTable(ctx context.Context, cityID, year int64) (e
 				cell.Score2 = strconv.FormatInt(match2Team1Score, 10) + ":" + strconv.FormatInt(match2Team2Score, 10)
 
 				bodyItem.Score = resumScore(bodyItem.Score, match1Team1Score, match1Team2Score)
+				bodyItem.Score = resumScore(bodyItem.Score, match2Team1Score, match2Team2Score)
 				bodyItem.DifferenceInScore += (match1Team1Score - match1Team2Score + match2Team1Score - match2Team2Score)
 				bodyItem.TableCell[t.ShortName] = cell
 			}
