@@ -109,19 +109,21 @@ func (db *RDBOperation) GetPlayerByID(logger zerolog.Logger, ctx context.Context
         p.deleted_at,
         p.avatar,
         p.city_id,
+        c.city_name,
         t.id,
         t.name,
         t.short_name
     FROM players p
     LEFT JOIN public.players_teams_links ptl ON p.id = ptl.player_id
     LEFT JOIN public.teams t ON t.id = ptl.team_id
+    LEFT JOIN public.cities c ON p.city_id = c.id
     WHERE p.id = $1;
 	`
 
 	var p entities.Player
 
 	err := db.db.QueryRow(ctx, query, playerID).
-		Scan(&p.ID, &p.Name, &p.SecondName, &p.LastName, &p.ActivePlayer, &p.DeletedAt, &p.Avatar, &p.CityID, &p.TeamID, &p.TeamName, &p.TeamShortName)
+		Scan(&p.ID, &p.Name, &p.SecondName, &p.LastName, &p.ActivePlayer, &p.DeletedAt, &p.Avatar, &p.CityID, &p.CityName, &p.TeamID, &p.TeamName, &p.TeamShortName)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.GetPlayerByID")
 		return entities.Player{}, DecodeDatabaseError(stderr.New(errors.ErrGetPlayer))
@@ -174,6 +176,7 @@ func (db *RDBOperation) FindPlayers(logger zerolog.Logger, ctx context.Context, 
 			p.active_player,
 			p.deleted_at,
 			p.city_id,
+			c.city_name,
 			t.id AS team_id,
 			t.name AS team_name,
 			t.short_name AS team_short_name,
@@ -182,6 +185,7 @@ func (db *RDBOperation) FindPlayers(logger zerolog.Logger, ctx context.Context, 
 		LEFT JOIN players_teams_links ptl ON p.id = ptl.player_id
 		INNER JOIN teams t ON t.id = ptl.team_id AND ($1::int IS NULL OR t.league_id = $1)
 		LEFT JOIN rating r ON r.player_id = p.id
+		LEFT JOIN cities c ON c.id = p.city_id
 		WHERE 
 			($2::varchar IS NULL OR 
 				(LOWER(COALESCE(p.name, '')) LIKE LOWER('%' || $2 || '%') OR 
@@ -225,7 +229,7 @@ func (db *RDBOperation) FindPlayers(logger zerolog.Logger, ctx context.Context, 
 	for rows.Next() {
 		var p entities.Player
 
-		err = rows.Scan(&p.ID, &p.Name, &p.SecondName, &p.LastName, &p.Avatar, &p.ActivePlayer, &p.DeletedAt, &p.CityID, &p.TeamID, &p.TeamName, &p.TeamShortName, &p.Rating)
+		err = rows.Scan(&p.ID, &p.Name, &p.SecondName, &p.LastName, &p.Avatar, &p.ActivePlayer, &p.DeletedAt, &p.CityID, &p.CityName, &p.TeamID, &p.TeamName, &p.TeamShortName, &p.Rating)
 		if err != nil {
 			logger.Error().Stack().Err(err).Msg("failed to postgresql.FindPlayers")
 			return nil, DecodeDatabaseError(stderr.New(errors.ErrGetPlayer))

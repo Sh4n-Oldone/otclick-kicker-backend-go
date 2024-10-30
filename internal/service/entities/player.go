@@ -62,6 +62,7 @@ type Player struct {
 	ActivePlayer  *bool      `json:"activePlayer,omitempty"`
 	DeletedAt     *time.Time `json:"deletedAt,omitempty"`
 	CityID        *int       `json:"cityId,omitempty"`
+	CityName      *string    `json:"cityName,omitempty"`
 	TeamID        *int       `json:"teamId,omitempty"`
 	TeamName      *string    `json:"teamName,omitempty"`
 	TeamShortName *string    `json:"teamShortName,omitempty"`
@@ -84,13 +85,15 @@ type FullPlayer struct {
 	TeamName                  *string      `json:"teamName"`
 	TeamShortName             *string      `json:"teamShortName"`
 	CityID                    *int         `json:"cityId"`
+	CityName                  *string      `json:"cityName"`
 	Leagues                   []LeagueItem `json:"leagues,omitempty"`
 	Rating                    *int         `json:"rating,omitempty"`
 }
 
 type LeagueItem struct {
-	ID     int `json:"id"`
-	Rating int `json:"rating"`
+	ID     int    `json:"id"`
+	Name   string `json:"name"`
+	Rating int    `json:"rating"`
 }
 
 type OkResponse struct {

@@ -214,6 +214,7 @@ func buildFullPlayer(player entities.Player, matches []entities.Match, leagues [
 
 	for i, league := range leagues {
 		leagueItems[i].ID = league.ID
+		leagueItems[i].Name = league.Name
 		leagueItems[i].Rating = league.Rating
 	}
 
@@ -233,6 +234,7 @@ func buildFullPlayer(player entities.Player, matches []entities.Match, leagues [
 		TeamName:                  player.TeamName,
 		TeamShortName:             player.TeamShortName,
 		CityID:                    player.CityID,
+		CityName:                  player.CityName,
 		Leagues:                   leagueItems,
 		Rating:                    player.Rating,
 	}
