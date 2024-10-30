@@ -195,11 +195,11 @@ func buildFullPlayer(player entities.Player, matches []entities.Match, leagues [
 		playersGames[match.GameID] = struct{}{}
 
 		// подсчет голов
-		if match.Player1Team1ID == player.ID || match.Player2Team1ID == player.ID {
+		if match.Player1Team1ID == player.ID || (match.Player2Team1ID != nil && *match.Player2Team1ID == player.ID) {
 			goalsScoredNumber += match.ScoreTeam1
 			goalsConcededNumber += match.ScoreTeam2
 		}
-		if match.Player1Team2ID == player.ID || match.Player2Team2ID == player.ID {
+		if match.Player1Team2ID == player.ID || (match.Player2Team2ID != nil && *match.Player2Team2ID == player.ID) {
 			goalsScoredNumber += match.ScoreTeam2
 			goalsConcededNumber += match.ScoreTeam1
 		}

@@ -71,11 +71,11 @@ func propertyCounting(player *entity.PlayerGetTeam, matches []entities.Match) {
 	for _, match := range matches {
 		playersGames[match.GameID] = struct{}{}
 
-		if match.Player1Team1ID == player.ID || match.Player2Team1ID == player.ID {
+		if match.Player1Team1ID == player.ID || (match.Player2Team1ID != nil && *match.Player2Team1ID == player.ID) {
 			goalsScoredNumber += match.ScoreTeam1
 			goalsConcededNumber += match.ScoreTeam2
 		}
-		if match.Player1Team2ID == player.ID || match.Player2Team2ID == player.ID {
+		if match.Player1Team2ID == player.ID || (match.Player2Team2ID != nil && *match.Player2Team2ID == player.ID) {
 			goalsScoredNumber += match.ScoreTeam2
 			goalsConcededNumber += match.ScoreTeam1
 		}
