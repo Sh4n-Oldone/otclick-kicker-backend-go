@@ -17,24 +17,35 @@ func (db *RDBOperation) GetPlaceList(logger zerolog.Logger, ctx context.Context,
 		"queryGetPlaceListWithDeleted":               queryGetPlaceListWithDeleted,
 		"queryGetPlaceListByBarID":                   queryGetPlaceListByBarID,
 		"queryGetPlaceListByBarIDWithDeleted":        queryGetPlaceListByBarIDWithDeleted,
-		"queryGetBarListByTableID":                   queryGetBarListByTableID,
-		"queryGetBarListByTableIDWithDeleted":        queryGetBarListByTableIDWithDeleted,
-		"queryGetBarListByBarIDByTableID":            queryGetBarListByBarIDByTableID,
-		"queryGetBarListByBarIDByTableIDWithDeleted": queryGetBarListByBarIDByTableIDWithDeleted,
+		"queryGetPlaceListByTableID":                   queryGetPlaceListByTableID,
+		"queryGetPlaceListByTableIDWithDeleted":        queryGetPlaceListByTableIDWithDeleted,
+		"queryGetPlaceListByBarIDByTableID":            queryGetPlaceListByBarIDByTableID,
+		"queryGetPlaceListByBarIDByTableIDWithDeleted": queryGetPlaceListByBarIDByTableIDWithDeleted,
 	}
 
-	queryName := "queryGetBarList"
+	var queryAttr *int64
+	queryName := "queryGetPlaceList"
 	if barID != nil {
+		queryAttr = barID
 		queryName += "ByBarID"
 	}
 	if tableID != nil {
+		queryAttr = tableID
 		queryName += "ByTableID"
 	}
 	if withDeleted {
 		queryName += "WithDeleted"
 	}
 
-	rows, err := db.db.Query(ctx, queries[queryName], barID, tableID)
+	var err error
+	var rows pgx.Rows
+	if barID != nil && tableID != nil {
+		rows, err = db.db.Query(ctx, queries[queryName], barID, tableID)
+	} else if barID != nil || tableID != nil {
+		rows, err = db.db.Query(ctx, queries[queryName], queryAttr)
+	} else {
+		rows, err = db.db.Query(ctx, queries[queryName])
+	}
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.GetPlaceList")
 		return nil, DecodeDatabaseError(err)

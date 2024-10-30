@@ -218,65 +218,65 @@ const (
 
 	// Place queries -->
 	queryGetPlaceList string = `
-		SELECT p.id, p.bar_id, b.bar_name, p.table_id, t.table_name, p.updated_at, p.deleted_at 
+		SELECT p.id, p.bar_id, b.name, p.table_id, t.name, p.updated_at, p.deleted_at 
 		FROM places as p
-		JOIN tables as t ON places.table_id = tables.id
-		JOIN bars as b ON tables.bar_id = bars.id
+		JOIN tables as t ON p.table_id = t.id
+		JOIN bars as b ON p.bar_id = b.id
 		WHERE p.deleted_at IS NULL
 		ORDER BY p.bar_id, p.table_id, p.id;`
 
 	queryGetPlaceListWithDeleted string = `
-		SELECT p.id, p.bar_id, b.bar_name, p.table_id, t.table_name, p.updated_at, p.deleted_at 
+		SELECT p.id, p.bar_id, b.name, p.table_id, t.name, p.updated_at, p.deleted_at 
 		FROM places as p
-		JOIN tables as t ON places.table_id = tables.id
-		JOIN bars as b ON tables.bar_id = bars.id
+		JOIN tables as t ON p.table_id = t.id
+		JOIN bars as b ON p.bar_id = b.id
 		ORDER BY p.bar_id, p.table_id, p.id;`
 
 	queryGetPlaceListByBarID string = `
-		SELECT p.id, p.bar_id, b.bar_name, p.table_id, t.table_name, p.updated_at, p.deleted_at 
+		SELECT p.id, p.bar_id, b.name, p.table_id, t.name, p.updated_at, p.deleted_at 
 		FROM places as p
-		JOIN tables as t ON places.table_id = tables.id
-		JOIN bars as b ON tables.bar_id = bars.id
+		JOIN tables as t ON p.table_id = t.id
+		JOIN bars as b ON p.bar_id = b.id
 		WHERE p.bar_id = $1 AND p.deleted_at IS NULL
 		ORDER BY p.bar_id, p.table_id, p.id;`
 
 	queryGetPlaceListByBarIDWithDeleted string = `
-		SELECT p.id, p.bar_id, b.bar_name, p.table_id, t.table_name, p.updated_at, p.deleted_at 
+		SELECT p.id, p.bar_id, b.name, p.table_id, t.name, p.updated_at, p.deleted_at 
 		FROM places as p
-		JOIN tables as t ON places.table_id = tables.id
-		JOIN bars as b ON tables.bar_id = bars.id
+		JOIN tables as t ON p.table_id = t.id
+		JOIN bars as b ON p.bar_id = b.id
 		WHERE p.bar_id = $1
 		ORDER BY p.bar_id, p.table_id, p.id;`
 
-	queryGetBarListByTableID string = `
-		SELECT p.id, p.bar_id, b.bar_name, p.table_id, t.table_name, p.updated_at, p.deleted_at 
+	queryGetPlaceListByTableID string = `
+		SELECT p.id, p.bar_id, b.name, p.table_id, t.name, p.updated_at, p.deleted_at 
 		FROM places as p
-		JOIN tables as t ON places.table_id = tables.id
-		JOIN bars as b ON tables.bar_id = bars.id
+		JOIN tables as t ON p.table_id = t.id
+		JOIN bars as b ON p.bar_id = b.id
 		WHERE p.table_id = $1 AND p.deleted_at IS NULL
 		ORDER BY p.bar_id, p.table_id, p.id;`
 
-	queryGetBarListByTableIDWithDeleted string = `
-		SELECT p.id, p.bar_id, b.bar_name, p.table_id, t.table_name, p.updated_at, p.deleted_at 
+	queryGetPlaceListByTableIDWithDeleted string = `
+		SELECT p.id, p.bar_id, b.name, p.table_id, t.name, p.updated_at, p.deleted_at 
 		FROM places as p
-		JOIN tables as t ON places.table_id = tables.id
-		JOIN bars as b ON tables.bar_id = bars.id
+		JOIN tables as t ON p.table_id = t.id
+		JOIN bars as b ON p.bar_id = b.id
 		WHERE p.table_id = $1
 		ORDER BY p.bar_id, p.table_id, p.id;`
 
-	queryGetBarListByBarIDByTableID string = `
-		SELECT p.id, p.bar_id, b.bar_name, p.table_id, t.table_name, p.updated_at, p.deleted_at 
+	queryGetPlaceListByBarIDByTableID string = `
+		SELECT p.id, p.bar_id, b.name, p.table_id, t.name, p.updated_at, p.deleted_at 
 		FROM places as p
-		JOIN tables as t ON places.table_id = tables.id
-		JOIN bars as b ON tables.bar_id = bars.id
+		JOIN tables as t ON p.table_id = t.id
+		JOIN bars as b ON p.bar_id = b.id
 		WHERE p.bar_id = $1 AND p.table_id = $2 AND p.deleted_at IS NULL
 		ORDER BY p.bar_id, p.table_id, p.id;`
 
-	queryGetBarListByBarIDByTableIDWithDeleted string = `
-		SELECT p.id, p.bar_id, b.bar_name, p.table_id, t.table_name, p.updated_at, p.deleted_at 
+	queryGetPlaceListByBarIDByTableIDWithDeleted string = `
+		SELECT p.id, p.bar_id, b.name, p.table_id, t.name, p.updated_at, p.deleted_at 
 		FROM places as p
-		JOIN tables as t ON places.table_id = tables.id
-		JOIN bars as b ON tables.bar_id = bars.id
+		JOIN tables as t ON p.table_id = t.id
+		JOIN bars as b ON p.bar_id = b.id
 		WHERE p.bar_id = $1 AND p.table_id = $2
 		ORDER BY p.bar_id, p.table_id, p.id;`
 
