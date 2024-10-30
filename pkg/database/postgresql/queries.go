@@ -217,9 +217,8 @@ const (
 	queryUpdateBar string = `
 		UPDATE bars
 		SET 
-			city_id = COALESCE($2, city_id),
-		    name = COALESCE($3, name),
-    		description = COALESCE($4, description),
+		    name = COALESCE($2, name),
+    		description = COALESCE($3, description),
 			updated_at = NOW()
 		WHERE id = $1;`
 

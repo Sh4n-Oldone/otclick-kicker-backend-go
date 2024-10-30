@@ -95,17 +95,13 @@ func makeUpdate(s bar.IService) endpoint.Endpoint {
 			return nil, err
 		}
 
-		rel := &entity.City{
-			ID: req.CityID,
-		}
-		entity := &entity.Bar{
+		eBar := entity.UpdateBarRequest{
 			ID:          req.ID,
-			City:        *rel,
 			Name:        req.Name,
 			Description: req.Description,
 		}
 
-		err = s.Update(ctx, *entity)
+		err = s.Update(ctx, eBar)
 		if err != nil {
 			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.ErrUpdateBar)
 			return nil, err

@@ -15,6 +15,7 @@ const (
 	FailedParseJWTToken             = "ошибка расшифровки JWT токена"
 	FailedGetUserData               = "ошибка получения данных пользователя"
 	FailedGameByTeamsLeagueMismatch = "ошибка совмещения команд из разных лиг"
+	ErrEmptyField                   = "отсутствует значение в поле запроса"
 )
 
 // Database errors

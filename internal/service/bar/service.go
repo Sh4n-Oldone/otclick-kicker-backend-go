@@ -13,7 +13,7 @@ import (
 type IService interface {
 	GetList(ctx context.Context, cityID *int64, withDeleted bool) ([]entity.Bar, error)
 	Create(ctx context.Context, entity entity.Bar) (*int64, error)
-	Update(ctx context.Context, entity entity.Bar) error
+	Update(ctx context.Context, entity entity.UpdateBarRequest) error
 	Delete(ctx context.Context, id int64) error
 
 	GetLogger() *zerolog.Logger
