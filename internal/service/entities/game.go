@@ -12,7 +12,7 @@ type Game struct {
 
 type CreateGameRequest struct {
 	CityID  int          `json:"cityId" validate:"required,gt=0"`
-	Date    time.Time    `json:"date" validate:"required,valid-date,valid-month,valid-year"`
+	Date    time.Time    `json:"date" validate:"required,valid-date"`
 	Team1ID int          `json:"team1Id" validate:"required,gt=0"`
 	Team2ID int          `json:"team2Id" validate:"required,gt=0"`
 	Matches []GamesMatch `json:"matches" validate:"required,min=1"`
