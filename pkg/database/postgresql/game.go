@@ -268,6 +268,10 @@ func (db *RDBOperation) GetGame(logger zerolog.Logger, ctx context.Context, game
 			&match.ScoreTeam1,
 			&match.ScoreTeam2,
 		)
+		if err != nil {
+			logger.Error().Err(err).Msg("failed to postgresql.GetGame")
+			return entities.GetGameResponse{}, DecodeDatabaseError(stderr.New(errors.ErrGetGame))
+		}
 
 		if p1t1Name == "" {
 			match.Player1Team1Name = p1t1LastName
@@ -330,8 +334,24 @@ func (db *RWDBOperation) UpdateGame(logger zerolog.Logger, ctx context.Context, 
 			player2_team2_id = COALESCE($8, player2_team2_id),
 			score_team1 = $9,
 			score_team2 = $10
-
 		WHERE id = $1 AND game_id = $11;
+	`
+
+	const query3 string = `
+		INSERT INTO public.matches 
+		    (
+		     date,
+		     game_id,
+		     team1_id,
+		     team2_id,
+		     player1_team1_id,
+		     player2_team1_id,
+		     player1_team2_id,
+		     player2_team2_id,
+		     score_team1,
+		     score_team2
+		     )
+		VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);
 	`
 
 	tx, err := db.db.Begin(ctx)
@@ -354,13 +374,29 @@ func (db *RWDBOperation) UpdateGame(logger zerolog.Logger, ctx context.Context, 
 	}
 
 	for _, match := range game.Matches {
-
-		_, err = tx.Exec(ctx, query2, match.ID, match.Date, match.Team1ID, match.Team2ID, match.Player1Team1Id,
-			match.Player2Team1Id, match.Player1Team2Id, match.Player2Team2Id, match.ScoreTeam1, match.ScoreTeam2, game.ID)
-		if err != nil {
-			_ = tx.Rollback(ctx)
-			logger.Error().Err(err).Msg("failed to postgresql.UpdateMatch")
-			return DecodeDatabaseError(stderr.New(errors.ErrUpdateMatch))
+		//если id матча нет создаем новый
+		if match.ID == nil {
+			_, err = tx.Exec(ctx, query3, match.Date, game.ID, match.Team1ID, match.Team2ID, match.Player1Team1Id,
+				match.Player2Team1Id, match.Player1Team2Id, match.Player2Team2Id, match.ScoreTeam1, match.ScoreTeam2)
+			if err != nil {
+				_ = tx.Rollback(ctx)
+				logger.Error().Err(err).Msg("failed to create match in postgresql.UpdateGame")
+				return DecodeDatabaseError(stderr.New(errors.ErrUpdateMatch))
+			}
+			// если id матча есть то обновляем
+		} else {
+			tag, err = tx.Exec(ctx, query2, match.ID, match.Date, match.Team1ID, match.Team2ID, match.Player1Team1Id,
+				match.Player2Team1Id, match.Player1Team2Id, match.Player2Team2Id, match.ScoreTeam1, match.ScoreTeam2, game.ID)
+			if err != nil {
+				_ = tx.Rollback(ctx)
+				logger.Error().Err(err).Msg("failed to update match in postgresql.UpdateGame")
+				return DecodeDatabaseError(stderr.New(errors.ErrUpdateMatch))
+			}
+			if tag.RowsAffected() == 0 {
+				_ = tx.Rollback(ctx)
+				logger.Error().Err(err).Msg("failed to update match in postgresql.UpdateGame")
+				return DecodeDatabaseError(stderr.New(errors.ErrMatchNotFound))
+			}
 		}
 	}
 
@@ -623,12 +659,12 @@ func (db *RDBOperation) GetTeamGames(logger zerolog.Logger, ctx context.Context,
 		   	tbl.name,
 			g.date
 		from teams t
-		left join games g on g.team2_id = t.id AND g.date >= CURRENT_DATE
+		left join games g on g.team2_id = t.id
 		LEFT JOIN places p ON g.place_id = p.id
 		LEFT JOIN bars b ON p.bar_id = b.id
 		LEFT JOIN tables tbl ON p.table_id = tbl.id
 		WHERE t.league_id = (SELECT t.league_id FROM teams t WHERE id = $1)
-    		AND t.id != $1;
+    		AND t.id != $1 AND (g.date >= CURRENT_DATE OR g.date IS NULL);
 	`
 
 	games := make([]entity.TeamGame, 0)

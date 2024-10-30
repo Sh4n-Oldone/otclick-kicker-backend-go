@@ -12,8 +12,8 @@ type Place struct {
 
 type PlaceShort struct {
 	ID    *int64     `db:"id" json:"id"`
-	Bar   BarShort   `db:"bar" json:"bat"`
-	Table TableShort `db:"table" json:"tabe"`
+	Bar   BarShort   `db:"bar" json:"bar"`
+	Table TableShort `db:"table" json:"table"`
 }
 
 type GetPlaceListRequest struct {
