@@ -224,6 +224,7 @@ func (db *RDBOperation) GetGame(logger zerolog.Logger, ctx context.Context, game
 		public.players pt2_2 ON m.player2_team2_id = pt2_2.id
 	WHERE 
 		g.id = $1
+	ORDER BY m.updated_at 
 	`
 
 	var game entities.GetGameResponse
@@ -239,7 +240,7 @@ func (db *RDBOperation) GetGame(logger zerolog.Logger, ctx context.Context, game
 	for rows.Next() {
 		var match entities.FullMatch
 
-		var p1t1Name, p2t1Name, p1t2Name, p2t2Name, p1t1LastName, p2t1LastName, p1t2LastName, p2t2LastName string
+		var p1t1Name, p2t1Name, p1t2Name, p2t2Name, p1t1LastName, p2t1LastName, p1t2LastName, p2t2LastName *string
 
 		err = rows.Scan(
 			&game.ID,
@@ -273,31 +274,41 @@ func (db *RDBOperation) GetGame(logger zerolog.Logger, ctx context.Context, game
 			return entities.GetGameResponse{}, DecodeDatabaseError(stderr.New(errors.ErrGetGame))
 		}
 
-		if p1t1Name == "" {
-			match.Player1Team1Name = p1t1LastName
-		} else {
-			match.Player1Team1Name = p1t1Name + " " + p1t1LastName
+		if p1t1Name != nil {
+			match.Player1Team1Name = p1t1Name
+			*match.Player1Team1Name = *match.Player1Team1Name + " "
+		}
+		if p1t1LastName != nil {
+			*match.Player1Team1Name = *match.Player1Team1Name + *p1t1LastName
 		}
 
-		if p2t1Name == "" {
-			match.Player2Team1Name = p2t1LastName
-		} else {
-			match.Player2Team1Name = p2t1Name + " " + p2t1LastName
+		if p2t1Name != nil {
+			match.Player2Team1Name = p2t1Name
+			*match.Player2Team1Name = *match.Player2Team1Name + " "
+		}
+		if p2t1LastName != nil {
+			*match.Player2Team1Name = *match.Player2Team1Name + *p2t1LastName
 		}
 
-		if p1t2Name == "" {
-			match.Player1Team2Name = p1t2LastName
-		} else {
-			match.Player1Team2Name = p1t2Name + " " + p1t2LastName
+		if p1t2Name != nil {
+			match.Player1Team2Name = p1t2Name
+			*match.Player1Team2Name = *match.Player1Team2Name + " "
+		}
+		if p1t2LastName != nil {
+			*match.Player1Team2Name = *match.Player1Team2Name + *p1t2LastName
 		}
 
-		if p2t2Name == "" {
-			match.Player1Team1Name = p2t2LastName
-		} else {
-			match.Player2Team2Name = p2t2Name + " " + p2t2LastName
+		if p2t2Name != nil {
+			match.Player2Team2Name = p2t2Name
+			*match.Player2Team2Name = *match.Player2Team2Name + " "
+		}
+		if p2t2LastName != nil {
+			*match.Player2Team2Name = *match.Player2Team2Name + *p2t2LastName
 		}
 
-		matches = append(matches, match)
+		if match.ID != nil {
+			matches = append(matches, match)
+		}
 	}
 
 	return entities.GetGameResponse{
