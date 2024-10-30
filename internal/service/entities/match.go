@@ -37,20 +37,20 @@ type GamesMatch struct {
 }
 
 type FullMatch struct {
-	ID               int       `json:"id"`
-	Date             time.Time `json:"date"`
-	Team1ID          int       `json:"team1Id"`
-	Team2ID          int       `json:"team2Id"`
-	Player1Team1Id   int       `json:"player1Team1Id"`
-	Player1Team1Name string    `json:"player1Team1Name"`
-	Player2Team1Id   int       `json:"player2Team1Id"`
-	Player2Team1Name string    `json:"player2Team1Name"`
-	Player1Team2Id   int       `json:"player1Team2Id"`
-	Player1Team2Name string    `json:"player1Team2Name"`
-	Player2Team2Id   int       `json:"player2Team2Id"`
-	Player2Team2Name string    `json:"player2Team2Name"`
-	ScoreTeam1       int       `json:"scoreTeam1"`
-	ScoreTeam2       int       `json:"scoreTeam2"`
+	ID               *int       `json:"id"`
+	Date             *time.Time `json:"date"`
+	Team1ID          *int       `json:"team1Id"`
+	Team2ID          *int       `json:"team2Id"`
+	Player1Team1Id   *int       `json:"player1Team1Id"`
+	Player1Team1Name *string    `json:"player1Team1Name"`
+	Player2Team1Id   *int       `json:"player2Team1Id"`
+	Player2Team1Name *string    `json:"player2Team1Name"`
+	Player1Team2Id   *int       `json:"player1Team2Id"`
+	Player1Team2Name *string    `json:"player1Team2Name"`
+	Player2Team2Id   *int       `json:"player2Team2Id"`
+	Player2Team2Name *string    `json:"player2Team2Name"`
+	ScoreTeam1       *int       `json:"scoreTeam1"`
+	ScoreTeam2       *int       `json:"scoreTeam2"`
 }
 
 type NewMatch struct {
