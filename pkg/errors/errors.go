@@ -51,6 +51,10 @@ const (
 	ErrGetPlace     = "ошибка получения данных игрового места"
 	ErrGetPlaceList = "ошибка получения списка игровых мест"
 
+	ErrCreateTeam = "ошибка создания команды"
+	ErrDeleteTeam = "ошибка удаления команды"
+	ErrUpdateTeam = "ошибка обновления данных команды"
+
 	ErrTeamAlreadyInLeague = "команда уже находится в составе другой лиги"
 	ErrCreateGame          = "ошибка создания игры"
 	ErrPlayerNotFound      = "игрок не найден"
