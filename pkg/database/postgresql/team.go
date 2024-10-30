@@ -396,17 +396,39 @@ func (db *RWDBOperation) UpdateTeam(logger zerolog.Logger, ctx context.Context, 
 }
 
 func (db *RWDBOperation) DeleteTeam(logger zerolog.Logger, ctx context.Context, id int64) (bool, error) {
+	const queryDeleteFromPlayersTeamsLinks = `DELETE FROM players_teams_links WHERE team_id = $1`
 	const queryDeleteTeam = `DELETE FROM teams WHERE id = $1`
-	result, err := db.db.Exec(ctx, queryDeleteTeam, id)
+
+	tx, err := db.db.Begin(ctx)
 	if err != nil {
-		logger.Error().Err(err).Msg("failed to delete Team record")
+		logger.Error().Stack().Err(err).Msg("failed to postgresql.DeleteTeam")
+		return false, DecodeDatabaseError(stderr.New(errors.ErrDeleteTeam))
+	}
+
+	_, err = tx.Exec(ctx, queryDeleteFromPlayersTeamsLinks, id)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to delete players_teams_links record")
+		_ = tx.Rollback(ctx)
 		return false, DecodeDatabaseError(err)
 	}
 
-	rowsAffected := result.RowsAffected()
+	tag, err := tx.Exec(ctx, queryDeleteTeam, id)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to delete Team record")
+		_ = tx.Rollback(ctx)
+		return false, DecodeDatabaseError(err)
+	}
+
+	rowsAffected := tag.RowsAffected()
 	if rowsAffected == 0 {
 		logger.Error().Err(err).Msg("failed to get affected rows")
 		return false, stderr.New("Failed to Delete Team, it does not exist")
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		logger.Error().Stack().Err(err).Msg("failed to postgresql.DeleteTeam")
+		_ = tx.Rollback(ctx)
+		return false, DecodeDatabaseError(stderr.New(errors.ErrDeleteTeam))
 	}
 
 	return true, nil
