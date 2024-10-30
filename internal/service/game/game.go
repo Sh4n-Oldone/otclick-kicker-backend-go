@@ -137,7 +137,7 @@ func (s *Service) Create(ctx context.Context, request entities.CreateGameRequest
 		match.Player1Team2RateAfter = &player1team2rateAfter
 		match.Player2Team1RateAfter = &player2team1rateAfter
 		match.Player2Team2RateAfter = &player2team2rateAfter
-	
+
 		rates[match.Player1Team1Id] = player1team1rateAfter
 		rates[match.Player1Team2Id] = player1team2rateAfter
 		rates[*match.Player2Team1Id] = player2team1rateAfter
@@ -155,7 +155,7 @@ func (s *Service) Create(ctx context.Context, request entities.CreateGameRequest
 
 		matches = append(matches, match)
 	}
-	
+
 	request.Matches = matches
 
 	resp, err := s.rwdbOperations.CreatePlayedGame(logger, timeout, request)
@@ -164,10 +164,13 @@ func (s *Service) Create(ctx context.Context, request entities.CreateGameRequest
 	}
 
 	for playerID, value := range rates {
+		if playerID == 0 {
+			continue
+		}
 		rate := &entity.Rating{
 			PlayerID: int64(playerID),
 			LeagueID: leagueID,
-			Value: int64(value),
+			Value:    int64(value),
 		}
 		operator := "insertIgnore"
 		err := s.rwdbOperations.CreateRating(logger, ctx, *rate, &operator)
