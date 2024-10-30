@@ -205,7 +205,7 @@ const (
 		) RETURNING id;`
 
 	queryUpdateBar string = `
-		UPDATE cities
+		UPDATE bars
 		SET 
 			city_id = COALESCE($2, city_id),
 		    name = COALESCE($3, name),
