@@ -107,6 +107,26 @@ func decodeUpdateRequest(_ context.Context, r *http.Request) (interface{}, error
 	return request, nil
 }
 
+func decodeRecoverRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	request := &entities.RecoverPlayerRequest{}
+
+	paramID := chi.URLParam(r, "id")
+	if paramID == "" {
+		err := stderr.New(errors.EmptyParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	id, err := strconv.Atoi(paramID)
+	if err != nil || id <= 0 {
+		err = stderr.New(errors.WrongParameterError)
+		return nil, error_templates.New(err.Error(), err, http.StatusBadRequest, http.StatusBadRequest)
+	}
+
+	request.ID = id
+
+	return request, nil
+}
+
 func decodeFindPlayersRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	request := &entities.FindPlayersRequest{}
 	buf := bytebufferpool.Get()

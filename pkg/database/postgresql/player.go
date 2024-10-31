@@ -71,6 +71,26 @@ func (db *RWDBOperation) DeletePlayer(logger zerolog.Logger, ctx context.Context
 	return nil
 }
 
+func (db *RWDBOperation) RecoverPlayer(logger zerolog.Logger, ctx context.Context, id int) error {
+	const query string = `
+		UPDATE public.players
+		SET deleted_at = NULL
+		WHERE id = $1;`
+
+	tag, err := db.db.Exec(ctx, query, id)
+	if err != nil {
+		logger.Error().Stack().Err(err).Msg("failed to postgresql.RecoverPlayer")
+		return DecodeDatabaseError(stderr.New(errors.ErrRecoverPlayer))
+	}
+	if tag.RowsAffected() == 0 {
+		err = stderr.New(errors.ErrPlayerNotFound)
+		logger.Error().Stack().Err(err).Msg(err.Error())
+		return DecodeDatabaseError(err)
+	}
+
+	return nil
+}
+
 func (db *RWDBOperation) UpdatePlayer(logger zerolog.Logger, ctx context.Context, p entities.UpdatePlayerRequest) error {
 	query := `
 		UPDATE public.players p

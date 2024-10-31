@@ -32,6 +32,19 @@ func (s *Service) Delete(ctx context.Context, playerID int) error {
 	return nil
 }
 
+func (s *Service) Recover(ctx context.Context, playerID int) error {
+	logger := s.logger.With().Interface("service", "player.Recover").Logger()
+	timeout, cancel := context.WithTimeout(ctx, s.config.RWDB.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	err := s.rwdbOperations.RecoverPlayer(logger, timeout, playerID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s *Service) Update(ctx context.Context, player entities.UpdatePlayerRequest) error {
 	logger := s.logger.With().Interface("service", "player.Update").Logger()
 	timeout, cancel := context.WithTimeout(ctx, s.config.RWDB.MaxIdleConnectionTimeout)
