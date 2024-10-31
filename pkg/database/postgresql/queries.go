@@ -138,6 +138,29 @@ const (
 		WHERE id = $11;`
 
 	queryDeleteMatch string = `DELETE FROM matches WHERE id = $1`
+
+	queryGetMatchListByGameID string = `
+		SELECT id,
+			date,
+			game_id,
+			team1_id,
+			team2_id,
+			player1_team1_id,
+			player2_team1_id,
+			player1_team2_id,
+			player2_team2_id,
+			score_team1,
+			score_team2,
+			player1_team1_rate_before,
+			player1_team2_rate_before,
+			player2_team1_rate_before,
+			player2_team2_rate_before,
+			player1_team1_rate_after,
+			player1_team2_rate_after,
+			player2_team1_rate_after,
+			player2_team2_rate_after 
+		FROM matches 
+		WHERE game_id = $1;`
 	// <--
 
 	// Table queries -->

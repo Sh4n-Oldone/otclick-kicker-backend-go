@@ -38,6 +38,8 @@ func NewServer(endpoints game.Endpoints, options []kithttp.ServerOption, cfg *co
 		Post("/games/future", kithttp.NewServer(endpoints.CreateFutureGame, decodeCreateFutureGameRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
 		Delete("/games/played/{id}", kithttp.NewServer(endpoints.Delete, decodeIdParamRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	// Patch "/games/played" - обновляет игру с матчами, пересчитывает рейтинг.
+	// Рейтинг считается правильно только если переданная игра - последняя, в которой участвовали эти игроки
 	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
 		Patch("/games/played", kithttp.NewServer(endpoints.Update, decodeUpdateRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdminCapitan()).
