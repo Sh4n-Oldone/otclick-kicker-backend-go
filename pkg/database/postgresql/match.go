@@ -110,3 +110,45 @@ func (db *RDBOperation) GetMatchesByPlayerID(logger zerolog.Logger, ctx context.
 
 	return matches, nil
 }
+
+func (db *RDBOperation) GetMatchListByGameID(ctx context.Context, logger zerolog.Logger, gameID int) ([]entities.Match, error) {
+	matches := make([]entities.Match, 0)
+
+	rows, err := db.db.Query(ctx, queryGetMatchListByGameID, gameID)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to postgresql.GetMatchesByPlayerID")
+		return nil, DecodeDatabaseError(stderr.New(errors.ErrGetMatches))
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var m entities.Match
+		err = rows.Scan(&m.ID,
+			&m.Date,
+			&m.GameID,
+			&m.Team1ID,
+			&m.Team2ID,
+			&m.Player1Team1ID,
+			&m.Player2Team1ID,
+			&m.Player1Team2ID,
+			&m.Player2Team2ID,
+			&m.ScoreTeam1,
+			&m.ScoreTeam2,
+			&m.Player1Team1RateBefore,
+			&m.Player1Team2RateBefore,
+			&m.Player2Team1RateBefore,
+			&m.Player2Team2RateBefore,
+			&m.Player1Team1RateAfter,
+			&m.Player1Team2RateAfter,
+			&m.Player2Team1RateAfter,
+			&m.Player2Team2RateAfter)
+		if err != nil {
+			logger.Error().Err(err).Msg("failed to postgresql.GetMatchListByGameID")
+			return nil, DecodeDatabaseError(stderr.New(errors.ErrGetMatches))
+		}
+
+		matches = append(matches, m)
+	}
+
+	return matches, nil
+}

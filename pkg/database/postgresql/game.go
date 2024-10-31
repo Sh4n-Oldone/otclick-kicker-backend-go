@@ -348,14 +348,21 @@ func (db *RWDBOperation) UpdateGame(logger zerolog.Logger, ctx context.Context, 
 			team1_id = $3,
 			team2_id = $4,
 			player1_team1_id = $5,
-			player2_team1_id = COALESCE($6, player2_team1_id),
+			player2_team1_id = $6,
 			player1_team2_id = $7,
-			player2_team2_id = COALESCE($8, player2_team2_id),
+			player2_team2_id = $8,
 			score_team1 = $9,
 			score_team2 = $10,
+			player1_team1_rate_before = $11,
+			player1_team2_rate_before = $12,
+			player2_team1_rate_before = $13,
+			player2_team2_rate_before = $14,
+			player1_team1_rate_after = $15,
+			player1_team2_rate_after = $16,
+			player2_team1_rate_after = $17,
+			player2_team2_rate_after = $18,
 			updated_at = NOW()
-		WHERE id = $1 AND game_id = $11;
-	`
+		WHERE id = $1 AND game_id = $19;`
 
 	const query3 string = `
 		INSERT INTO public.matches 
@@ -370,9 +377,17 @@ func (db *RWDBOperation) UpdateGame(logger zerolog.Logger, ctx context.Context, 
 		     player2_team2_id,
 		     score_team1,
 		     score_team2,
+   			 player1_team1_rate_before,
+			 player1_team2_rate_before,
+			 player2_team1_rate_before,
+			 player2_team2_rate_before,
+			 player1_team1_rate_after,
+			 player1_team2_rate_after,
+			 player2_team1_rate_after,
+			 player2_team2_rate_after,
 		     updated_at
 		     )
-		VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW());
+		VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW());
 	`
 
 	const query4 string = `
@@ -415,10 +430,35 @@ func (db *RWDBOperation) UpdateGame(logger zerolog.Logger, ctx context.Context, 
 	}
 
 	for _, match := range game.Matches {
+
+		if match.Player2Team1Id != nil && *match.Player2Team1Id == 0 {
+			match.Player2Team1Id = nil
+		}
+		if match.Player2Team2Id != nil && *match.Player2Team2Id == 0 {
+			match.Player2Team2Id = nil
+		}
+
 		//если id матча нет создаем новый
 		if match.ID == nil {
-			_, err = tx.Exec(ctx, query3, match.Date, game.ID, match.Team1ID, match.Team2ID, match.Player1Team1Id,
-				match.Player2Team1Id, match.Player1Team2Id, match.Player2Team2Id, match.ScoreTeam1, match.ScoreTeam2)
+			_, err = tx.Exec(ctx, query3,
+				match.Date,
+				game.ID,
+				match.Team1ID,
+				match.Team2ID,
+				match.Player1Team1Id,
+				match.Player2Team1Id,
+				match.Player1Team2Id,
+				match.Player2Team2Id,
+				match.ScoreTeam1,
+				match.ScoreTeam2,
+				match.Player1Team1RateBefore,
+				match.Player1Team2RateBefore,
+				match.Player2Team1RateBefore,
+				match.Player2Team2RateBefore,
+				match.Player1Team1RateAfter,
+				match.Player1Team2RateAfter,
+				match.Player2Team1RateAfter,
+				match.Player2Team2RateAfter)
 			if err != nil {
 				_ = tx.Rollback(ctx)
 				logger.Error().Err(err).Msg("failed to create match in postgresql.UpdateGame")
@@ -426,8 +466,26 @@ func (db *RWDBOperation) UpdateGame(logger zerolog.Logger, ctx context.Context, 
 			}
 			// если id матча есть то обновляем
 		} else {
-			tag2, err := tx.Exec(ctx, query2, match.ID, match.Date, match.Team1ID, match.Team2ID, match.Player1Team1Id,
-				match.Player2Team1Id, match.Player1Team2Id, match.Player2Team2Id, match.ScoreTeam1, match.ScoreTeam2, game.ID)
+			tag2, err := tx.Exec(ctx, query2,
+				match.ID,
+				match.Date,
+				match.Team1ID,
+				match.Team2ID,
+				match.Player1Team1Id,
+				match.Player2Team1Id,
+				match.Player1Team2Id,
+				match.Player2Team2Id,
+				match.ScoreTeam1,
+				match.ScoreTeam2,
+				match.Player1Team1RateBefore,
+				match.Player1Team2RateBefore,
+				match.Player2Team1RateBefore,
+				match.Player2Team2RateBefore,
+				match.Player1Team1RateAfter,
+				match.Player1Team2RateAfter,
+				match.Player2Team1RateAfter,
+				match.Player2Team2RateAfter,
+				game.ID)
 			if err != nil {
 				_ = tx.Rollback(ctx)
 				logger.Error().Err(err).Msg("failed to update match in postgresql.UpdateGame")
