@@ -11,6 +11,7 @@ import (
 type IService interface {
 	Create(ctx context.Context, player entities.CreatePlayerRequest) (int, error)
 	Delete(ctx context.Context, playerID int) error
+	Recover(ctx context.Context, playerID int) error
 	Update(ctx context.Context, player entities.UpdatePlayerRequest) error
 	Find(ctx context.Context, player entities.FindPlayersRequest) (entities.FindPlayersResponse, error)
 	Get(ctx context.Context, id int) (entities.FullPlayer, error)

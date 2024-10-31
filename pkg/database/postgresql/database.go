@@ -23,6 +23,7 @@ type RWDBOperationer interface {
 
 	CreatePlayer(logger zerolog.Logger, ctx context.Context, player entities.CreatePlayerRequest) (int, error)
 	DeletePlayer(logger zerolog.Logger, ctx context.Context, playerID int) error
+	RecoverPlayer(logger zerolog.Logger, ctx context.Context, playerID int) error
 	UpdatePlayer(logger zerolog.Logger, ctx context.Context, playerData entities.UpdatePlayerRequest) error
 
 	CreateBar(logger zerolog.Logger, ctx context.Context, entity entity.Bar) (id *int64, err error)

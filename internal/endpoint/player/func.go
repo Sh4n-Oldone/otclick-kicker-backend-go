@@ -54,6 +54,29 @@ func makeDelete(s player.IService) endpoint.Endpoint {
 	}
 }
 
+func makeRecover(s player.IService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "player.makeRecover").Logger()
+
+		req, err := helpers.CastRequest[*entities.RecoverPlayerRequest](request)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed to cast request")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		err = s.Recover(ctx, req.ID)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed to player.Recover")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		return entities.OkResponse{
+			Message: "OK",
+		}, nil
+	}
+}
+
 func makeUpdate(s player.IService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		reqID, ctx := middleware.GetRequestID(ctx)

@@ -29,6 +29,10 @@ type DeletePlayerRequest struct {
 	ID int `json:"id"`
 }
 
+type RecoverPlayerRequest struct {
+	ID int `json:"id"`
+}
+
 type GetPlayerRequest struct {
 	ID int `json:"id"`
 }

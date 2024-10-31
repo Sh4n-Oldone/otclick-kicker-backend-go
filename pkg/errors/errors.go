@@ -22,6 +22,7 @@ const (
 const (
 	ErrCreatePlayer      = "ошибка создания игрока"
 	ErrDeletePlayer      = "ошибка удаления игрока"
+	ErrRecoverPlayer     = "ошибка восстановления игрока"
 	ErrUpdatePlayer      = "ошибка обновления данных игрока"
 	ErrGetPlayer         = "ошибка получения данных игрока"
 	ErrGetPlayerList     = "ошибка получения списка игроков"
