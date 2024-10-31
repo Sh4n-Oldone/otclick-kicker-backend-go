@@ -688,24 +688,47 @@ func (db *RWDBOperation) CreateFutureGame(logger zerolog.Logger, ctx context.Con
 
 func (db *RDBOperation) GetTeamGames(logger zerolog.Logger, ctx context.Context, teamID int) ([]entity.TeamGame, error) {
 	const query string = `
-		select 
-		    g.id, 
-		    t.id,
-		    t.name,
-		    t.short_name,
-		    p.id,
-		    b.id,
-		    b.name, 
-		    tbl.id,
-		   	tbl.name,
-			g.date
-		from teams t
-		left join games g on g.team2_id = t.id
-		LEFT JOIN places p ON g.place_id = p.id
-		LEFT JOIN bars b ON p.bar_id = b.id
-		LEFT JOIN tables tbl ON p.table_id = tbl.id
-		WHERE t.league_id = (SELECT t.league_id FROM teams t WHERE id = $1)
-    		AND t.id != $1 AND (g.date >= CURRENT_DATE OR g.date IS NULL);
+		WITH 
+		league_teams AS (
+			SELECT
+				t.id as team_id,
+				t.name as team_name,
+				t.short_name as team_short_name
+			FROM teams t
+			WHERE league_id = (SELECT league_id FROM teams t WHERE t.id = $1) AND id != $1
+		),
+		
+		home_games AS (
+			SELECT
+				g.id as game_id,
+				p.id as place_id,
+				b.id as bar_id,
+				b.name as bar_name,
+				tbl.id as table_id,
+				tbl.name as table_name,
+				g.date as date,
+				g.team2_id as team2_id
+			from games g
+					 LEFT JOIN places p ON g.place_id = p.id
+					 LEFT JOIN bars b ON p.bar_id = b.id
+					 LEFT JOIN tables tbl ON p.table_id = tbl.id
+			where team2_id IN (SELECT league_teams.team_id FROM league_teams) ANd team1_id = $1
+			)
+		
+		SELECT
+			hg.game_id,
+			lt.team_id,
+			lt.team_name,
+			lt.team_short_name,
+			hg.place_id,
+			hg.bar_id,
+			hg.bar_name,
+			hg.table_id,
+			hg.table_name,
+			hg.date
+		from league_teams lt
+		LEFT JOIN home_games hg ON lt.team_id = hg.team2_id
+		WHERE hg.date >= CURRENT_DATE OR hg.date IS NULL
 	`
 
 	games := make([]entity.TeamGame, 0)
