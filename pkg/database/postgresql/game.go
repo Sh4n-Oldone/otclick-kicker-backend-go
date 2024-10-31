@@ -43,8 +43,8 @@ func (db *RDBOperation) GetGamesByPlayersTeam(logger zerolog.Logger, ctx context
 
 func (db *RWDBOperation) CreatePlayedGame(logger zerolog.Logger, ctx context.Context, request entities.CreateGameRequest) (entities.CreateGameResponse, error) {
 	const query1 string = `
-		INSERT INTO public.games (city_id, date, team1_id, team2_id)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO public.games (city_id, place_id, date, team1_id, team2_id)
+		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id
 	`
 
@@ -80,7 +80,7 @@ func (db *RWDBOperation) CreatePlayedGame(logger zerolog.Logger, ctx context.Con
 		return entities.CreateGameResponse{}, DecodeDatabaseError(stderr.New(errors.ErrCreateGame))
 	}
 
-	err = tx.QueryRow(ctx, query1, request.CityID, request.Date, request.Team1ID, request.Team2ID).
+	err = tx.QueryRow(ctx, query1, request.CityID, request.PlaceID, request.Date, request.Team1ID, request.Team2ID).
 		Scan(&gameId)
 	if err != nil {
 		_ = tx.Rollback(ctx)
