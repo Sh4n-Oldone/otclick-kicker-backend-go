@@ -31,7 +31,7 @@ build:
 deploy:
   stage: deploy
   only:
-    - develop
+    - main
   before_script:
     - echo "$DOCKER_PASSWORD" | docker login $DOCKER_REGISTRY --username $DOCKER_USERNAME --password-stdin
   image: docker:latest
