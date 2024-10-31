@@ -183,11 +183,12 @@ func (db *RDBOperation) FindPlayers(logger zerolog.Logger, ctx context.Context, 
 			r.value AS rating
 		FROM players p
 		LEFT JOIN players_teams_links ptl ON p.id = ptl.player_id
-		INNER JOIN teams t ON t.id = ptl.team_id AND ($1::int IS NULL OR t.league_id = $1)
+		LEFT JOIN teams t ON t.id = ptl.team_id
 		LEFT JOIN rating r ON r.player_id = p.id
 		LEFT JOIN cities c ON c.id = p.city_id
 		WHERE 
-			($2::varchar IS NULL OR 
+		    ($1::int IS NULL OR t.league_id = $1)
+			AND ($2::varchar IS NULL OR 
 				(LOWER(COALESCE(p.name, '')) LIKE LOWER('%' || $2 || '%') OR 
 				 LOWER(COALESCE(p.second_name, '')) LIKE LOWER('%' || $2 || '%') OR 
 				 LOWER(COALESCE(p.last_name, '')) LIKE LOWER('%' || $2 || '%'))
@@ -200,20 +201,23 @@ func (db *RDBOperation) FindPlayers(logger zerolog.Logger, ctx context.Context, 
 				   OR m.player2_team1_id = p.id 
 				   OR m.player1_team2_id = p.id 
 				   OR m.player2_team2_id = p.id
-			) = $3)
+			) >= $3)
 			AND ($4::int IS NULL OR r.value >= $4)
 			AND ($5::int IS NULL OR p.city_id = $5)
 			AND (
-				CASE 
-					WHEN $6::bool IS NULL OR $6::bool = FALSE THEN p.deleted_at IS NULL
-					ELSE TRUE
+			    CASE
+					WHEN $6::bool IS NULL OR $6::bool = FALSE THEN (p.deleted_at IS NULL) = true
+					ELSE true--((p.deleted_at IS NULL) = true) or ((p.deleted_at IS NULL) = false)
 				END
 			)
 			AND (
-				CASE 
-					WHEN $7::bool IS TRUE THEN ptl.player_id IS NULL
-					ELSE TRUE
-				END
+			    CASE
+                when $7::bool is true then
+                    not exists (select ptl2.team_id
+                                from players_teams_links ptl2
+                                where ptl2.player_id = p.id)
+                else true
+            end
 			);
 	`
 
