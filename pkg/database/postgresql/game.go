@@ -616,6 +616,11 @@ func (db *RDBOperation) GetFutureGames(logger zerolog.Logger, ctx context.Contex
 		SELECT g.id, 
 		       g.date,
 		       g.city_id,
+			   p.id,
+			   b.id,
+			   b.name,
+			   tbl.id,
+			   tbl.name,
 		       l.id,
 		       l.name,
 		       g.team1_id, 
@@ -625,6 +630,9 @@ func (db *RDBOperation) GetFutureGames(logger zerolog.Logger, ctx context.Contex
 		       t2.short_name, 
 		       t2.name
 		FROM games g
+		LEFT JOIN places p ON g.place_id = p.id
+		LEFT JOIN bars b ON p.bar_id = b.id
+		LEFT JOIN tables tbl ON p.table_id = tbl.id
 		JOIN teams t1 ON g.team1_id = t1.id
 		JOIN teams t2 ON g.team2_id = t2.id
 		LEFT JOIN leagues l ON t1.league_id = l.id AND t2.league_id = l.id  -- лиги привязаны к командам а не к играм, поэтому лиги у команд должны совпадать, внимательнее тут
@@ -650,6 +658,11 @@ func (db *RDBOperation) GetFutureGames(logger zerolog.Logger, ctx context.Contex
 			&g.ID,
 			&g.Date,
 			&g.CityID,
+			&g.Place.ID,
+			&g.Place.Bar.ID,
+			&g.Place.Bar.Name,
+			&g.Place.Table.ID,
+			&g.Place.Table.Name,
 			&g.LeagueID,
 			&g.LeagueName,
 			&t1.ID,
