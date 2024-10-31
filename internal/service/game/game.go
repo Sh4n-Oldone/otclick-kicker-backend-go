@@ -258,11 +258,11 @@ func (s *Service) Update(ctx context.Context, request entities.UpdateGameRequest
 		}
 		// player1team2
 		if _match.Player1Team2RateBefore != _match.Player1Team2RateAfter {
-			_, ok := plGmRtInc[_match.Player1Team1ID] 
+			_, ok := plGmRtInc[_match.Player1Team2ID] 
 			if ok {
 				plGmRtInc[_match.Player1Team2ID] += *_match.Player1Team2RateAfter - *_match.Player1Team2RateBefore
 			} else {
-				plGmRtInc[_match.Player1Team2ID] =  *_match.Player1Team1RateAfter - *_match.Player1Team2RateBefore
+				plGmRtInc[_match.Player1Team2ID] =  *_match.Player1Team2RateAfter - *_match.Player1Team2RateBefore
 			}
 		}
 		// player2team1
