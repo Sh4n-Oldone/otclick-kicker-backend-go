@@ -339,8 +339,9 @@ func (db *RWDBOperation) UpdateGame(logger zerolog.Logger, ctx context.Context, 
 		UPDATE public.games
 		SET 
 			date = $2,
-			team1_id = $3,
-			team2_id = $4
+			place_id = $3,
+			team1_id = $4,
+			team2_id = $5
 		WHERE id = $1;
 	`
 
@@ -404,7 +405,7 @@ func (db *RWDBOperation) UpdateGame(logger zerolog.Logger, ctx context.Context, 
 		return DecodeDatabaseError(stderr.New(errors.ErrUpdateGame))
 	}
 
-	tag, err := tx.Exec(ctx, query1, game.ID, game.Date, game.Team1ID, game.Team2ID)
+	tag, err := tx.Exec(ctx, query1, game.ID, game.Date, game.PlaceID, game.Team1ID, game.Team2ID)
 	if err != nil {
 		_ = tx.Rollback(ctx)
 		logger.Error().Err(err).Msg("failed to postgresql.UpdateGame")
