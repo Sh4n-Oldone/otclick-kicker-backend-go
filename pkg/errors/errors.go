@@ -1,5 +1,70 @@
 package errors
 
 const (
-	FailedCastValidateRequest = "failed to CastValidateRequest"
+	FailedValidateRequest           = "ошибка валидации запроса"
+	FailedCastRequest               = "ошибка преобразования запроса"
+	EmptyParameterError             = "отсутствует параметр в запросе"
+	WrongParameterError             = "неверный параметр в запросе"
+	ErrEmptyLastName                = "отсутствует фамилия игрока"
+	ValidationErr                   = "ошибка валидации"
+	ErrNoMatches                    = "отсутствует список матчей в запросе"
+	ErrNoTeam                       = "отсутствует id команды в запросе"
+	ErrNoDate                       = "отсутствует дата игры в запросе"
+	ErrWrongDate                    = "некорректная дата игры в запросе"
+	WrongUserRole                   = "некорректная роль пользователя"
+	FailedParseJWTToken             = "ошибка расшифровки JWT токена"
+	FailedGetUserData               = "ошибка получения данных пользователя"
+	FailedGameByTeamsLeagueMismatch = "ошибка совмещения команд из разных лиг"
+	ErrEmptyField                   = "отсутствует значение в поле запроса"
+)
+
+// Database errors
+const (
+	ErrCreatePlayer      = "ошибка создания игрока"
+	ErrDeletePlayer      = "ошибка удаления игрока"
+	ErrRecoverPlayer     = "ошибка восстановления игрока"
+	ErrUpdatePlayer      = "ошибка обновления данных игрока"
+	ErrGetPlayer         = "ошибка получения данных игрока"
+	ErrGetPlayerList     = "ошибка получения списка игроков"
+	ErrGetGame           = "ошибка получения данных игры"
+	ErrGetGameList       = "ошибка получения списка игр"
+	ErrGetMatches        = "ошибка получения данных матчей"
+	ErrGetLeague         = "ошибка получения данных лиги"
+	ErrGetLeagueList     = "ошибка получения списка лиг"
+	ErrPlayerDontUpdated = "данные игрока не были обновлены"
+	ErrPlayerDontDeleted = "игрок не был удален"
+
+	ErrCreateTable  = "ошибка создания стола"
+	ErrDeleteTable  = "ошибка удаления стола"
+	ErrUpdateTable  = "ошибка обновления данных стола"
+	ErrGetTable     = "ошибка получения данных стола"
+	ErrGetTableList = "ошибка получения списка столов"
+
+	ErrCreateBar  = "ошибка создания бара"
+	ErrDeleteBar  = "ошибка удаления бара"
+	ErrUpdateBar  = "ошибка обновления данных бара"
+	ErrGetBar     = "ошибка получения данных бара"
+	ErrGetBarList = "ошибка получения списка баров"
+
+	ErrCreatePlace  = "ошибка создания игрового места"
+	ErrDeletePlace  = "ошибка удаления игрового места"
+	ErrUpdatePlace  = "ошибка обновления данных игрового места"
+	ErrGetPlace     = "ошибка получения данных игрового места"
+	ErrGetPlaceList = "ошибка получения списка игровых мест"
+
+	ErrCreateTeam = "ошибка создания команды"
+	ErrDeleteTeam = "ошибка удаления команды"
+	ErrUpdateTeam = "ошибка обновления данных команды"
+
+	ErrTeamAlreadyInLeague = "команда уже находится в составе другой лиги"
+	ErrCreateGame          = "ошибка создания игры"
+	ErrPlayerNotFound      = "игрок не найден"
+	ErrCreateMatch         = "ошибка создания матча"
+	ErrDeleteGame          = "ошибка удаления игры"
+	ErrGameNotFound        = "игра не найдена"
+	ErrDeleteMatch         = "ошибка удаления матча"
+	ErrUpdateGame          = "ошибка обновления данных игры"
+	ErrUpdateMatch         = "ошибка обновления данных матча"
+	ErrGetTeams            = "команды не найдены"
+	ErrMatchNotFound       = "матч не найден"
 )

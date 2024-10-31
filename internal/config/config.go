@@ -49,19 +49,19 @@ func NewConfig() (*Configuration, error) {
 type (
 	// Configuration is basic structure that contains configuration
 	Configuration struct {
-		Log         LogConfig         `env:",prefix=LOG_"`
-		Runtime     RuntimeConfig     `env:",prefix=RUNTIME_"`
 		Cache       CacheConfig       `env:",prefix=CACHE_"`
-		HTTP        HTTPConfig        `env:",prefix=HTTP_"`
-		HealthCheck HealthCheckConfig `env:",prefix=HEALTHCHECK_"`
 		Debug       DebugConfig       `env:",prefix=DEBUG_"`
+		HealthCheck HealthCheckConfig `env:",prefix=HEALTHCHECK_"`
+		HTTP        HTTPConfig        `env:",prefix=HTTP_"`
+		LifeTime    LifeTimeConfig    `env:",prefix=LIFETIME_"`
+		Log         LogConfig         `env:",prefix=LOG_"`
+		Redis       RedisConfig       `env:",prefix=REDIS_"`
 		RWDB        DBConfig          `env:",prefix=RWDB_"`
 		RDB         DBConfig          `env:",prefix=RDB_"`
-		Version     Version           `env:",prefix=VERSION_"`
+		Runtime     RuntimeConfig     `env:",prefix=RUNTIME_"`
 		Token       TokenConfig       `env:",prefix=TOKEN_"`
 		Secret      Secret            `env:",prefix=SECRET_"`
-		Redis       RedisConfig       `env:",prefix=REDIS_"`
-		LifeTime    LifeTimeConfig    `env:",prefix=LIFETIME_"`
+		Version     Version           `env:",prefix=VERSION_"`
 	}
 
 	LogConfig struct {
@@ -85,6 +85,7 @@ type (
 	}
 
 	HTTPConfig struct {
+		CorsEnabled                bool          `env:"CORS_ENABLED,default=false"`
 		RequestLoggingEnabled      bool          `env:"REQUEST_LOGGING_ENABLED,default=false"`
 		ResponseTimeLoggingEnabled bool          `env:"RESPONSE_TIME_LOGGING_ENABLED,default=false"`
 		ReadTimeout                time.Duration `env:"READ_TIMEOUT,default=30s"`
@@ -120,11 +121,6 @@ type (
 		RefreshTTL time.Duration `env:"TTL_REFRESH,default=720h"`
 	}
 
-	Secret struct {
-		Key  string `env:"KEY, required"`
-		Salt string `env:"SALT, required"`
-	}
-
 	RedisConfig struct {
 		ConnectionString string        `env:"CONNECTION_STRING"` // ex. redis://<user>:<password>@<host>:<port>/<db_number>
 		Timeout          time.Duration `env:"TIMEOUT,default=2s"`
@@ -133,5 +129,10 @@ type (
 	LifeTimeConfig struct {
 		Session  time.Duration `env:"SESSION,default=720h"`
 		TempUser time.Duration `env:"TEMP_USER,default=24h"`
+	}
+
+	Secret struct {
+		Key  string `env:"KEY, required"`
+		Salt string `env:"SALT, required"`
 	}
 )
