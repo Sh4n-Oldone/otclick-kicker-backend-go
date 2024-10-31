@@ -26,11 +26,14 @@ func NewServer(endpoints game.Endpoints, options []kithttp.ServerOption, cfg *co
 	r.Use(custom_middleware.HeaderHandler)
 
 	//Actual
-	r.Get("/games/find-games", kithttp.NewServer(endpoints.Find, decodeFindRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 	r.Get("/games/played/{id}", kithttp.NewServer(endpoints.Get, decodeIdParamRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
-	r.Get("/games/years", kithttp.NewServer(endpoints.GetYears, decodeGamesYearsRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
-	r.Get("/games/coming", kithttp.NewServer(endpoints.GetComingGames, decodeGetComingGamesRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 	r.Get("/games/future", kithttp.NewServer(endpoints.GetFutureGames, decodeGetFutureGamesRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	// /games/find-games - поиск игр
+	r.Get("/games/find-games", kithttp.NewServer(endpoints.Find, decodeFindRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	// /games/years возвращает все годы, в которых есть хоть одна игра
+	r.Get("/games/years", kithttp.NewServer(endpoints.GetYears, decodeGamesYearsRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	// /games/coming возвращает список ближайших игр
+	r.Get("/games/coming", kithttp.NewServer(endpoints.GetComingGames, decodeGetComingGamesRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 
 	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
 		Post("/games/played", kithttp.NewServer(endpoints.Create, decodeCreateRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)

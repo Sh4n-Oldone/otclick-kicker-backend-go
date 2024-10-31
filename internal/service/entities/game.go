@@ -32,6 +32,7 @@ type GetGameResponse struct {
 	ID        int         `json:"id"`
 	CityID    int         `json:"cityId"`
 	Date      time.Time   `json:"date"`
+	PlaceID   int         `json:"placeId"`
 	Team1ID   int         `json:"team1Id"`
 	Team1Name string      `json:"team1Name"`
 	Team2ID   int         `json:"team2Id"`
