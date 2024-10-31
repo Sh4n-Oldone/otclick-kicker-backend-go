@@ -1,16 +1,21 @@
 package jwt
 
 import (
+	// "encoding/base64"
+	"time"
+
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"time"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
 )
 
-func NewToken(userID int64, roles []int32, duration time.Duration, secretKey string) (string, error) {
+func NewToken(user entity.User, duration time.Duration, secretKey string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"uid":       userID,
-		"roles":     roles,
-		"token_exp": time.Now().Add(duration).Unix(), //TODO возможно стоит ключ "token_exp" вынести куда-то, в api-gateway оно будет нужно в middleware Auth
+		"id":        user.ID,
+		"email":     user.Email,
+		"role_name": user.Role.Name,
+		"team_id":   user.Team.ID,
+		"token_exp": time.Now().Add(duration).Unix(), //TODO возможно стоит ключ "token_exp" вынести куда-то
 	})
 
 	tokenString, err := token.SignedString([]byte(secretKey))

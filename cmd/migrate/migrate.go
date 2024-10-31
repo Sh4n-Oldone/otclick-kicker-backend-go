@@ -17,7 +17,7 @@ import (
 
 	"github.com/urfave/cli/v2"
 
-	"node71.otclick.ru/backend/template/migrations"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/migrations"
 )
 
 var (

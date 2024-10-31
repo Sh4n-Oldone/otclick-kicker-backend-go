@@ -5,8 +5,8 @@ import (
 	"net/http"
 
 	"github.com/goccy/go-json"
-	"node71.otclick.ru/backend/template/internal/config"
-	"node71.otclick.ru/backend/template/pkg/error_templates"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
 )
 
 // EncodeErrorResponse is a function that forms the error response by error message and response code got from codeFrom function.
