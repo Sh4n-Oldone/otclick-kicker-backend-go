@@ -698,7 +698,7 @@ func (db *RDBOperation) GetFutureGames(logger zerolog.Logger, ctx context.Contex
 		JOIN teams t1 ON g.team1_id = t1.id
 		JOIN teams t2 ON g.team2_id = t2.id
 		LEFT JOIN leagues l ON t1.league_id = l.id AND t2.league_id = l.id  -- лиги привязаны к командам а не к играм, поэтому лиги у команд должны совпадать, внимательнее тут
-		WHERE g.date > CURRENT_DATE AND g.city_id = $1
+		WHERE g.date >= CURRENT_DATE AND g.city_id = $1
 		ORDER BY g.date;
 	`
 
