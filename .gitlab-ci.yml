@@ -1,86 +1,14 @@
-# .gitlab-ci.yml
+# backend repo .gitlab-ci.yml
 stages:
-  - build
-  - deploy-main
-  - deploy-dev
-  - deploy-preprod
+  - trigger_devops
 
-variables:
-  GIT_SUBMODULE_STRATEGY: recursive
-  GIT_SUBMODULE_FORCE_HTTPS: "true"
-  SERVICE_NAME: "kicker-backend-go"
-  DOCKER_IMAGE: "$DOCKER_REGISTRY/$CI_COMMIT_REF_NAME-$SERVICE_NAME"
-  DOCKER_TAG: "$CI_JOB_ID"
-
-
-build:
-  stage: build
-  only:
-    - main
-    - develop
-    - preprod
-  before_script:
-    - echo "$DOCKER_PASSWORD" | docker login $DOCKER_REGISTRY --username $DOCKER_USERNAME --password-stdin
-  image: docker:latest
-  services:
-    - docker:dind
-  script:
-    - unset DOCKER_HOST
-    - docker build --build-arg GIT_USERNAME=$GIT_USERNAME --build-arg GIT_PASSWORD=$GIT_PASSWORD -t $DOCKER_IMAGE:$DOCKER_TAG .  
-    - docker push $DOCKER_IMAGE:$DOCKER_TAG
-    - echo $DOCKER_TAG > tag.txt
-  artifacts:
-    paths:
-      - tag.txt
-
-
-deploy-main:
-  stage: deploy-main
-  only:
-    - main
-  before_script:
-    - echo "$DOCKER_PASSWORD" | docker login $DOCKER_REGISTRY --username $DOCKER_USERNAME --password-stdin
-  image: docker:latest
-  script:
-    - export TAG=$(cat tag.txt)
-    - docker images --format "{{.Repository}}:{{.Tag}}" | grep "^$DOCKER_IMAGE:" | xargs -r docker rmi -f
-    - docker pull $DOCKER_IMAGE:$TAG
-    - docker stop $SERVICE_NAME || true
-    - docker rm $SERVICE_NAME || true
-    - docker run -d --restart unless-stopped --name $SERVICE_NAME --env-file .env.sample --network kicker -p 4420:8080 $DOCKER_IMAGE:$TAG
-  dependencies:
-    - build
-
-deploy-dev:
-  stage: deploy-dev
-  only:
-    - develop
-  before_script:
-    - echo "$DOCKER_PASSWORD" | docker login $DOCKER_REGISTRY --username $DOCKER_USERNAME --password-stdin
-  image: docker:latest
-  script:
-    - export TAG=$(cat tag.txt)
-    - docker images --format "{{.Repository}}:{{.Tag}}" | grep "^$DOCKER_IMAGE:" | xargs -r docker rmi -f
-    - docker pull $DOCKER_IMAGE:$TAG
-    - docker stop $SERVICE_NAME-dev || true
-    - docker rm $SERVICE_NAME-dev || true
-    - docker run -d --restart unless-stopped --name $SERVICE_NAME-dev --env-file .env.sample --network kicker-dev -p 4430:8080 $DOCKER_IMAGE:$TAG
-  dependencies:
-    - build
-
-deploy-preprod:
-  stage: deploy-preprod
+trigger_devops_pipeline:
+  stage: trigger_devops
   only:
     - preprod
-  before_script:
-    - echo "$DOCKER_PASSWORD" | docker login $DOCKER_REGISTRY --username $DOCKER_USERNAME --password-stdin
-  image: docker:latest
-  script:
-    - export TAG=$(cat tag.txt)
-    - docker images --format "{{.Repository}}:{{.Tag}}" | grep "^$DOCKER_IMAGE:" | xargs -r docker rmi -f
-    - docker pull $DOCKER_IMAGE:$TAG
-    - docker stop $SERVICE_NAME-preprod || true
-    - docker rm $SERVICE_NAME-preprod || true
-    - docker run -d --restart unless-stopped --name $SERVICE_NAME-preprod --env-file .env.sample --network kicker-preprod -p 4440:8080 $DOCKER_IMAGE:$TAG
-  dependencies:
-    - build
+  trigger:
+    project: "devops/cdcd" # Replace with the DevOps repo path
+    branch: "main" # DevOps repo branch to run pipeline on
+    strategy: depend
+  variables:
+    TARGET_BRANCH: $CI_COMMIT_REF_NAME # Passes the current branch name
