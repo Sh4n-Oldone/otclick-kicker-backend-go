@@ -763,47 +763,61 @@ func (db *RWDBOperation) CreateFutureGame(logger zerolog.Logger, ctx context.Con
 
 func (db *RDBOperation) GetTeamGames(logger zerolog.Logger, ctx context.Context, teamID int) ([]entity.TeamGame, error) {
 	const query string = `
-		WITH 
-		league_teams AS (
-			SELECT
-				t.id as team_id,
-				t.name as team_name,
-				t.short_name as team_short_name
-			FROM teams t
-			WHERE league_id = (SELECT league_id FROM teams t WHERE t.id = $1) AND id != $1
-		),
-		
-		home_games AS (
-			SELECT
-				g.id as game_id,
-				p.id as place_id,
-				b.id as bar_id,
-				b.name as bar_name,
-				tbl.id as table_id,
-				tbl.name as table_name,
-				g.date as date,
-				g.team2_id as team2_id
-			from games g
-					 LEFT JOIN places p ON g.place_id = p.id
-					 LEFT JOIN bars b ON p.bar_id = b.id
-					 LEFT JOIN tables tbl ON p.table_id = tbl.id
-			where team2_id IN (SELECT league_teams.team_id FROM league_teams) ANd team1_id = $1
+		WITH
+			league_teams AS (
+				SELECT
+					t.id as team_id,
+					t.name as team_name,
+					t.short_name as team_short_name
+				FROM teams t
+				WHERE league_id = (SELECT league_id FROM teams t WHERE t.id = $1) AND t.id != $1
+			),
+			games_as_team1 AS (
+				SELECT
+					g.id,
+					lt.team_id,
+					lt.team_name,
+					lt.team_short_name,
+					p.id as place_id,
+					b.id as bar_id,
+					b.name as bar_name,
+					tbl.id as table_id,
+					tbl.name as table_name,
+					g.date,
+					true as is_home_game
+				FROM league_teams lt
+						 LEFT JOIN games g ON g.team1_id = $1 AND g.team2_id = lt.team_id
+						 LEFT JOIN places p ON g.place_id = p.id
+						 LEFT JOIN bars b ON p.bar_id = b.id
+						 LEFT JOIN tables tbl ON p.table_id = tbl.id
+			),
+			games_as_team2 AS (
+				SELECT
+					g.id,
+					lt.team_id,
+					lt.team_name,
+					lt.team_short_name,
+					p.id as place_id,
+					b.id as bar_id,
+					b.name as bar_name,
+					tbl.id as table_id,
+					tbl.name as table_name,
+					g.date,
+					false as is_home_game
+				FROM league_teams lt
+						 LEFT JOIN games g ON g.team2_id = $1 AND g.team1_id = lt.team_id
+						 LEFT JOIN places p ON g.place_id = p.id
+						 LEFT JOIN bars b ON p.bar_id = b.id
+						 LEFT JOIN tables tbl ON p.table_id = tbl.id
 			)
-		
-		SELECT
-			hg.game_id,
-			lt.team_id,
-			lt.team_name,
-			lt.team_short_name,
-			hg.place_id,
-			hg.bar_id,
-			hg.bar_name,
-			hg.table_id,
-			hg.table_name,
-			hg.date
-		from league_teams lt
-		LEFT JOIN home_games hg ON lt.team_id = hg.team2_id
-		WHERE hg.date >= CURRENT_DATE OR hg.date IS NULL
+		SELECT *
+		FROM (
+				 SELECT * FROM games_as_team1
+				 UNION ALL
+				 SELECT * FROM games_as_team2
+			 ) all_games
+		WHERE date >= CURRENT_DATE or date IS NULL
+		ORDER BY team_id;
 	`
 
 	games := make([]entity.TeamGame, 0)
@@ -811,17 +825,17 @@ func (db *RDBOperation) GetTeamGames(logger zerolog.Logger, ctx context.Context,
 	rows, err := db.db.Query(ctx, query, teamID)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to postgresql.GetTeamGames")
-		return nil, DecodeDatabaseError(stderr.New(errors.ErrGetGameList))
+		return nil, stderr.New(errors.ErrGetGameList)
 	}
 
 	for rows.Next() {
 		var game entity.TeamGame
 
 		err = rows.Scan(&game.ID, &game.Team.ID, &game.Team.Name, &game.Team.ShortName, &game.Place.ID,
-			&game.Place.Bar.ID, &game.Place.Bar.Name, &game.Place.Table.ID, &game.Place.Table.Name, &game.Date)
+			&game.Place.Bar.ID, &game.Place.Bar.Name, &game.Place.Table.ID, &game.Place.Table.Name, &game.Date, &game.IsHomeGame)
 		if err != nil {
 			logger.Error().Err(err).Msg("failed to postgresql.GetTeamGames")
-			return nil, DecodeDatabaseError(stderr.New(errors.ErrGetGameList))
+			return nil, stderr.New(errors.ErrGetGameList)
 		}
 
 		games = append(games, game)

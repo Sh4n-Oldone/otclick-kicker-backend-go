@@ -41,8 +41,9 @@ type GetTeamGamesResponse struct {
 }
 
 type TeamGame struct {
-	ID    *int       `json:"id,omitempty"`
-	Team  TeamShort  `json:"team"`
-	Place PlaceShort `json:"place"`
-	Date  *time.Time `json:"date,omitempty"`
+	ID         *int       `json:"id,omitempty"`
+	IsHomeGame *bool      `json:"isHomeGame,omitempty"`
+	Team       TeamShort  `json:"team"`
+	Place      PlaceShort `json:"place"`
+	Date       *time.Time `json:"date,omitempty"`
 }
