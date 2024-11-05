@@ -199,7 +199,93 @@ func (s *Service) Delete(ctx context.Context, gameID int) error {
 	timeout, cancel := context.WithTimeout(ctx, s.config.RWDB.MaxIdleConnectionTimeout)
 	defer cancel()
 
-	err := s.rwdbOperations.DeleteGame(logger, timeout, gameID)
+	recalc := true
+	game, err := s.rdbOperations.GetGame(logger, ctx, gameID)
+	if err != nil {
+		return err
+	}
+
+	// Getting league for teams and validate it
+	team1resp, err := s.rdbOperations.GetTeam(logger, ctx, int64(game.Team1ID))
+	if err != nil {
+		return err
+	}
+	team2resp, err := s.rdbOperations.GetTeam(logger, ctx, int64(game.Team2ID))
+	if err != nil {
+		return err
+	}
+	if team1resp.LeagueId == nil || team2resp.LeagueId == nil || 
+		(team1resp.LeagueId != nil && team2resp.LeagueId != nil && int64(*team1resp.LeagueId) != int64(*team2resp.LeagueId)) {
+		recalc = false
+	}
+
+	if recalc {
+		leagueID := int64(*team1resp.LeagueId)
+
+		// Decreasing rating for each player of game matches
+		plGmRtInc := make(map [int]int, 0) // playerGameRatingIncrease
+		_matches, err := s.rdbOperations.GetMatchListByGameID(ctx, logger, game.ID)
+		if err != nil {
+			return err
+		}
+		for _, _match := range _matches{
+			// player1team1
+			if _match.Player1Team1RateBefore != _match.Player1Team1RateAfter {
+				_, ok := plGmRtInc[_match.Player1Team1ID] 
+				if ok {
+					plGmRtInc[_match.Player1Team1ID] += *_match.Player1Team1RateAfter - *_match.Player1Team1RateBefore
+				} else {
+					plGmRtInc[_match.Player1Team1ID] =  *_match.Player1Team1RateAfter - *_match.Player1Team1RateBefore
+				}
+			}
+			// player1team2
+			if _match.Player1Team2RateBefore != _match.Player1Team2RateAfter {
+				_, ok := plGmRtInc[_match.Player1Team2ID] 
+				if ok {
+					plGmRtInc[_match.Player1Team2ID] += *_match.Player1Team2RateAfter - *_match.Player1Team2RateBefore
+				} else {
+					plGmRtInc[_match.Player1Team2ID] =  *_match.Player1Team2RateAfter - *_match.Player1Team2RateBefore
+				}
+			}
+			// player2team1
+			if _match.Player2Team1ID != nil && _match.Player2Team1RateBefore != _match.Player2Team1RateAfter {
+				_, ok := plGmRtInc[*_match.Player2Team1ID] 
+				if ok {
+					plGmRtInc[*_match.Player2Team1ID] += *_match.Player2Team1RateAfter - *_match.Player2Team1RateBefore
+				} else {
+					plGmRtInc[*_match.Player2Team1ID] =  *_match.Player2Team1RateAfter - *_match.Player2Team1RateBefore
+				}
+			}
+			// player2team2
+			if _match.Player2Team2ID != nil && _match.Player2Team2RateBefore != _match.Player2Team2RateAfter {
+				_, ok := plGmRtInc[*_match.Player2Team2ID] 
+				if ok {
+					plGmRtInc[*_match.Player2Team2ID] += *_match.Player2Team2RateAfter - *_match.Player2Team2RateBefore
+				} else {
+					plGmRtInc[*_match.Player2Team2ID] =  *_match.Player2Team2RateAfter - *_match.Player2Team2RateBefore
+				}
+			}
+		}
+		for playerID, value := range plGmRtInc {
+			rateValue, err := s.rdbOperations.GetRatingByPlayerIDAndByLeagueID(logger, ctx, int64(playerID), leagueID)
+			if err != nil {
+				return err
+			}
+
+			rate := &entity.Rating{
+				PlayerID: int64(playerID),
+				LeagueID: leagueID,
+				Value: rateValue - int64(value),
+			}
+			operator := "insertIgnore"
+			err = s.rwdbOperations.CreateRating(logger, ctx, *rate, &operator)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	err = s.rwdbOperations.DeleteGame(logger, timeout, gameID)
 	if err != nil {
 		return err
 	}
