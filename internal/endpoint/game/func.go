@@ -132,7 +132,7 @@ func makeUpdateFutureGame(s game.IService) endpoint.Endpoint {
 		reqID, ctx := middleware.GetRequestID(ctx)
 		serviceLogger := s.GetLogger().With().Str("Source", "game.makeUpdateFutureGame").Logger()
 
-		req, err := helpers.CastRequest[entities.UpdateFutureGameRequest](request)
+		req, err := helpers.CastRequest[entity.UpdateFutureGameRequest](request)
 		if err != nil {
 			serviceLogger.Error().Err(err).Msg("Failed to cast request")
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
