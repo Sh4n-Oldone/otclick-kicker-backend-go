@@ -697,7 +697,9 @@ func (db *RDBOperation) GetFutureGames(logger zerolog.Logger, ctx context.Contex
 		LEFT JOIN tables tbl ON p.table_id = tbl.id
 		JOIN teams t1 ON g.team1_id = t1.id
 		JOIN teams t2 ON g.team2_id = t2.id
-		LEFT JOIN leagues l ON t1.league_id = l.id AND t2.league_id = l.id  -- лиги привязаны к командам а не к играм, поэтому лиги у команд должны совпадать, внимательнее тут
+		JOIN teams_leagues_links tll1 ON t1.id = tll1.team_id  --связи с лигой команды 1
+		JOIN teams_leagues_links tll2 ON t2.id = tll2.team_id  --связи с лигой команды 2
+		JOIN leagues l ON tll1.league_id = l.id AND tll2.league_id = l.id  -- объединение по одинаковой лиге
 		WHERE g.date >= CURRENT_DATE AND g.city_id = $1
 		ORDER BY g.date;
 	`
@@ -770,7 +772,9 @@ func (db *RDBOperation) GetTeamGames(logger zerolog.Logger, ctx context.Context,
 					t.name as team_name,
 					t.short_name as team_short_name
 				FROM teams t
-				WHERE league_id = (SELECT league_id FROM teams t WHERE t.id = $1) AND t.id != $1
+				JOIN teams_leagues_links tll ON t.id = tll.team_id
+				WHERE tll.league_id = (SELECT league_id FROM teams_leagues_links WHERE team_id = $1)
+				  AND t.id != $1
 			),
 			games_as_team1 AS (
 				SELECT

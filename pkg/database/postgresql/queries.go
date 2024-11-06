@@ -359,20 +359,11 @@ const (
 		WHERE id = $2;`
 
 	queryUpdateTeamsLeagueID = `
-		UPDATE teams
-		SET 
-		    league_id = $1
-		WHERE id = $2;`
-
-	queryGetTeamLeagueID = `
-		SELECT league_id
-		FROM teams
-		WHERE id = $1;`
+		INSERT INTO teams_leagues_links (team_id, league_id)
+		VALUES ($1, $2);`
 
 	queryDeleteTeamsLeagueID = `
-		UPDATE teams 
-		SET 
-		    league_id = NULL
+		DELETE FROM teams_leagues_links
 		WHERE league_id = $1;`
 
 	queryDeleteLeague string = `DELETE FROM leagues WHERE id = $1;`

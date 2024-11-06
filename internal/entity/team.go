@@ -60,7 +60,6 @@ type CreateTeamRequest struct {
 	ShortName string `db:"short_name" json:"shortName"`
 	Avatar    []byte `json:"avatar,omitempty"`
 	CityId    *int64 `db:"city_id" json:"cityId"`
-	LeagueID  *int64 `db:"league_id" json:"leagueId"`
 }
 
 type UpdateTeamRequest struct {
@@ -69,7 +68,6 @@ type UpdateTeamRequest struct {
 	ShortName *string `db:"short_name" json:"shortName"`
 	Avatar    []byte  `json:"avatar,omitempty"`
 	CityId    *int64  `db:"city_id" json:"cityId"`
-	LeagueID  *int64  `db:"league_id" json:"leagueId"`
 }
 
 type DeleteTeamRequest struct {
