@@ -15,6 +15,7 @@ import (
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/helpers"
 	"strconv"
+	"time"
 )
 
 var validate = helpers.NewCustomValidator()
@@ -147,7 +148,7 @@ func decodeFindRequest(_ context.Context, r *http.Request) (interface{}, error) 
 }
 
 func decodeUpdateFutureGameRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := entities.UpdateFutureGameRequest{}
+	request := entity.UpdateFutureGameRequest{}
 	buf := bytebufferpool.Get()
 	defer bytebufferpool.Put(buf)
 
@@ -165,6 +166,21 @@ func decodeUpdateFutureGameRequest(_ context.Context, r *http.Request) (interfac
 	if err != nil {
 		err = stderr.New(errors.ValidationErr + ": " + err.Error())
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	if request.PlaceID != nil {
+		if *request.PlaceID <= 0 {
+			err = stderr.New(errors.ValidationErr + ": " + errors.WrongPlaceIdError)
+			return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+	}
+
+	if request.Date != nil {
+		date := *request.Date
+		if date.Equal(time.Unix(0, 0)) || date.IsZero() || date.Year() == 0 {
+			err = stderr.New(errors.ValidationErr + ": " + errors.ErrWrongDate)
+			return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
 	}
 
 	return request, nil
@@ -232,6 +248,21 @@ func decodeCreateFutureGameRequest(_ context.Context, r *http.Request) (interfac
 	if err != nil {
 		err = stderr.New(errors.ValidationErr + ": " + err.Error())
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	if request.PlaceID != nil {
+		if *request.PlaceID <= 0 {
+			err = stderr.New(errors.ValidationErr + ": " + errors.WrongPlaceIdError)
+			return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+	}
+
+	if request.Date != nil {
+		date := *request.Date
+		if date.Equal(time.Unix(0, 0)) || date.IsZero() || date.Year() == 0 {
+			err = stderr.New(errors.ValidationErr + ": " + errors.ErrWrongDate)
+			return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
 	}
 
 	return request, nil

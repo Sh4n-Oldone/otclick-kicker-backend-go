@@ -567,7 +567,7 @@ func (db *RDBOperation) FindGames(logger zerolog.Logger, ctx context.Context, re
 	return games, nil
 }
 
-func (db *RWDBOperation) UpdateFutureGame(logger zerolog.Logger, ctx context.Context, request entities.UpdateFutureGameRequest) error {
+func (db *RWDBOperation) UpdateFutureGame(logger zerolog.Logger, ctx context.Context, request entity.UpdateFutureGameRequest) error {
 	const query string = `
 		UPDATE public.games
 		SET 
@@ -581,12 +581,12 @@ func (db *RWDBOperation) UpdateFutureGame(logger zerolog.Logger, ctx context.Con
 	tag, err := db.db.Exec(ctx, query, request.ID, request.Date, request.PlaceID, request.Team1ID, request.Team2ID)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to postgresql.UpdateFutureGame")
-		return DecodeDatabaseError(stderr.New(errors.ErrUpdateGame))
+		return stderr.New(errors.ErrUpdateGame)
 	}
 	if tag.RowsAffected() == 0 {
 		err = stderr.New(errors.ErrGameNotFound)
 		logger.Error().Err(err).Msg("failed to postgresql.UpdateFutureGame")
-		return DecodeDatabaseError(err)
+		return err
 	}
 
 	return nil
@@ -755,7 +755,7 @@ func (db *RWDBOperation) CreateFutureGame(logger zerolog.Logger, ctx context.Con
 	err := db.db.QueryRow(ctx, query, request.CityID, request.Date, request.PlaceID, request.Team1ID, request.Team2ID).Scan(&id)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to postgresql.CreateFutureGame")
-		return 0, DecodeDatabaseError(stderr.New(errors.ErrCreateGame))
+		return 0, stderr.New(errors.ErrCreateGame)
 	}
 
 	return id, nil

@@ -16,6 +16,7 @@ const (
 	FailedGetUserData               = "ошибка получения данных пользователя"
 	FailedGameByTeamsLeagueMismatch = "ошибка совмещения команд из разных лиг"
 	ErrEmptyField                   = "отсутствует значение в поле запроса"
+	WrongPlaceIdError               = "некорректный id места игры"
 )
 
 // Database errors

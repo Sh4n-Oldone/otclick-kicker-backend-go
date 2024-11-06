@@ -214,7 +214,7 @@ func (s *Service) Delete(ctx context.Context, gameID int) error {
 	if err != nil {
 		return err
 	}
-	if team1resp.LeagueId == nil || team2resp.LeagueId == nil || 
+	if team1resp.LeagueId == nil || team2resp.LeagueId == nil ||
 		(team1resp.LeagueId != nil && team2resp.LeagueId != nil && int64(*team1resp.LeagueId) != int64(*team2resp.LeagueId)) {
 		recalc = false
 	}
@@ -223,46 +223,46 @@ func (s *Service) Delete(ctx context.Context, gameID int) error {
 		leagueID := int64(*team1resp.LeagueId)
 
 		// Decreasing rating for each player of game matches
-		plGmRtInc := make(map [int]int, 0) // playerGameRatingIncrease
+		plGmRtInc := make(map[int]int, 0) // playerGameRatingIncrease
 		_matches, err := s.rdbOperations.GetMatchListByGameID(ctx, logger, game.ID)
 		if err != nil {
 			return err
 		}
-		for _, _match := range _matches{
+		for _, _match := range _matches {
 			// player1team1
 			if _match.Player1Team1RateBefore != _match.Player1Team1RateAfter {
-				_, ok := plGmRtInc[_match.Player1Team1ID] 
+				_, ok := plGmRtInc[_match.Player1Team1ID]
 				if ok {
 					plGmRtInc[_match.Player1Team1ID] += *_match.Player1Team1RateAfter - *_match.Player1Team1RateBefore
 				} else {
-					plGmRtInc[_match.Player1Team1ID] =  *_match.Player1Team1RateAfter - *_match.Player1Team1RateBefore
+					plGmRtInc[_match.Player1Team1ID] = *_match.Player1Team1RateAfter - *_match.Player1Team1RateBefore
 				}
 			}
 			// player1team2
 			if _match.Player1Team2RateBefore != _match.Player1Team2RateAfter {
-				_, ok := plGmRtInc[_match.Player1Team2ID] 
+				_, ok := plGmRtInc[_match.Player1Team2ID]
 				if ok {
 					plGmRtInc[_match.Player1Team2ID] += *_match.Player1Team2RateAfter - *_match.Player1Team2RateBefore
 				} else {
-					plGmRtInc[_match.Player1Team2ID] =  *_match.Player1Team2RateAfter - *_match.Player1Team2RateBefore
+					plGmRtInc[_match.Player1Team2ID] = *_match.Player1Team2RateAfter - *_match.Player1Team2RateBefore
 				}
 			}
 			// player2team1
 			if _match.Player2Team1ID != nil && _match.Player2Team1RateBefore != _match.Player2Team1RateAfter {
-				_, ok := plGmRtInc[*_match.Player2Team1ID] 
+				_, ok := plGmRtInc[*_match.Player2Team1ID]
 				if ok {
 					plGmRtInc[*_match.Player2Team1ID] += *_match.Player2Team1RateAfter - *_match.Player2Team1RateBefore
 				} else {
-					plGmRtInc[*_match.Player2Team1ID] =  *_match.Player2Team1RateAfter - *_match.Player2Team1RateBefore
+					plGmRtInc[*_match.Player2Team1ID] = *_match.Player2Team1RateAfter - *_match.Player2Team1RateBefore
 				}
 			}
 			// player2team2
 			if _match.Player2Team2ID != nil && _match.Player2Team2RateBefore != _match.Player2Team2RateAfter {
-				_, ok := plGmRtInc[*_match.Player2Team2ID] 
+				_, ok := plGmRtInc[*_match.Player2Team2ID]
 				if ok {
 					plGmRtInc[*_match.Player2Team2ID] += *_match.Player2Team2RateAfter - *_match.Player2Team2RateBefore
 				} else {
-					plGmRtInc[*_match.Player2Team2ID] =  *_match.Player2Team2RateAfter - *_match.Player2Team2RateBefore
+					plGmRtInc[*_match.Player2Team2ID] = *_match.Player2Team2RateAfter - *_match.Player2Team2RateBefore
 				}
 			}
 		}
@@ -275,7 +275,7 @@ func (s *Service) Delete(ctx context.Context, gameID int) error {
 			rate := &entity.Rating{
 				PlayerID: int64(playerID),
 				LeagueID: leagueID,
-				Value: rateValue - int64(value),
+				Value:    rateValue - int64(value),
 			}
 			operator := "insertIgnore"
 			err = s.rwdbOperations.CreateRating(logger, ctx, *rate, &operator)
@@ -327,46 +327,46 @@ func (s *Service) Update(ctx context.Context, request entities.UpdateGameRequest
 	leagueID := int64(*team1resp.LeagueId)
 
 	// Decreasing rating for each player of game matches
-	plGmRtInc := make(map [int]int, 0) // playerGameRatingIncrease
+	plGmRtInc := make(map[int]int, 0) // playerGameRatingIncrease
 	_matches, err := s.rdbOperations.GetMatchListByGameID(ctx, logger, request.ID)
 	if err != nil {
 		return err
 	}
-	for _, _match := range _matches{
+	for _, _match := range _matches {
 		// player1team1
 		if _match.Player1Team1RateBefore != _match.Player1Team1RateAfter {
-			_, ok := plGmRtInc[_match.Player1Team1ID] 
+			_, ok := plGmRtInc[_match.Player1Team1ID]
 			if ok {
 				plGmRtInc[_match.Player1Team1ID] += *_match.Player1Team1RateAfter - *_match.Player1Team1RateBefore
 			} else {
-				plGmRtInc[_match.Player1Team1ID] =  *_match.Player1Team1RateAfter - *_match.Player1Team1RateBefore
+				plGmRtInc[_match.Player1Team1ID] = *_match.Player1Team1RateAfter - *_match.Player1Team1RateBefore
 			}
 		}
 		// player1team2
 		if _match.Player1Team2RateBefore != _match.Player1Team2RateAfter {
-			_, ok := plGmRtInc[_match.Player1Team2ID] 
+			_, ok := plGmRtInc[_match.Player1Team2ID]
 			if ok {
 				plGmRtInc[_match.Player1Team2ID] += *_match.Player1Team2RateAfter - *_match.Player1Team2RateBefore
 			} else {
-				plGmRtInc[_match.Player1Team2ID] =  *_match.Player1Team2RateAfter - *_match.Player1Team2RateBefore
+				plGmRtInc[_match.Player1Team2ID] = *_match.Player1Team2RateAfter - *_match.Player1Team2RateBefore
 			}
 		}
 		// player2team1
 		if _match.Player2Team1ID != nil && _match.Player2Team1RateBefore != _match.Player2Team1RateAfter {
-			_, ok := plGmRtInc[*_match.Player2Team1ID] 
+			_, ok := plGmRtInc[*_match.Player2Team1ID]
 			if ok {
 				plGmRtInc[*_match.Player2Team1ID] += *_match.Player2Team1RateAfter - *_match.Player2Team1RateBefore
 			} else {
-				plGmRtInc[*_match.Player2Team1ID] =  *_match.Player2Team1RateAfter - *_match.Player2Team1RateBefore
+				plGmRtInc[*_match.Player2Team1ID] = *_match.Player2Team1RateAfter - *_match.Player2Team1RateBefore
 			}
 		}
 		// player2team2
 		if _match.Player2Team2ID != nil && _match.Player2Team2RateBefore != _match.Player2Team2RateAfter {
-			_, ok := plGmRtInc[*_match.Player2Team2ID] 
+			_, ok := plGmRtInc[*_match.Player2Team2ID]
 			if ok {
 				plGmRtInc[*_match.Player2Team2ID] += *_match.Player2Team2RateAfter - *_match.Player2Team2RateBefore
 			} else {
-				plGmRtInc[*_match.Player2Team2ID] =  *_match.Player2Team2RateAfter - *_match.Player2Team2RateBefore
+				plGmRtInc[*_match.Player2Team2ID] = *_match.Player2Team2RateAfter - *_match.Player2Team2RateBefore
 			}
 		}
 	}
@@ -379,7 +379,7 @@ func (s *Service) Update(ctx context.Context, request entities.UpdateGameRequest
 		rate := &entity.Rating{
 			PlayerID: int64(playerID),
 			LeagueID: leagueID,
-			Value: rateValue - int64(value),
+			Value:    rateValue - int64(value),
 		}
 		operator := "insertIgnore"
 		err = s.rwdbOperations.CreateRating(logger, ctx, *rate, &operator)
@@ -508,7 +508,7 @@ func (s *Service) Update(ctx context.Context, request entities.UpdateGameRequest
 		match.Player1Team2RateAfter = &player1team2rateAfter
 		match.Player2Team1RateAfter = &player2team1rateAfter
 		match.Player2Team2RateAfter = &player2team2rateAfter
-	
+
 		rates[match.Player1Team1Id] = player1team1rateAfter
 		rates[match.Player1Team2Id] = player1team2rateAfter
 
@@ -521,7 +521,7 @@ func (s *Service) Update(ctx context.Context, request entities.UpdateGameRequest
 
 		matches = append(matches, match)
 	}
-	
+
 	request.Matches = matches
 
 	err = s.rwdbOperations.UpdateGame(logger, timeout, request)
@@ -533,7 +533,7 @@ func (s *Service) Update(ctx context.Context, request entities.UpdateGameRequest
 		rate := &entity.Rating{
 			PlayerID: int64(playerID),
 			LeagueID: leagueID,
-			Value: int64(value),
+			Value:    int64(value),
 		}
 		operator := "insertIgnore"
 		err := s.rwdbOperations.CreateRating(logger, ctx, *rate, &operator)
@@ -560,7 +560,7 @@ func (s *Service) Find(ctx context.Context, request entities.FindGameRequest) (e
 	}, nil
 }
 
-func (s *Service) UpdateFutureGame(ctx context.Context, request entities.UpdateFutureGameRequest) error {
+func (s *Service) UpdateFutureGame(ctx context.Context, request entity.UpdateFutureGameRequest) error {
 	logger := s.logger.With().Interface("service", "game.UpdateFutureGame").Logger()
 	timeout, cancel := context.WithTimeout(ctx, s.config.RWDB.MaxIdleConnectionTimeout)
 	defer cancel()
