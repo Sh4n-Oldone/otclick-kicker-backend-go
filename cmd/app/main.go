@@ -10,7 +10,6 @@ import (
 	"syscall"
 	"time"
 
-	goRedis "github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/user"
@@ -91,18 +90,18 @@ func main() {
 
 	rwdbOperationer, rdbOperationer := postgresql.NewOperationer(rwdb, rdb)
 
-	rds, err := initRedisConnection(appConfig)
-	if err != nil {
-		coreLogger.Fatal().Err(err).Msg("failed to establish a connection with the redis")
-	} else {
-		coreLogger.Info().Msg("successful connection with the redis")
-	}
-	defer func(rds *goRedis.Client) {
-		err = rds.Close()
-		if err != nil {
-			coreLogger.Error().Msg("failed to close the redis connection")
-		}
-	}(rds)
+	//rds, err := initRedisConnection(appConfig)
+	//if err != nil {
+	//	coreLogger.Fatal().Err(err).Msg("failed to establish a connection with the redis")
+	//} else {
+	//	coreLogger.Info().Msg("successful connection with the redis")
+	//}
+	//defer func(rds *goRedis.Client) {
+	//	err = rds.Close()
+	//	if err != nil {
+	//		coreLogger.Error().Msg("failed to close the redis connection")
+	//	}
+	//}(rds)
 
 	// redisDB, err := redis.New(rds)
 
