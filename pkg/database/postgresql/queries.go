@@ -440,5 +440,6 @@ const (
 	queryGetGamesYears string = `    
 	SELECT DISTINCT EXTRACT(YEAR FROM date) AS year
     FROM games
+	WHERE date IS NOT NULL
     ORDER BY year ASC;`
 )
