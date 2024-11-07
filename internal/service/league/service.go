@@ -16,6 +16,8 @@ type IService interface {
 	Update(ctx context.Context, league entity.League, teams []int64) error
 	Delete(ctx context.Context, id int64) error
 
+	Recalc(ctx context.Context, id int64) error
+
 	GetLogger() *zerolog.Logger
 }
 

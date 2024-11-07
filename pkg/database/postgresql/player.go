@@ -268,3 +268,36 @@ func (db *RDBOperation) FindPlayers(logger zerolog.Logger, ctx context.Context, 
 
 	return players, nil
 }
+
+func (db *RDBOperation) GetPlayerIDsByLeagueID(logger zerolog.Logger, ctx context.Context, leagueID int64) ([]int64, error) {
+	const query string = `
+		SELECT p.id
+		FROM players p
+		LEFT JOIN public.players_teams_links ptl ON p.id = ptl.player_id
+		LEFT JOIN public.teams_leagues_links t ON t.team_id = ptl.team_id
+		LEFT JOIN public.leagues l ON l.id = t.league_id
+		WHERE l.id = $1 AND p.deleted_at IS NULL;`
+
+	var iDs []int64
+
+	rows, err := db.db.Query(ctx, query, leagueID)
+	if err != nil {
+		logger.Error().Stack().Err(err).Msg("failed to postgresql.GetPlayerIDsByLeagueID")
+		return nil, DecodeDatabaseError(stderr.New(errors.ErrGetPlayerList))
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var id int64
+
+		err = rows.Scan(&id)
+		if err != nil {
+			logger.Error().Stack().Err(err).Msg("failed to postgresql.GetPlayersByTeamID")
+			return nil, DecodeDatabaseError(stderr.New(errors.ErrGetPlayer))
+		}
+
+		iDs = append(iDs, id)
+	}
+
+	return iDs, nil
+}

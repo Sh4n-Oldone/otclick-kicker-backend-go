@@ -10,6 +10,7 @@ type Endpoints struct {
 	Create  endpoint.Endpoint
 	Update  endpoint.Endpoint
 	Delete  endpoint.Endpoint
+	Recalc  endpoint.Endpoint
 }
 
 func MakeEndpoints(s league.IService) Endpoints {
@@ -18,5 +19,6 @@ func MakeEndpoints(s league.IService) Endpoints {
 		Create:  makeCreate(s),
 		Update:  makeUpdate(s),
 		Delete:  makeDelete(s),
+		Recalc:  makeRecalc(s),
 	}
 }
