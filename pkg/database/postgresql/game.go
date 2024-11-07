@@ -341,7 +341,8 @@ func (db *RWDBOperation) UpdateGame(logger zerolog.Logger, ctx context.Context, 
 			date = $2,
 			place_id = $3,
 			team1_id = $4,
-			team2_id = $5
+			team2_id = $5,
+			updated_at = NOW()
 		WHERE id = $1;
 	`
 
@@ -574,7 +575,8 @@ func (db *RWDBOperation) UpdateFutureGame(logger zerolog.Logger, ctx context.Con
 			date = $2,
 			place_id = $3,
 			team1_id = $4,
-			team2_id = $5
+			team2_id = $5,
+			updated_at = NOW()
 		WHERE id = $1;
 	`
 

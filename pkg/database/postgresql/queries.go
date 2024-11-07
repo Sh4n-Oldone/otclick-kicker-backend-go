@@ -107,7 +107,8 @@ const (
 		player1_team2_id,
 		player2_team2_id,
 		score_team1,
-		score_team2
+		score_team2,
+		updated_at
 	)
 	VALUES (
 		$1,
@@ -119,7 +120,8 @@ const (
 		$7,
 		$8,
 		$9,
-		$10
+		$10,
+		NOW()
 		) RETURNING id`
 
 	queryUpdateMatch string = `
@@ -134,7 +136,8 @@ const (
 			player1_team2_id = COALESCE($7, player1_team2_id),
 			player2_team2_id = COALESCE($8, player2_team2_id),
 			score_team1 = COALESCE($9, score_team1),
-			score_team2 = COALESCE($10, score_team2)
+			score_team2 = COALESCE($10, score_team2),
+			updated_at = NOW()
 		WHERE id = $11;`
 
 	queryUpdateMatchWithRatings string = `

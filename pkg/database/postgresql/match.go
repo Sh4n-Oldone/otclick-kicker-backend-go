@@ -180,7 +180,7 @@ func (db *RDBOperation) GetMatchListByLeagueID(logger zerolog.Logger, ctx contex
 		JOIN teams_leagues_links as t2 ON g.team2_id = t2.team_id
 		JOIN leagues as l ON t1.league_id = l.id AND t2.league_id = l.id
 		WHERE l.id = $1 
-		ORDER BY g.date, m.date, m.updated_at;`
+		ORDER BY g.date, g.updated_at, m.updated_at;`
 
 	matches := make([]entity.Match, 0)
 
