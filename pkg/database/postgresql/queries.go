@@ -336,6 +336,38 @@ const (
 		WHERE p.bar_id = $1 AND p.table_id = $2
 		ORDER BY p.bar_id, p.table_id, p.id;`
 
+	queryGetPlaceListByCityID string = `
+		SELECT p.id, p.bar_id, b.name, p.table_id, t.name, p.updated_at, p.deleted_at 
+		FROM places as p
+		JOIN bars as b ON p.bar_id = b.id
+		JOIN tables as t ON p.table_id = t.id
+		WHERE b.city_id = $1 AND p.deleted_at IS NULL
+		ORDER BY p.bar_id, p.table_id, p.id;`
+
+	queryGetPlaceListByCityIDWithDeleted string = `
+		SELECT p.id, p.bar_id, b.name, p.table_id, t.name, p.updated_at, p.deleted_at 
+		FROM places as p
+		JOIN bars as b ON p.bar_id = b.id
+		JOIN tables as t ON p.table_id = t.id
+		WHERE b.city_id = $1
+		ORDER BY p.bar_id, p.table_id, p.id;`
+
+	queryGetPlaceListByCityIDByTableID string = `
+		SELECT p.id, p.bar_id, b.name, p.table_id, t.name, p.updated_at, p.deleted_at 
+		FROM places as p
+		JOIN bars as b ON p.bar_id = b.id
+		JOIN tables as t ON p.table_id = t.id
+		WHERE b.city_id = $1 AND p.table_id = $2 AND p.deleted_at IS NULL
+		ORDER BY p.bar_id, p.table_id, p.id;`
+
+	queryGetPlaceListByCityIDByTableIDWithDeleted string = `
+		SELECT p.id, p.bar_id, b.name, p.table_id, t.name, p.updated_at, p.deleted_at 
+		FROM places as p
+		JOIN bars as b ON p.bar_id = b.id
+		JOIN tables as t ON p.table_id = t.id
+		WHERE b.city_id = $1 AND p.table_id = $2
+		ORDER BY p.bar_id, p.table_id, p.id;`
+
 	queryGetPlaceByID string = `
 		SELECT id, bar_id, table_id, updated_at, deleted_at 
 		FROM places
