@@ -12,6 +12,6 @@ trigger_devops_pipeline:
     strategy: depend
   variables:
     TARGET_BRANCH: $CI_COMMIT_REF_NAME # Passes the current branch name
-    PIPELINE_FILE: "/kicker-backend-go-cicd/Kicker-backend-go.yam" # 
+    PIPELINE_FILE: "/kicker-backend-go-cicd/Kicker-backend-go.yaml" # 
 
 
