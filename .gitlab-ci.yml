@@ -5,6 +5,8 @@ stages:
 trigger_devops_pipeline:
   stage: trigger_devops
   only:
+    - main
+    - develop
     - preprod
   trigger:
     project: "devops/cdcd" # Replace with the DevOps repo path
