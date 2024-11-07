@@ -137,6 +137,30 @@ const (
 			score_team2 = COALESCE($10, score_team2)
 		WHERE id = $11;`
 
+	queryUpdateMatchWithRatings string = `
+		UPDATE matches 
+		SET
+			date = COALESCE($2, date),
+			game_id = COALESCE($3, game_id),
+			team1_id = COALESCE($4, team1_id),
+			team2_id = COALESCE($5, team2_id),
+			player1_team1_id = COALESCE($6, player1_team1_id),
+			player2_team1_id = COALESCE($7, player2_team1_id),
+			player1_team2_id = COALESCE($8, player1_team2_id),
+			player2_team2_id = COALESCE($9, player2_team2_id),
+			score_team1 = COALESCE($10, score_team1),
+			score_team2 = COALESCE($11, score_team2),
+			player1_team1_rate_before = $12,
+			player1_team2_rate_before = $13,
+			player2_team1_rate_before = $14,
+			player2_team2_rate_before = $15,
+			player1_team1_rate_after = $16,
+			player1_team2_rate_after = $17,
+			player2_team1_rate_after = $18,
+			player2_team2_rate_after = $19,
+			updated_at = NOW()
+		WHERE id = $1;`
+
 	queryDeleteMatch string = `DELETE FROM matches WHERE id = $1`
 
 	queryGetMatchListByGameID string = `

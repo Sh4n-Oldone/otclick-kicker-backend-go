@@ -34,5 +34,8 @@ func NewServer(endpoints league.Endpoints, options []kithttp.ServerOption, cfg *
 	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
 		Delete("/leagues/{id}", kithttp.NewServer(endpoints.Delete, decodeDeleteRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 
+	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
+		Post("/leagues/{id}/recalc", kithttp.NewServer(endpoints.Recalc, decodeRecalcRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+
 	return r
 }

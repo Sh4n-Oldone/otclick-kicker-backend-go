@@ -54,6 +54,8 @@ type RWDBOperationer interface {
 
 	CreateRating(logger zerolog.Logger, ctx context.Context, entity entity.Rating, operatior *string) error
 	UpdateRating(logger zerolog.Logger, ctx context.Context, entity entity.Rating) error
+
+	RewriteMatchesAndPlayerRatings(logger zerolog.Logger, ctx context.Context, matches []entity.Match, ratings map[int64]entity.Rating) error
 }
 
 // RDBOperationer is the interface that implemented by the RDBOperation structure.
@@ -104,6 +106,9 @@ type RDBOperationer interface {
 	GetRatingByPlayerIDAndByLeagueID(logger zerolog.Logger, ctx context.Context, playerID, leagueID int64) (int64, error)
 
 	GetMatchListByGameID(ctx context.Context, logger zerolog.Logger, gameID int) ([]entities.Match, error)
+
+	GetPlayerIDsByLeagueID(logger zerolog.Logger, ctx context.Context, leagueID int64) ([]int64, error)
+	GetMatchListByLeagueID(logger zerolog.Logger, ctx context.Context, leagueID int64) ([]entity.Match, error)
 }
 
 type dbp struct {

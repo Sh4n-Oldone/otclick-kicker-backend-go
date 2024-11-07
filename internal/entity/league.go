@@ -37,3 +37,7 @@ type UpdateLeagueResponse struct {
 type DeleteLeagueRequest struct {
 	ID int64
 }
+
+type RecalcLeagueRequest struct {
+	ID int64
+}
