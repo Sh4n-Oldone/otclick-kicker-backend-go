@@ -6,6 +6,8 @@ trigger_devops_pipeline:
   stage: trigger_devops
   only:
     - main
+    - develop
+    - preprod
   trigger:
     project: "devops/cdcd" # Replace with the DevOps repo path
     branch: "main" # DevOps repo branch to run pipeline on
@@ -13,5 +15,3 @@ trigger_devops_pipeline:
   variables:
     TARGET_BRANCH: $CI_COMMIT_REF_NAME # Passes the current branch name
     PIPELINE_FILE: "/kicker-backend-go-cicd/Kicker-backend-go.yaml" # 
-
-
