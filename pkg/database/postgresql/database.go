@@ -82,7 +82,7 @@ type RDBOperationer interface {
 	GetBarList(logger zerolog.Logger, ctx context.Context, cityID *int64, withDelete bool) ([]entity.Bar, error)
 	GetBarByID(logger zerolog.Logger, ctx context.Context, id int64) (*entity.Bar, error)
 
-	GetPlaceList(logger zerolog.Logger, ctx context.Context, barID, tableID *int64, withDelete bool) ([]entity.Place, error)
+	GetPlaceList(logger zerolog.Logger, ctx context.Context, barID, tableID, cityID *int64, withDelete bool) ([]entity.Place, error)
 	GetPlaceByID(logger zerolog.Logger, ctx context.Context, id int64) (*entity.Place, error)
 	GetLeagueList(logger zerolog.Logger, ctx context.Context, cityID int64) ([]entity.League, error)
 
