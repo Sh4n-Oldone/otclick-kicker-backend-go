@@ -49,19 +49,23 @@ func NewConfig() (*Configuration, error) {
 type (
 	// Configuration is basic structure that contains configuration
 	Configuration struct {
-		Cache       CacheConfig       `env:",prefix=CACHE_"`
-		Debug       DebugConfig       `env:",prefix=DEBUG_"`
-		HealthCheck HealthCheckConfig `env:",prefix=HEALTHCHECK_"`
-		HTTP        HTTPConfig        `env:",prefix=HTTP_"`
-		LifeTime    LifeTimeConfig    `env:",prefix=LIFETIME_"`
-		Log         LogConfig         `env:",prefix=LOG_"`
-		Redis       RedisConfig       `env:",prefix=REDIS_"`
-		RWDB        DBConfig          `env:",prefix=RWDB_"`
-		RDB         DBConfig          `env:",prefix=RDB_"`
-		Runtime     RuntimeConfig     `env:",prefix=RUNTIME_"`
-		Token       TokenConfig       `env:",prefix=TOKEN_"`
-		Secret      Secret            `env:",prefix=SECRET_"`
-		Version     Version           `env:",prefix=VERSION_"`
+		HTTP    HTTPConfig    `env:",prefix=HTTP_"`
+		Log     LogConfig     `env:",prefix=LOG_"`
+		RWDB    DBConfig      `env:",prefix=RWDB_"`
+		RDB     DBConfig      `env:",prefix=RDB_"`
+		Runtime RuntimeConfig `env:",prefix=RUNTIME_"`
+		Token   TokenConfig   `env:",prefix=TOKEN_"`
+		Secret  Secret        `env:",prefix=SECRET_"`
+		Version Version       `env:",prefix=VERSION_"`
+	}
+
+	HTTPConfig struct {
+		CorsEnabled  bool          `env:"CORS_ENABLED,default=false"`
+		ReadTimeout  time.Duration `env:"READ_TIMEOUT,default=30s"`
+		WriteTimeout time.Duration `env:"WRITE_TIMEOUT,default=30s"`
+		IdleTimeout  time.Duration `env:"IDLE_TIMEOUT,default=30s"`
+		Network      string        `env:"NETWORK,default=tcp"`
+		Address      string        `env:"ADDRESS,default=:8081"`
 	}
 
 	LogConfig struct {
@@ -71,39 +75,6 @@ type (
 		BatchPollInterval time.Duration `env:"BATCH_POLL_INTERVAL,default=5s"`
 	}
 
-	RuntimeConfig struct {
-		UseCPUs    int `env:"USE_CPUS,default=0"`
-		MaxThreads int `env:"MAX_THREADS,default=0"`
-	}
-
-	CacheConfig struct {
-		Type             string        `env:"TYPE,default=dummy"`
-		ConnectionString string        `env:"CONNECTION_STRING"` // ex. redis://<user>:<password>@<host>:<port>/<db_number>
-		TTL              time.Duration `env:"TTL,default=60s"`
-		DialTimeout      time.Duration `env:"DIAL_TIMEOUT,default=2s"`
-		MaxRetries       int           `env:"MAX_RETRIES,default=1"`
-	}
-
-	HTTPConfig struct {
-		CorsEnabled                bool          `env:"CORS_ENABLED,default=false"`
-		RequestLoggingEnabled      bool          `env:"REQUEST_LOGGING_ENABLED,default=false"`
-		ResponseTimeLoggingEnabled bool          `env:"RESPONSE_TIME_LOGGING_ENABLED,default=false"`
-		ReadTimeout                time.Duration `env:"READ_TIMEOUT,default=30s"`
-		WriteTimeout               time.Duration `env:"WRITE_TIMEOUT,default=30s"`
-		IdleTimeout                time.Duration `env:"IDLE_TIMEOUT,default=30s"`
-		MaxRequestBodySize         int           `env:"MAX_REQUEST_BODY_SIZE,default=4194304"`
-		Network                    string        `env:"NETWORK,default=tcp"`
-		Address                    string        `env:"ADDRESS,default=:8081"`
-	}
-
-	HealthCheckConfig struct {
-		GoroutineThreshold int `env:"GOROUTINE_THRESHOLD,default=20"`
-	}
-
-	DebugConfig struct {
-		InsecureSkipVerify bool `env:"INSECURE_SKIP_VERIFY"`
-	}
-
 	DBConfig struct {
 		ConnectionString         string        `env:"CONNECTION_STRING,required"`
 		MaxOpenConnection        int32         `env:"MAX_OPEN_CONNECTION,default=25"`
@@ -111,28 +82,22 @@ type (
 		MaxIdleConnectionTimeout time.Duration `env:"MAX_IDLE_TIMEOUT,default=300s"`
 	}
 
-	Version struct {
-		Number string `env:"NUMBER,default=1.0.0"`
-		Build  string `env:"BUILD,default=dev"`
+	RuntimeConfig struct {
+		UseCPUs    int `env:"USE_CPUS,default=0"`
+		MaxThreads int `env:"MAX_THREADS,default=0"`
 	}
 
 	TokenConfig struct {
-		AccessTTL  time.Duration `env:"TTL_ACCESS,default=1h"`
-		RefreshTTL time.Duration `env:"TTL_REFRESH,default=720h"`
-	}
-
-	RedisConfig struct {
-		ConnectionString string        `env:"CONNECTION_STRING"` // ex. redis://<user>:<password>@<host>:<port>/<db_number>
-		Timeout          time.Duration `env:"TIMEOUT,default=2s"`
-	}
-
-	LifeTimeConfig struct {
-		Session  time.Duration `env:"SESSION,default=720h"`
-		TempUser time.Duration `env:"TEMP_USER,default=24h"`
+		AccessTTL time.Duration `env:"TTL_ACCESS,default=1h"`
 	}
 
 	Secret struct {
 		Key  string `env:"KEY, required"`
 		Salt string `env:"SALT, required"`
+	}
+
+	Version struct {
+		Number string `env:"NUMBER,default=1.0.0"`
+		Build  string `env:"BUILD,default=dev"`
 	}
 )

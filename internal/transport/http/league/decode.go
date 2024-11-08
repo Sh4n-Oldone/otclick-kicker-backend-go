@@ -122,3 +122,23 @@ func decodeDeleteRequest(_ context.Context, r *http.Request) (interface{}, error
 
 	return request, nil
 }
+
+func decodeRecalcRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	request := &entity.RecalcLeagueRequest{}
+
+	idParam := chi.URLParam(r, "id")
+	if idParam == "" {
+		err := stderr.New(errors.EmptyParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	id, err := strconv.ParseInt(idParam, 10, 64)
+	if err != nil {
+		err := stderr.New(errors.WrongParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	request.ID = id
+
+	return request, nil
+}

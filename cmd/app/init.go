@@ -14,7 +14,6 @@ import (
 	kithttp "github.com/go-kit/kit/transport/http"
 	"github.com/heptiolabs/healthcheck"
 	"github.com/jackc/pgx/v5/pgxpool"
-	goRedis "github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
 
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
@@ -252,20 +251,20 @@ func initDBConnection(dbConfig *config.DBConfig) (*pgxpool.Pool, error) {
 	return pool, nil
 }
 
-func initRedisConnection(appConfig *config.Configuration) (*goRedis.Client, error) {
-	opts, err := goRedis.ParseURL(appConfig.Redis.ConnectionString)
-	if err != nil {
-		return nil, err
-	}
-	rds := goRedis.NewClient(opts)
-
-	_, err = rds.Ping(context.Background()).Result()
-	if err != nil {
-		return nil, err
-	}
-
-	return rds, nil
-}
+//func initRedisConnection(appConfig *config.Configuration) (*goRedis.Client, error) {
+//	opts, err := goRedis.ParseURL(appConfig.Redis.ConnectionString)
+//	if err != nil {
+//		return nil, err
+//	}
+//	rds := goRedis.NewClient(opts)
+//
+//	_, err = rds.Ping(context.Background()).Result()
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	return rds, nil
+//}
 
 /*func initCache(config *config.CacheConfig) (cache.ICache, error) {
 	return connector.NewCache(config.Type, config.ConnectionString, config.DialTimeout, config.MaxRetries)

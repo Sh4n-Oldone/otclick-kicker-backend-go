@@ -95,3 +95,17 @@ func makeDelete(s league.IService) endpoint.Endpoint {
 		return nil, nil
 	}
 }
+
+func makeRecalc(s league.IService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		// reqID, ctx := middleware.GetRequestID(ctx)
+		// serviceLogger := s.GetLogger().With().Str("Source", "makeCreate").Logger()
+
+		err := s.Recalc(ctx, request.(*entity.RecalcLeagueRequest).ID)
+		if err != nil {
+			return nil, err
+		}
+
+		return nil, nil
+	}
+}

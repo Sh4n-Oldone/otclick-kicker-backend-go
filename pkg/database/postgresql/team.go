@@ -18,12 +18,13 @@ import (
 func (db *RDBOperation) GetTeam(logger zerolog.Logger, ctx context.Context, teamID int64) (entity.GetTeamResponse, error) {
 	team := entity.GetTeamResponse{}
 
-	const queryGetTeam = `SELECT t.id, t.name, t.short_name, t.avatar, t.city_id, t.league_id, 
+	const queryGetTeam = `SELECT t.id, t.name, t.short_name, t.avatar, t.city_id, tll.league_id,
 	COALESCE(ARRAY_AGG(ptl.player_id ORDER BY ptl.player_id) FILTER (WHERE ptl.player_id IS NOT NULL), ARRAY[]::int8[])
 	FROM teams t
-	LEFT JOIN players_teams_links ptl ON ptl.team_id = t.id
+	LEFT JOIN players_teams_links ptl ON t.id = ptl.team_id
+	LEFT JOIN teams_leagues_links tll ON t.id = tll.team_id
 	WHERE t.id = $1
-	GROUP BY t.id`
+	GROUP BY t.id, tll.league_id`
 
 	var playerIDs []int64
 	err := db.db.QueryRow(ctx, queryGetTeam, teamID).Scan(&team.ID, &team.Name, &team.ShortName, &team.Avatar, &team.CityId, &team.LeagueId, &playerIDs)
@@ -78,10 +79,11 @@ func (db *RDBOperation) GetTeam(logger zerolog.Logger, ctx context.Context, team
 }
 
 func (db *RDBOperation) GetTeams(logger zerolog.Logger, ctx context.Context, cityID int64, onlyFree bool) ([]entity.TeamShort, error) {
-	// const query := `SELECT id, name, short_name FROM teams WHERE ($1::boolean IS NOT TRUE OR league_id IS NULL) ORDER BY id`
-	query := `SELECT id, name, short_name FROM teams WHERE city_id = $1`
+	query := `SELECT t.id, t.name, t.short_name FROM teams t
+		LEFT JOIN teams_leagues_links tll ON t.id = tll.team_id
+		WHERE t.city_id = $1`
 	if onlyFree {
-		query += " AND league_id IS NULL"
+		query += " AND tll.league_id IS NULL"
 	}
 	query += " ORDER BY id"
 
@@ -110,7 +112,12 @@ func (db *RDBOperation) GetTeams(logger zerolog.Logger, ctx context.Context, cit
 }
 
 func (db *RDBOperation) GetTeamsByCity(logger zerolog.Logger, ctx context.Context, onlyFree bool, cityID int64) ([]entity.TeamShort, error) {
-	const query = `SELECT id, name, short_name FROM teams WHERE ($1::boolean IS NOT TRUE OR league_id IS NULL) AND city_id = $2 ORDER BY id`
+	const query = `SELECT t.id, t.name, t.short_name
+		FROM teams t
+		LEFT JOIN teams_leagues_links tll ON t.id = tll.team_id
+		WHERE ($1::boolean IS NOT TRUE OR tll.league_id IS NULL)
+		  AND t.city_id = $2
+		ORDER BY t.id`
 
 	rows, err := db.db.Query(ctx, query, onlyFree, cityID)
 	if err != nil {
@@ -134,14 +141,14 @@ func (db *RDBOperation) GetTeamsByCity(logger zerolog.Logger, ctx context.Contex
 	}
 
 	return teams, nil
-
 }
 
 func (db *RDBOperation) GetTeamsByLeague(logger zerolog.Logger, ctx context.Context, leagueID int64) ([]entity.TeamByLeague, error) {
 	const query = `SELECT t.id, t.name, t.short_name, t.avatar, t.city_id, COALESCE(ARRAY_AGG(ptl.player_id) FILTER (WHERE ptl.player_id IS NOT NULL), ARRAY[]::int8[])
 	FROM teams t
 	LEFT JOIN players_teams_links ptl ON ptl.team_id = t.id
-	WHERE t.league_id = $1
+	LEFT JOIN teams_leagues_links tll ON t.id = tll.team_id
+	WHERE tll.league_id = $1
 	GROUP BY t.id
 	ORDER BY t.id`
 
@@ -173,25 +180,6 @@ func (db *RDBOperation) GetTeamsByLeague(logger zerolog.Logger, ctx context.Cont
 // ///////////////////////////////////////////////////////////////////////////////////
 // ///////////////////////////////////////////////////////////////////////////////////
 
-func (db *RDBOperation) GetTeamVsTeamTable(logger zerolog.Logger, ctx context.Context, cityID, year int64) (entity.GetTeamVsTeamTableResponse, error) {
-
-	const query = ""
-
-	rows, err := db.db.Query(ctx, query, cityID, year)
-	if err != nil {
-		logger.Error().Err(err).Msg("failed to GetTeamVsTeamTable")
-		return entity.GetTeamVsTeamTableResponse{}, DecodeDatabaseError(err)
-	}
-	for rows.Next() {
-
-	}
-	defer rows.Close()
-
-	res := entity.GetTeamVsTeamTableResponse{}
-
-	return res, nil
-}
-
 func (db *RDBOperation) FetchLeagues(logger zerolog.Logger, ctx context.Context, cityID int64) ([]entity.League, error) {
 	rows, err := db.db.Query(ctx, "SELECT id, name FROM leagues WHERE city_id = $1", cityID)
 	if err != nil {
@@ -213,7 +201,11 @@ func (db *RDBOperation) FetchLeagues(logger zerolog.Logger, ctx context.Context,
 }
 
 func (db *RDBOperation) FetchTeams(logger zerolog.Logger, ctx context.Context, leagueID int64) ([]entity.Team, error) {
-	rows, err := db.db.Query(ctx, "SELECT id, short_name FROM teams WHERE league_id = $1", leagueID)
+	const query = `SELECT t.id, t.short_name FROM teams t 
+		LEFT JOIN teams_leagues_links tll ON t.id = tll.team_id
+		WHERE tll.league_id = $1`
+
+	rows, err := db.db.Query(ctx, query, leagueID)
 	if err != nil {
 		return nil, err
 	}
@@ -318,22 +310,34 @@ func (db *RDBOperation) TeamsHaveNoGames(logger zerolog.Logger, ctx context.Cont
 // //////////////////////////////////////////////////////////////////////////////////
 // //////////////////////////////////////////////////////////////////////////////////
 func (db *RWDBOperation) CreateTeam(logger zerolog.Logger, ctx context.Context, team entity.CreateTeamRequest) (int64, error) {
-	var id int64
-	const queryCreateTeam = `INSERT INTO teams (name, short_name, avatar, city_id, league_id) VALUES ($1, $2, $3, $4, $5) RETURNING id`
+	var teamId int64
+	const queryCreateTeam = `INSERT INTO teams (name, short_name, avatar, city_id) VALUES ($1, $2, $3, $4) RETURNING id`
 
-	err := db.db.QueryRow(ctx, queryCreateTeam,
+	tx, err := db.db.Begin(ctx)
+	if err != nil {
+		logger.Error().Stack().Err(err).Msg("failed to postgresql.CreateTeam")
+		return 0, DecodeDatabaseError(stderr.New(errors.ErrCreateTeam))
+	}
+
+	// Вставка команды в таблицу `teams` и получение `id` новой команды
+	err = tx.QueryRow(ctx, queryCreateTeam,
 		team.Name,
 		team.ShortName,
 		team.Avatar,
 		team.CityId,
-		team.LeagueID,
-	).Scan(&id)
+	).Scan(&teamId)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to create Team record")
 		return 0, DecodeDatabaseError(err)
 	}
 
-	return id, nil
+	if err = tx.Commit(ctx); err != nil {
+		logger.Error().Stack().Err(err).Msg("failed to postgresql.CreateTeam")
+		_ = tx.Rollback(ctx)
+		return 0, DecodeDatabaseError(stderr.New(errors.ErrCreateTeam))
+	}
+
+	return teamId, nil
 }
 
 func (db *RWDBOperation) UpdateTeam(logger zerolog.Logger, ctx context.Context, team entity.UpdateTeamRequest) (bool, error) {
@@ -362,71 +366,85 @@ func (db *RWDBOperation) UpdateTeam(logger zerolog.Logger, ctx context.Context, 
 		values = append(values, *team.CityId)
 		index++
 	}
-	if team.LeagueID != nil {
-		fields = append(fields, fmt.Sprintf("league_id = $%d", index))
-		values = append(values, *team.LeagueID)
-		index++
-	}
 
-	// Если нет полей для обновления
+	// Если нет полей для обновления, возвращаем предупреждение
 	if len(fields) == 0 {
 		logger.Warn().Msg("No fields to update")
 		return false, nil
 	}
 
-	// Добавляем ID команды как последний параметр
-	fieldsQuery := strings.Join(fields, ", ")
-	queryUpdateTeam := fmt.Sprintf("UPDATE teams SET %s WHERE id = $%d", fieldsQuery, index)
-	values = append(values, team.ID)
+	// Создание запроса для обновления полей таблицы `teams`
+	if len(fields) > 0 {
+		fieldsQuery := strings.Join(fields, ", ")
+		queryUpdateTeam := fmt.Sprintf("UPDATE teams SET %s WHERE id = $%d", fieldsQuery, index)
+		values = append(values, team.ID)
 
-	// Выполняем запрос
-	result, err := db.db.Exec(ctx, queryUpdateTeam, values...)
-	if err != nil {
-		logger.Error().Err(err).Msg("failed to update Team record")
-		return false, DecodeDatabaseError(err)
-	}
+		// Выполняем запрос обновления команды
+		result, err := db.db.Exec(ctx, queryUpdateTeam, values...)
+		if err != nil {
+			logger.Error().Err(err).Msg("failed to update Team record")
+			return false, DecodeDatabaseError(err)
+		}
 
-	rowsAffected := result.RowsAffected()
-	if rowsAffected == 0 {
-		logger.Error().Err(err).Msg("failed to get affected rows")
-		return false, stderr.New("Failed to Update Team, it does not exist")
+		rowsAffected := result.RowsAffected()
+		if rowsAffected == 0 {
+			logger.Error().Err(err).Msg("no rows were affected for the team update")
+			return false, stderr.New("Failed to Update Team, it does not exist")
+		}
 	}
 
 	return true, nil
 }
 
 func (db *RWDBOperation) DeleteTeam(logger zerolog.Logger, ctx context.Context, id int64) (bool, error) {
+	//games, matches, users : в этих таблицах тоже могут быть связи с командой (team_id)
+	// Запросы для удаления связанных данных
 	const queryDeleteFromPlayersTeamsLinks = `DELETE FROM players_teams_links WHERE team_id = $1`
+	const queryDeleteFromTeamsLeaguesLinks = `DELETE FROM teams_leagues_links WHERE team_id = $1`
 	const queryDeleteTeam = `DELETE FROM teams WHERE id = $1`
 
+	// Начинаем транзакцию
 	tx, err := db.db.Begin(ctx)
 	if err != nil {
-		logger.Error().Stack().Err(err).Msg("failed to postgresql.DeleteTeam")
+		logger.Error().Stack().Err(err).Msg("failed to begin transaction in DeleteTeam")
 		return false, DecodeDatabaseError(stderr.New(errors.ErrDeleteTeam))
 	}
 
+	// Удаление из `players_teams_links`
 	_, err = tx.Exec(ctx, queryDeleteFromPlayersTeamsLinks, id)
 	if err != nil {
-		logger.Error().Err(err).Msg("failed to delete players_teams_links record")
+		logger.Error().Err(err).Msg("failed to delete from players_teams_links")
 		_ = tx.Rollback(ctx)
 		return false, DecodeDatabaseError(err)
 	}
 
+	// Удаление из `teams_leagues_links`
+	_, err = tx.Exec(ctx, queryDeleteFromTeamsLeaguesLinks, id)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to delete from teams_leagues_links")
+		_ = tx.Rollback(ctx)
+		return false, DecodeDatabaseError(err)
+	}
+
+	//Удаление самой команды
 	tag, err := tx.Exec(ctx, queryDeleteTeam, id)
 	if err != nil {
-		logger.Error().Err(err).Msg("failed to delete Team record")
+		logger.Error().Err(err).Msg("failed to delete from teams")
 		_ = tx.Rollback(ctx)
 		return false, DecodeDatabaseError(err)
 	}
 
+	//Проверка, что команда была удалена
 	rowsAffected := tag.RowsAffected()
 	if rowsAffected == 0 {
-		logger.Error().Err(err).Msg("failed to get affected rows")
-		return false, stderr.New("Failed to Delete Team, it does not exist")
+		logger.Warn().Msg("No team was deleted; it may not exist")
+		_ = tx.Rollback(ctx)
+		return false, stderr.New("Failed to delete team; it may not exist")
 	}
 
+	// Коммит транзакции
 	if err = tx.Commit(ctx); err != nil {
-		logger.Error().Stack().Err(err).Msg("failed to postgresql.DeleteTeam")
+		logger.Error().Stack().Err(err).Msg("failed to commit transaction in DeleteTeam")
 		_ = tx.Rollback(ctx)
 		return false, DecodeDatabaseError(stderr.New(errors.ErrDeleteTeam))
 	}

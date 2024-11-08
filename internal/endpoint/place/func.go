@@ -26,7 +26,7 @@ func makeGetList(s place.IService) endpoint.Endpoint {
 			return nil, err
 		}
 
-		records, err := s.GetList(ctx, req.BarID, req.TableID, req.WithDeleted)
+		records, err := s.GetList(ctx, req.BarID, req.TableID, req.CityID, req.WithDeleted)
 		if err != nil {
 			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.ErrGetPlaceList)
 			return nil, err
