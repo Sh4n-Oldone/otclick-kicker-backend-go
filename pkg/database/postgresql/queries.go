@@ -166,6 +166,28 @@ const (
 
 	queryDeleteMatch string = `DELETE FROM matches WHERE id = $1`
 
+	queryInsertMatchesToPlayedGame string = `
+		INSERT INTO public.matches (date,
+		                            game_id,
+		                            team1_id,
+		                            team2_id,
+		                            player1_team1_id,
+		                            player2_team1_id,
+		                            player1_team2_id,
+		                            player2_team2_id,
+		                            score_team1,
+		                            score_team2,
+		                            player1_team1_rate_before,
+		                            player1_team2_rate_before,
+		                            player2_team1_rate_before,
+		                            player2_team2_rate_before,
+		                            player1_team1_rate_after,
+		                            player1_team2_rate_after,
+		                            player2_team1_rate_after,
+		                            player2_team2_rate_after)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+		RETURNING id;`
+
 	queryGetMatchListByGameID string = `
 		SELECT id,
 			date,
@@ -188,6 +210,58 @@ const (
 			player2_team2_rate_after 
 		FROM matches 
 		WHERE game_id = $1;`
+
+	queryUpdateMatchesToUpdateGame string = `
+		UPDATE public.matches m
+		SET 
+			date = $2,
+			team1_id = $3,
+			team2_id = $4,
+			player1_team1_id = $5,
+			player2_team1_id = $6,
+			player1_team2_id = $7,
+			player2_team2_id = $8,
+			score_team1 = $9,
+			score_team2 = $10,
+			player1_team1_rate_before = $11,
+			player1_team2_rate_before = $12,
+			player2_team1_rate_before = $13,
+			player2_team2_rate_before = $14,
+			player1_team1_rate_after = $15,
+			player1_team2_rate_after = $16,
+			player2_team1_rate_after = $17,
+			player2_team2_rate_after = $18,
+			updated_at = NOW()
+		WHERE id = $1 AND game_id = $19;`
+
+	queryInsertMatchesToUpdateGame string = `
+		INSERT INTO public.matches 
+		    (
+		     date,
+		     game_id,
+		     team1_id,
+		     team2_id,
+		     player1_team1_id,
+		     player2_team1_id,
+		     player1_team2_id,
+		     player2_team2_id,
+		     score_team1,
+		     score_team2,
+   			 player1_team1_rate_before,
+			 player1_team2_rate_before,
+			 player2_team1_rate_before,
+			 player2_team2_rate_before,
+			 player1_team1_rate_after,
+			 player1_team2_rate_after,
+			 player2_team1_rate_after,
+			 player2_team2_rate_after,
+		     updated_at
+		     )
+		VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW());`
+
+	queryDeleteMatchesToUpdateGame string = `
+		DELETE FROM public.matches m
+    	WHERE m.game_id = $2 AND m.id NOT IN (SELECT unnest($1::int[]));`
 	// <--
 
 	// Table queries -->
@@ -374,7 +448,7 @@ const (
 	queryGetPlaceByID string = `
 		SELECT id, bar_id, table_id, updated_at, deleted_at 
 		FROM places
-		WHERE id = $1 AND deleled_at IS NULL;`
+		WHERE id = $1 AND deleted_at IS NULL;`
 
 	queryCreatePlace string = `
 		INSERT INTO places (bar_id, table_id, updated_at) 
@@ -440,9 +514,24 @@ const (
 	queryDeleteRatingByLeagueID = `DELETE FROM rating WHERE league_id = $1;`
 	// <--
 
+	// Games queries -->
 	queryGetGamesYears string = `    
 	SELECT DISTINCT EXTRACT(YEAR FROM date) AS year
     FROM games
 	WHERE date IS NOT NULL
     ORDER BY year ASC;`
+
+	queryInsertGame string = `
+		INSERT INTO public.games (city_id, place_id, date, team1_id, team2_id)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id;`
+
+	queryUpdateGame string = `
+		UPDATE public.games
+		SET 
+			date = $2,
+			place_id = $3,
+			team1_id = $4,
+			team2_id = $5
+		WHERE id = $1;`
 )

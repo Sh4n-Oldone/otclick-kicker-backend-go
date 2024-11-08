@@ -68,4 +68,6 @@ const (
 	ErrUpdateMatch         = "ошибка обновления данных матча"
 	ErrGetTeams            = "команды не найдены"
 	ErrMatchNotFound       = "матч не найден"
+
+	ErrRating = "ошибка при сохранении рейтинга"
 )

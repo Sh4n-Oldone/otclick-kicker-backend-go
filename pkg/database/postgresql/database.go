@@ -48,9 +48,10 @@ type RWDBOperationer interface {
 
 	CreatePlayedGame(logger zerolog.Logger, ctx context.Context, request entities.CreateGameRequest) (entities.CreateGameResponse, error)
 	DeleteGame(logger zerolog.Logger, ctx context.Context, gameID int) error
-	UpdateGame(logger zerolog.Logger, ctx context.Context, request entities.UpdateGameRequest) error
+	UpdateGame(logger zerolog.Logger, ctx context.Context, request entities.UpdateGameRequest, rates []entity.Rating) error
 	UpdateFutureGame(logger zerolog.Logger, ctx context.Context, request entity.UpdateFutureGameRequest) error
 	CreateFutureGame(logger zerolog.Logger, ctx context.Context, request entity.CreateFutureGameRequest) (int, error)
+	CreateGameWithRating(logger zerolog.Logger, ctx context.Context, request entities.CreateGameRequest, rates map[int]int, operator *string, leagueID int64) (entities.CreateGameResponse, error)
 
 	CreateRating(logger zerolog.Logger, ctx context.Context, entity entity.Rating, operatior *string) error
 	UpdateRating(logger zerolog.Logger, ctx context.Context, entity entity.Rating) error
