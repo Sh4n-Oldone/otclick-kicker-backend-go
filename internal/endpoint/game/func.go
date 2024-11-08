@@ -29,6 +29,19 @@ func makeCreate(s game.IService) endpoint.Endpoint {
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
+		// Captain-Flow
+		// limitations for the role 'captain'
+		// if teamID of captain not equal team1 or team2 from request then user unauthorized error
+		role := ctx.Value(cnst.RoleNameContextKey)
+		teamID := ctx.Value(cnst.TeamIDContextKey)
+		rTeam1ID := int64(req.Team1ID)
+		rTeam2ID := int64(req.Team2ID)
+		if role == cnst.CaptainRole && (teamID != rTeam1ID && teamID != rTeam2ID) {
+			serviceLogger.Error().Err(err).Msg("Failed to captain request")
+			err = error_templates.New(errors.WrongUserRole, stderr.New(errors.WrongUserRole), codes.Unauthenticated, http.StatusUnauthorized)
+			return nil, err
+		}
+
 		resp, err := s.Create(ctx, req)
 		if err != nil {
 			serviceLogger.Error().Err(err).Msg("Failed to game.Create")
@@ -94,6 +107,19 @@ func makeUpdate(s game.IService) endpoint.Endpoint {
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
+		// Captain-Flow
+		// limitations for the role 'captain'
+		// if teamID of captain not equal team1 or team2 from request then user unauthorized error
+		role := ctx.Value(cnst.RoleNameContextKey)
+		teamID := ctx.Value(cnst.TeamIDContextKey)
+		rTeam1ID := int64(req.Team1ID)
+		rTeam2ID := int64(req.Team2ID)
+		if role == cnst.CaptainRole && (teamID != rTeam1ID && teamID != rTeam2ID) {
+			serviceLogger.Error().Err(err).Msg("Failed to captain request")
+			err = error_templates.New(errors.WrongUserRole, stderr.New(errors.WrongUserRole), codes.Unauthenticated, http.StatusUnauthorized)
+			return nil, err
+		}
+
 		err = s.Update(ctx, req)
 		if err != nil {
 			serviceLogger.Error().Err(err).Msg("Failed to game.Update")
@@ -132,7 +158,7 @@ func makeUpdateFutureGame(s game.IService) endpoint.Endpoint {
 		reqID, ctx := middleware.GetRequestID(ctx)
 		serviceLogger := s.GetLogger().With().Str("Source", "game.makeUpdateFutureGame").Logger()
 
-		req, err := helpers.CastRequest[entities.UpdateFutureGameRequest](request)
+		req, err := helpers.CastRequest[entity.UpdateFutureGameRequest](request)
 		if err != nil {
 			serviceLogger.Error().Err(err).Msg("Failed to cast request")
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
@@ -144,7 +170,8 @@ func makeUpdateFutureGame(s game.IService) endpoint.Endpoint {
 		role := ctx.Value(cnst.RoleNameContextKey)
 		teamID := ctx.Value(cnst.TeamIDContextKey)
 		rTeam1ID := int64(req.Team1ID)
-		if role == cnst.CaptainRole && teamID != rTeam1ID {
+		rTeam2ID := int64(req.Team2ID)
+		if role == cnst.CaptainRole && (teamID != rTeam1ID && teamID != rTeam2ID) {
 			serviceLogger.Error().Err(err).Msg("Failed to captain request")
 			err = error_templates.New(errors.WrongUserRole, stderr.New(errors.WrongUserRole), codes.Unauthenticated, http.StatusUnauthorized)
 			return nil, err
@@ -229,7 +256,8 @@ func makeCreateFutureGame(s game.IService) endpoint.Endpoint {
 		role := ctx.Value(cnst.RoleNameContextKey)
 		teamID := ctx.Value(cnst.TeamIDContextKey)
 		rTeam1ID := int64(req.Team1ID)
-		if role == cnst.CaptainRole && teamID != rTeam1ID {
+		rTeam2ID := int64(req.Team2ID)
+		if role == cnst.CaptainRole && (teamID != rTeam1ID && teamID != rTeam2ID) {
 			serviceLogger.Error().Err(err).Msg("Failed to captain request")
 			err = error_templates.New(errors.WrongUserRole, stderr.New(errors.WrongUserRole), codes.Unauthenticated, http.StatusUnauthorized)
 			return nil, err
@@ -254,6 +282,17 @@ func makeGetTeamGames(s game.IService) endpoint.Endpoint {
 		if err != nil {
 			serviceLogger.Error().Err(err).Msg("Failed to cast request")
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		// Captain-Flow
+		// limitations for the role 'captain'
+		// if teamID of captain not equal team1 or team2 from request then user unauthorized error
+		role := ctx.Value(cnst.RoleNameContextKey)
+		ctxTeamID := ctx.Value(cnst.TeamIDContextKey)
+		if role == cnst.CaptainRole && ctxTeamID != int64(teamID) {
+			serviceLogger.Error().Err(err).Msg("Failed to captain request")
+			err = error_templates.New(errors.WrongUserRole, stderr.New(errors.WrongUserRole), codes.Unauthenticated, http.StatusUnauthorized)
+			return nil, err
 		}
 
 		resp, err := s.GetTeamGames(ctx, teamID)

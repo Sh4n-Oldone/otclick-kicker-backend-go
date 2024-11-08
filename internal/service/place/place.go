@@ -6,10 +6,10 @@ import (
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
 )
 
-func (s *Service) GetList(ctx context.Context, barID, tableID *int64, withDeleted bool) ([]entity.Place, error) {
+func (s *Service) GetList(ctx context.Context, barID, tableID, cityID *int64, withDeleted bool) ([]entity.Place, error) {
 	logger := s.logger.With().Interface("service", "GetPlaceList").Logger()
 
-	entities, err := s.rdbOperations.GetPlaceList(logger, ctx, barID, tableID, withDeleted)
+	entities, err := s.rdbOperations.GetPlaceList(logger, ctx, barID, tableID, cityID, withDeleted)
 	if err != nil {
 		return nil, err
 	}

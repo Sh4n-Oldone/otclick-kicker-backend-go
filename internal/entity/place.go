@@ -19,6 +19,7 @@ type PlaceShort struct {
 type GetPlaceListRequest struct {
 	BarID       *int64
 	TableID     *int64
+	CityID      *int64
 	WithDeleted bool
 }
 

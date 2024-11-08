@@ -25,15 +25,23 @@ type ShortGame struct {
 }
 
 type CreateFutureGameRequest struct {
-	CityID  int       `json:"cityId" validate:"required,gt=0"`
-	Date    time.Time `json:"date" validate:"valid-date"`
-	PlaceID int       `json:"placeId" validate:"gt=0"`
-	Team1ID int       `json:"team1Id" validate:"required,gt=0"`
-	Team2ID int       `json:"team2Id" validate:"required,gt=0"`
+	CityID  int        `json:"cityId" validate:"required,gt=0"`
+	Date    *time.Time `json:"date"`
+	PlaceID *int       `json:"placeId"`
+	Team1ID int        `json:"team1Id" validate:"required,gt=0"`
+	Team2ID int        `json:"team2Id" validate:"required,gt=0"`
 }
 
 type CreateFutureGameResponse struct {
 	ID int `json:"id"`
+}
+
+type UpdateFutureGameRequest struct {
+	ID      int        `json:"id" validate:"required,gt=0"`
+	Date    *time.Time `json:"date"`
+	PlaceID *int       `json:"placeId"`
+	Team1ID int        `json:"team1Id" validate:"required,gt=0"`
+	Team2ID int        `json:"team2Id" validate:"required,gt=0"`
 }
 
 type GetTeamGamesResponse struct {
@@ -41,8 +49,9 @@ type GetTeamGamesResponse struct {
 }
 
 type TeamGame struct {
-	ID    *int       `json:"id,omitempty"`
-	Team  TeamShort  `json:"team"`
-	Place PlaceShort `json:"place"`
-	Date  *time.Time `json:"date,omitempty"`
+	ID         *int       `json:"id,omitempty"`
+	IsHomeGame *bool      `json:"isHomeGame,omitempty"`
+	Team       TeamShort  `json:"team"`
+	Place      PlaceShort `json:"place"`
+	Date       *time.Time `json:"date,omitempty"`
 }

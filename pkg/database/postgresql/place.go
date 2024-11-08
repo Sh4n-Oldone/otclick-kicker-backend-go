@@ -10,17 +10,20 @@ import (
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 )
 
-func (db *RDBOperation) GetPlaceList(logger zerolog.Logger, ctx context.Context, barID, tableID *int64, withDeleted bool) ([]entity.Place, error) {
-
+func (db *RDBOperation) GetPlaceList(logger zerolog.Logger, ctx context.Context, barID, tableID, cityID *int64, withDeleted bool) ([]entity.Place, error) {
 	queries := map[string]string{
-		"queryGetPlaceList":                          queryGetPlaceList,
-		"queryGetPlaceListWithDeleted":               queryGetPlaceListWithDeleted,
-		"queryGetPlaceListByBarID":                   queryGetPlaceListByBarID,
-		"queryGetPlaceListByBarIDWithDeleted":        queryGetPlaceListByBarIDWithDeleted,
-		"queryGetPlaceListByTableID":                   queryGetPlaceListByTableID,
-		"queryGetPlaceListByTableIDWithDeleted":        queryGetPlaceListByTableIDWithDeleted,
-		"queryGetPlaceListByBarIDByTableID":            queryGetPlaceListByBarIDByTableID,
-		"queryGetPlaceListByBarIDByTableIDWithDeleted": queryGetPlaceListByBarIDByTableIDWithDeleted,
+		"queryGetPlaceList":                             queryGetPlaceList,
+		"queryGetPlaceListWithDeleted":                  queryGetPlaceListWithDeleted,
+		"queryGetPlaceListByBarID":                      queryGetPlaceListByBarID,
+		"queryGetPlaceListByBarIDWithDeleted":           queryGetPlaceListByBarIDWithDeleted,
+		"queryGetPlaceListByTableID":                    queryGetPlaceListByTableID,
+		"queryGetPlaceListByTableIDWithDeleted":         queryGetPlaceListByTableIDWithDeleted,
+		"queryGetPlaceListByBarIDByTableID":             queryGetPlaceListByBarIDByTableID,
+		"queryGetPlaceListByBarIDByTableIDWithDeleted":  queryGetPlaceListByBarIDByTableIDWithDeleted,
+		"queryGetPlaceListByCityID":                     queryGetPlaceListByCityID,
+		"queryGetPlaceListByCityIDWithDeleted":          queryGetPlaceListByCityIDWithDeleted,
+		"queryGetPlaceListByCityIDByTableID":            queryGetPlaceListByCityIDByTableID,
+		"queryGetPlaceListByCityIDByTableIDWithDeleted": queryGetPlaceListByCityIDByTableIDWithDeleted,
 	}
 
 	var queryAttr *int64
@@ -28,6 +31,10 @@ func (db *RDBOperation) GetPlaceList(logger zerolog.Logger, ctx context.Context,
 	if barID != nil {
 		queryAttr = barID
 		queryName += "ByBarID"
+	}
+	if cityID != nil {
+		queryAttr = cityID
+		queryName += "ByCityID"
 	}
 	if tableID != nil {
 		queryAttr = tableID
@@ -41,34 +48,36 @@ func (db *RDBOperation) GetPlaceList(logger zerolog.Logger, ctx context.Context,
 	var rows pgx.Rows
 	if barID != nil && tableID != nil {
 		rows, err = db.db.Query(ctx, queries[queryName], barID, tableID)
-	} else if barID != nil || tableID != nil {
+	} else if cityID != nil && tableID != nil {
+		rows, err = db.db.Query(ctx, queries[queryName], cityID, tableID)
+	} else if barID != nil || cityID != nil || tableID != nil {
 		rows, err = db.db.Query(ctx, queries[queryName], queryAttr)
 	} else {
 		rows, err = db.db.Query(ctx, queries[queryName])
 	}
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.GetPlaceList")
-		return nil, DecodeDatabaseError(err)
+		return nil, stderr.New(errors.ErrGetPlaceList)
 	}
 	defer rows.Close()
 
 	var entities []entity.Place
 
 	for rows.Next() {
-		var rel1 entity.Bar
-		var rel2 entity.Table
-		var entity entity.Place
+		var bar entity.Bar
+		var table entity.Table
+		var place entity.Place
 
-		entity.Bar = rel1
-		entity.Table = rel2
+		place.Bar = bar
+		place.Table = table
 
-		err = rows.Scan(&entity.ID, &entity.Bar.ID, &entity.Bar.Name, &entity.Table.ID, &entity.Table.Name, &entity.UpdatedAt, &entity.DeletedAt)
+		err = rows.Scan(&place.ID, &place.Bar.ID, &place.Bar.Name, &place.Table.ID, &place.Table.Name, &place.UpdatedAt, &place.DeletedAt)
 		if err != nil {
 			logger.Error().Stack().Err(err).Msg("failed scan to postgresql.GetPlaceList")
-			return nil, DecodeDatabaseError(err)
+			return nil, stderr.New(errors.ErrGetPlaceList)
 		}
 
-		entities = append(entities, entity)
+		entities = append(entities, place)
 	}
 
 	return entities, nil
