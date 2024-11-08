@@ -204,10 +204,11 @@ func (db *RDBOperation) FindPlayers(logger zerolog.Logger, ctx context.Context, 
 		FROM players p
 		LEFT JOIN players_teams_links ptl ON p.id = ptl.player_id
 		LEFT JOIN teams t ON t.id = ptl.team_id
+		LEFT JOIN teams_leagues_links tll ON t.id = tll.team_id
 		LEFT JOIN rating r ON r.player_id = p.id
 		LEFT JOIN cities c ON c.id = p.city_id
 		WHERE 
-		    ($1::int IS NULL OR t.league_id = $1)
+		    ($1::int IS NULL OR tll.league_id = $1)
 			AND ($2::varchar IS NULL OR 
 				(LOWER(COALESCE(p.name, '')) LIKE LOWER('%' || $2 || '%') OR 
 				 LOWER(COALESCE(p.second_name, '')) LIKE LOWER('%' || $2 || '%') OR 
@@ -266,4 +267,37 @@ func (db *RDBOperation) FindPlayers(logger zerolog.Logger, ctx context.Context, 
 	}
 
 	return players, nil
+}
+
+func (db *RDBOperation) GetPlayerIDsByLeagueID(logger zerolog.Logger, ctx context.Context, leagueID int64) ([]int64, error) {
+	const query string = `
+		SELECT p.id
+		FROM players p
+		LEFT JOIN public.players_teams_links ptl ON p.id = ptl.player_id
+		LEFT JOIN public.teams_leagues_links t ON t.team_id = ptl.team_id
+		LEFT JOIN public.leagues l ON l.id = t.league_id
+		WHERE l.id = $1 AND p.deleted_at IS NULL;`
+
+	var iDs []int64
+
+	rows, err := db.db.Query(ctx, query, leagueID)
+	if err != nil {
+		logger.Error().Stack().Err(err).Msg("failed to postgresql.GetPlayerIDsByLeagueID")
+		return nil, DecodeDatabaseError(stderr.New(errors.ErrGetPlayerList))
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var id int64
+
+		err = rows.Scan(&id)
+		if err != nil {
+			logger.Error().Stack().Err(err).Msg("failed to postgresql.GetPlayersByTeamID")
+			return nil, DecodeDatabaseError(stderr.New(errors.ErrGetPlayer))
+		}
+
+		iDs = append(iDs, id)
+	}
+
+	return iDs, nil
 }

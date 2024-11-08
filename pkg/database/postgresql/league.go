@@ -5,7 +5,6 @@ import (
 	stderr "errors"
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog"
-	"strconv"
 
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
@@ -49,21 +48,6 @@ func (db *RWDBOperation) CreateLeague(logger zerolog.Logger, ctx context.Context
 		return 0, DecodeDatabaseError(err)
 	}
 
-	var teamLeagueID *int64
-	for _, teamID := range teams {
-		err := tx.QueryRow(ctx, queryGetTeamLeagueID, teamID).Scan(&teamLeagueID)
-		if err != nil {
-			logger.Error().Stack().Err(err).Msg("failed to update League record")
-			_ = tx.Rollback(ctx)
-			return 0, DecodeDatabaseError(err)
-		}
-		if teamLeagueID != nil {
-			logger.Error().Stack().Err(err).Msg("Failed to create League record, team " + strconv.FormatInt(teamID, 10) + " is already in another league")
-			_ = tx.Rollback(ctx)
-			return 0, stderr.New(errors.ErrTeamAlreadyInLeague)
-		}
-	}
-
 	err = tx.QueryRow(ctx, queryCreateLeague, league.Name, league.CityID).Scan(&id)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to create League record")
@@ -72,7 +56,7 @@ func (db *RWDBOperation) CreateLeague(logger zerolog.Logger, ctx context.Context
 	}
 
 	for _, teamID := range teams {
-		_, err = tx.Exec(ctx, queryUpdateTeamsLeagueID, id, teamID)
+		_, err = tx.Exec(ctx, queryUpdateTeamsLeagueID, teamID, id)
 		if err != nil {
 			logger.Error().Stack().Err(err).Msg("failed to create League record")
 			_ = tx.Rollback(ctx)
@@ -97,21 +81,6 @@ func (db *RWDBOperation) UpdateLeague(logger zerolog.Logger, ctx context.Context
 		return DecodeDatabaseError(err)
 	}
 
-	var teamLeagueID *int64
-	for _, teamID := range teams {
-		err = tx.QueryRow(ctx, queryGetTeamLeagueID, teamID).Scan(&teamLeagueID)
-		if err != nil {
-			logger.Error().Stack().Err(err).Msg("failed to update League record")
-			_ = tx.Rollback(ctx)
-			return DecodeDatabaseError(err)
-		}
-		if teamLeagueID != nil && *teamLeagueID != league.ID {
-			logger.Error().Stack().Err(err).Msg("Failed to update League record, team " + strconv.FormatInt(teamID, 10) + " is already in another league")
-			_ = tx.Rollback(ctx)
-			return stderr.New(errors.ErrTeamAlreadyInLeague)
-		}
-	}
-
 	_, err = tx.Exec(ctx, queryUpdateLeague, league.Name, league.ID)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to update League record")
@@ -119,7 +88,7 @@ func (db *RWDBOperation) UpdateLeague(logger zerolog.Logger, ctx context.Context
 		return DecodeDatabaseError(err)
 	}
 
-	// убираем league_id из всех команд этой лиги
+	// убираем связи league_id из всех команд этой лиги
 	_, err = tx.Exec(ctx, queryDeleteTeamsLeagueID, league.ID)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to update League record")
@@ -127,8 +96,8 @@ func (db *RWDBOperation) UpdateLeague(logger zerolog.Logger, ctx context.Context
 		return DecodeDatabaseError(err)
 	}
 	for _, teamID := range teams {
-		// добавляем league_id в переданные команды
-		_, err = tx.Exec(ctx, queryUpdateTeamsLeagueID, league.ID, teamID)
+		// добавляем связи league_id в переданные команды
+		_, err = tx.Exec(ctx, queryUpdateTeamsLeagueID, teamID, league.ID)
 		if err != nil {
 			logger.Error().Stack().Err(err).Msg("failed to update League record")
 			_ = tx.Rollback(ctx)
@@ -153,7 +122,7 @@ func (db *RWDBOperation) DeleteLeague(logger zerolog.Logger, ctx context.Context
 		return DecodeDatabaseError(err)
 	}
 
-	// убираем league_id из всех команд этой лиги
+	// убираем league_id связь из всех команд этой лиги
 	_, err = tx.Exec(ctx, queryDeleteTeamsLeagueID, id)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to delete League record")

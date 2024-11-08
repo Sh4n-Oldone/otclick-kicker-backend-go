@@ -48,12 +48,15 @@ type RWDBOperationer interface {
 
 	CreatePlayedGame(logger zerolog.Logger, ctx context.Context, request entities.CreateGameRequest) (entities.CreateGameResponse, error)
 	DeleteGame(logger zerolog.Logger, ctx context.Context, gameID int) error
-	UpdateGame(logger zerolog.Logger, ctx context.Context, request entities.UpdateGameRequest) error
-	UpdateFutureGame(logger zerolog.Logger, ctx context.Context, request entities.UpdateFutureGameRequest) error
+	UpdateGame(logger zerolog.Logger, ctx context.Context, request entities.UpdateGameRequest, rates []entity.Rating) error
+	UpdateFutureGame(logger zerolog.Logger, ctx context.Context, request entity.UpdateFutureGameRequest) error
 	CreateFutureGame(logger zerolog.Logger, ctx context.Context, request entity.CreateFutureGameRequest) (int, error)
+	CreateGameWithRating(logger zerolog.Logger, ctx context.Context, request entities.CreateGameRequest, rates map[int]int, operator *string, leagueID int64) (entities.CreateGameResponse, error)
 
 	CreateRating(logger zerolog.Logger, ctx context.Context, entity entity.Rating, operatior *string) error
 	UpdateRating(logger zerolog.Logger, ctx context.Context, entity entity.Rating) error
+
+	RewriteMatchesAndPlayerRatings(logger zerolog.Logger, ctx context.Context, matches []entity.Match, ratings map[int64]entity.Rating) error
 }
 
 // RDBOperationer is the interface that implemented by the RDBOperation structure.
@@ -80,7 +83,7 @@ type RDBOperationer interface {
 	GetBarList(logger zerolog.Logger, ctx context.Context, cityID *int64, withDelete bool) ([]entity.Bar, error)
 	GetBarByID(logger zerolog.Logger, ctx context.Context, id int64) (*entity.Bar, error)
 
-	GetPlaceList(logger zerolog.Logger, ctx context.Context, barID, tableID *int64, withDelete bool) ([]entity.Place, error)
+	GetPlaceList(logger zerolog.Logger, ctx context.Context, barID, tableID, cityID *int64, withDelete bool) ([]entity.Place, error)
 	GetPlaceByID(logger zerolog.Logger, ctx context.Context, id int64) (*entity.Place, error)
 	GetLeagueList(logger zerolog.Logger, ctx context.Context, cityID int64) ([]entity.League, error)
 
@@ -94,7 +97,6 @@ type RDBOperationer interface {
 	GetTeams(logger zerolog.Logger, ctx context.Context, cityId int64, onlyFree bool) ([]entity.TeamShort, error)
 	GetTeamsByCity(logger zerolog.Logger, ctx context.Context, onlyFree bool, cityID int64) ([]entity.TeamShort, error)
 	GetTeamsByLeague(logger zerolog.Logger, ctx context.Context, leagueID int64) ([]entity.TeamByLeague, error)
-	GetTeamVsTeamTable(logger zerolog.Logger, ctx context.Context, cityID, year int64) (entity.GetTeamVsTeamTableResponse, error)
 
 	FetchLeagues(logger zerolog.Logger, ctx context.Context, cityID int64) ([]entity.League, error)
 	FetchTeams(logger zerolog.Logger, ctx context.Context, leagueID int64) ([]entity.Team, error)
@@ -105,6 +107,9 @@ type RDBOperationer interface {
 	GetRatingByPlayerIDAndByLeagueID(logger zerolog.Logger, ctx context.Context, playerID, leagueID int64) (int64, error)
 
 	GetMatchListByGameID(ctx context.Context, logger zerolog.Logger, gameID int) ([]entities.Match, error)
+
+	GetPlayerIDsByLeagueID(logger zerolog.Logger, ctx context.Context, leagueID int64) ([]int64, error)
+	GetMatchListByLeagueID(logger zerolog.Logger, ctx context.Context, leagueID int64) ([]entity.Match, error)
 }
 
 type dbp struct {
