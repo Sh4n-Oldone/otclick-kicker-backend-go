@@ -146,7 +146,8 @@ func (s *Service) Create(ctx context.Context, request entities.CreateGameRequest
 		match.Player2Team1RateBefore = &p2t1r
 		match.Player2Team2RateBefore = &p2t2r
 
-		player1team1rateAfter, player1team2rateAfter, player2team1rateAfter, player2team2rateAfter, err := calculator.MatchRaitingCalculation(ctx, match.ScoreTeam1, match.ScoreTeam2, player1team1rate, player1team2rate, player2team1rate, player2team2rate)
+		player1team1rateAfter, player1team2rateAfter, player2team1rateAfter, player2team2rateAfter, err := calculator.MatchRaitingCalculation(
+			ctx, match.ScoreTeam1, match.ScoreTeam2, player1team1rate, player1team2rate, player2team1rate, player2team2rate)
 		if err != nil {
 			return entities.CreateGameResponse{}, err
 		}
@@ -170,25 +171,11 @@ func (s *Service) Create(ctx context.Context, request entities.CreateGameRequest
 
 	request.Matches = matches
 
-	resp, err := s.rwdbOperations.CreatePlayedGame(logger, timeout, request)
+	operator := "insertIgnore"
+
+	resp, err := s.rwdbOperations.CreateGameWithRating(logger, timeout, request, rates, &operator, leagueID)
 	if err != nil {
 		return entities.CreateGameResponse{}, err
-	}
-
-	for playerID, value := range rates {
-		if playerID == 0 {
-			continue
-		}
-		rate := &entity.Rating{
-			PlayerID: int64(playerID),
-			LeagueID: leagueID,
-			Value:    int64(value),
-		}
-		operator := "insertIgnore"
-		err := s.rwdbOperations.CreateRating(logger, ctx, *rate, &operator)
-		if err != nil {
-			return entities.CreateGameResponse{}, err
-		}
 	}
 
 	return resp, nil
@@ -325,6 +312,7 @@ func (s *Service) Update(ctx context.Context, request entities.UpdateGameRequest
 	}
 
 	leagueID := int64(*team1resp.LeagueId)
+	rates := make(map[int]int, 0)
 
 	// Decreasing rating for each player of game matches
 	plGmRtInc := make(map[int]int, 0) // playerGameRatingIncrease
@@ -376,20 +364,10 @@ func (s *Service) Update(ctx context.Context, request entities.UpdateGameRequest
 			return err
 		}
 
-		rate := &entity.Rating{
-			PlayerID: int64(playerID),
-			LeagueID: leagueID,
-			Value:    rateValue - int64(value),
-		}
-		operator := "insertIgnore"
-		err = s.rwdbOperations.CreateRating(logger, ctx, *rate, &operator)
-		if err != nil {
-			return err
-		}
+		rates[playerID] = int(rateValue) - value
 	}
 
 	// Map for keeping player ratings while going game calculation
-	rates := make(map[int]int, 0)
 	var matches []entities.NewMatch
 
 	for _, match := range request.Matches {
@@ -399,9 +377,9 @@ func (s *Service) Update(ctx context.Context, request entities.UpdateGameRequest
 
 		player1team1rate := 0
 		player1team1ID := match.Player1Team1Id
-		value, ok := rates[player1team1ID]
+		val, ok := rates[player1team1ID]
 		if ok {
-			player1team1rate = value
+			player1team1rate = val
 		} else {
 			resp, err := s.rdbOperations.GetRatingByPlayerIDAndByLeagueID(logger, ctx, int64(player1team1ID), leagueID)
 			if err != nil {
@@ -421,9 +399,9 @@ func (s *Service) Update(ctx context.Context, request entities.UpdateGameRequest
 
 		player1team2rate := 0
 		player1team2ID := match.Player1Team2Id
-		value, ok = rates[player1team2ID]
+		val, ok = rates[player1team2ID]
 		if ok {
-			player1team2rate = value
+			player1team2rate = val
 		} else {
 			resp, err := s.rdbOperations.GetRatingByPlayerIDAndByLeagueID(logger, ctx, int64(player1team2ID), leagueID)
 			if err != nil {
@@ -444,9 +422,9 @@ func (s *Service) Update(ctx context.Context, request entities.UpdateGameRequest
 		player2team1rate := 0
 		player2team1ID := *match.Player2Team1Id
 		if player2team1ID > 0 {
-			value, ok = rates[player2team1ID]
+			val, ok = rates[player2team1ID]
 			if ok {
-				player2team1rate = value
+				player2team1rate = val
 			} else {
 				resp, err := s.rdbOperations.GetRatingByPlayerIDAndByLeagueID(logger, ctx, int64(player2team1ID), leagueID)
 				if err != nil {
@@ -468,9 +446,9 @@ func (s *Service) Update(ctx context.Context, request entities.UpdateGameRequest
 		player2team2rate := 0
 		player2team2ID := *match.Player2Team2Id
 		if player2team2ID > 0 {
-			value, ok = rates[player2team2ID]
+			val, ok = rates[player2team2ID]
 			if ok {
-				player2team2rate = value
+				player2team2rate = val
 			} else {
 				resp, err := s.rdbOperations.GetRatingByPlayerIDAndByLeagueID(logger, ctx, int64(player2team2ID), leagueID)
 				if err != nil {
@@ -499,7 +477,8 @@ func (s *Service) Update(ctx context.Context, request entities.UpdateGameRequest
 		match.Player2Team1RateBefore = &p2t1r
 		match.Player2Team2RateBefore = &p2t2r
 
-		player1team1rateAfter, player1team2rateAfter, player2team1rateAfter, player2team2rateAfter, err := calculator.MatchRaitingCalculation(ctx, match.ScoreTeam1, match.ScoreTeam2, player1team1rate, player1team2rate, player2team1rate, player2team2rate)
+		player1team1rateAfter, player1team2rateAfter, player2team1rateAfter, player2team2rateAfter, err := calculator.MatchRaitingCalculation(
+			ctx, match.ScoreTeam1, match.ScoreTeam2, player1team1rate, player1team2rate, player2team1rate, player2team2rate)
 		if err != nil {
 			return err
 		}
@@ -524,22 +503,20 @@ func (s *Service) Update(ctx context.Context, request entities.UpdateGameRequest
 
 	request.Matches = matches
 
-	err = s.rwdbOperations.UpdateGame(logger, timeout, request)
-	if err != nil {
-		return err
-	}
-
+	newRates := make([]entity.Rating, len(rates))
 	for playerID, value := range rates {
 		rate := &entity.Rating{
 			PlayerID: int64(playerID),
 			LeagueID: leagueID,
 			Value:    int64(value),
 		}
-		operator := "insertIgnore"
-		err := s.rwdbOperations.CreateRating(logger, ctx, *rate, &operator)
-		if err != nil {
-			return err
-		}
+
+		newRates = append(newRates, *rate)
+	}
+
+	err = s.rwdbOperations.UpdateGame(logger, timeout, request, newRates)
+	if err != nil {
+		return err
 	}
 
 	return nil
