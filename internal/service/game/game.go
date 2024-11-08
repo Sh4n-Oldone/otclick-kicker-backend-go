@@ -503,7 +503,7 @@ func (s *Service) Update(ctx context.Context, request entities.UpdateGameRequest
 
 	request.Matches = matches
 
-	newRates := make([]entity.Rating, len(rates))
+	newRates := make([]entity.Rating, 0, len(rates))
 	for playerID, value := range rates {
 		rate := &entity.Rating{
 			PlayerID: int64(playerID),
