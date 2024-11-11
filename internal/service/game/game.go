@@ -27,7 +27,7 @@ func (s *Service) Create(ctx context.Context, request entities.CreateGameRequest
 	if err != nil {
 		return entities.CreateGameResponse{}, err
 	}
-	if int64(*team1resp.LeagueId) != int64(*team2resp.LeagueId) {
+	if team1resp.Leagues[0].ID != team2resp.Leagues[0].ID { //todo: лиг может быть много у команд
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.GetTeam")
 		err = stderr.New(errors.FailedGameByTeamsLeagueMismatch)
 		return entities.CreateGameResponse{}, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
@@ -36,7 +36,7 @@ func (s *Service) Create(ctx context.Context, request entities.CreateGameRequest
 	// Map for keeping player ratings while going game calculation
 	rates := make(map[int]int, 0)
 
-	leagueID := int64(*team1resp.LeagueId)
+	leagueID := team1resp.Leagues[0].ID //todo: лиг может быть много у команд
 	var matches []entities.GamesMatch
 
 	for _, match := range request.Matches {
@@ -201,13 +201,13 @@ func (s *Service) Delete(ctx context.Context, gameID int) error {
 	if err != nil {
 		return err
 	}
-	if team1resp.LeagueId == nil || team2resp.LeagueId == nil ||
-		(team1resp.LeagueId != nil && team2resp.LeagueId != nil && int64(*team1resp.LeagueId) != int64(*team2resp.LeagueId)) {
+	if team1resp.Leagues == nil || team2resp.Leagues == nil ||
+		(team1resp.Leagues != nil && team2resp.Leagues != nil && int64(team1resp.Leagues[0].ID) != int64(team2resp.Leagues[0].ID)) { //todo: лиг может быть много у команд
 		recalc = false
 	}
 
 	if recalc {
-		leagueID := int64(*team1resp.LeagueId)
+		leagueID := int64(team1resp.Leagues[0].ID) //todo: лиг может быть много у команд
 
 		// Decreasing rating for each player of game matches
 		plGmRtInc := make(map[int]int, 0) // playerGameRatingIncrease
@@ -305,13 +305,13 @@ func (s *Service) Update(ctx context.Context, request entities.UpdateGameRequest
 	if err != nil {
 		return err
 	}
-	if int64(*team1resp.LeagueId) != int64(*team2resp.LeagueId) {
+	if team1resp.Leagues[0].ID != team2resp.Leagues[0].ID { //todo: лиг может быть много у команд
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.GetTeam")
 		err = stderr.New(errors.FailedGameByTeamsLeagueMismatch)
 		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
-	leagueID := int64(*team1resp.LeagueId)
+	leagueID := team1resp.Leagues[0].ID //todo: лиг может быть много у команд
 	rates := make(map[int]int, 0)
 
 	// Decreasing rating for each player of game matches
