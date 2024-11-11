@@ -11,12 +11,13 @@ type Game struct {
 }
 
 type CreateGameRequest struct {
-	CityID  int          `json:"cityId" validate:"required,gt=0"`
-	PlaceID int          `json:"placeId" validate:"required,gt=0"`
-	Date    time.Time    `json:"date" validate:"required,valid-date"`
-	Team1ID int          `json:"team1Id" validate:"required,gt=0"`
-	Team2ID int          `json:"team2Id" validate:"required,gt=0"`
-	Matches []GamesMatch `json:"matches" validate:"required,min=1"`
+	CityID   int          `json:"cityId" validate:"required,gt=0"`
+	PlaceID  int          `json:"placeId" validate:"required,gt=0"`
+	LeagueID int          `json:"leagueId" validate:"required,gt=0"`
+	Date     time.Time    `json:"date" validate:"required,valid-date"`
+	Team1ID  int          `json:"team1Id" validate:"required,gt=0"`
+	Team2ID  int          `json:"team2Id" validate:"required,gt=0"`
+	Matches  []GamesMatch `json:"matches" validate:"required,min=1"`
 }
 
 type CreateGameResponse struct {
@@ -41,12 +42,13 @@ type GetGameResponse struct {
 }
 
 type UpdateGameRequest struct {
-	ID      int        `json:"id" validate:"required,gt=0"`
-	Date    time.Time  `json:"date" validate:"required,valid-date"`
-	PlaceID int        `json:"placeId" validate:"required,gt=0"`
-	Team1ID int        `json:"team1Id" validate:"required,gt=0"`
-	Team2ID int        `json:"team2Id" validate:"required,gt=0"`
-	Matches []NewMatch `json:"matches" validate:"required,min=1,dive"`
+	ID       int        `json:"id" validate:"required,gt=0"`
+	Date     time.Time  `json:"date" validate:"required,valid-date"`
+	PlaceID  int        `json:"placeId" validate:"required,gt=0"`
+	LeagueID int        `json:"leagueId" validate:"required,gt=0"`
+	Team1ID  int        `json:"team1Id" validate:"required,gt=0"`
+	Team2ID  int        `json:"team2Id" validate:"required,gt=0"`
+	Matches  []NewMatch `json:"matches" validate:"required,min=1,dive"`
 }
 
 type FindGameRequest struct {
