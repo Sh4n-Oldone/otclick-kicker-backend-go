@@ -246,8 +246,8 @@ func (db *RDBOperation) FetchTeams(logger zerolog.Logger, ctx context.Context, l
 	return teams, nil
 }
 
-func (db *RDBOperation) FetchGames(logger zerolog.Logger, ctx context.Context, teamID1, teamID2, cityID, year int64) ([]entities.ComingGame, error) {
-	const query = `SELECT id FROM games WHERE team1_id = $1 AND team2_id = $2 AND city_id = $3 AND EXTRACT(year FROM date) = $4`
+func (db *RDBOperation) FetchGames(logger zerolog.Logger, ctx context.Context, teamID1, teamID2, cityID, year int64) ([]entity.GameFetch, error) {
+	const query = `SELECT id, tech_loose_team_id FROM games WHERE team1_id = $1 AND team2_id = $2 AND city_id = $3 AND EXTRACT(year FROM date) = $4`
 
 	rows, err := db.db.Query(ctx, query, teamID1, teamID2, cityID, year)
 
@@ -256,10 +256,10 @@ func (db *RDBOperation) FetchGames(logger zerolog.Logger, ctx context.Context, t
 	}
 	defer rows.Close()
 
-	var games []entities.ComingGame
+	var games []entity.GameFetch
 	for rows.Next() {
-		var game entities.ComingGame
-		err = rows.Scan(&game.ID)
+		var game entity.GameFetch
+		err = rows.Scan(&game.ID, &game.TechLooseTeamID)
 		if err != nil {
 			return nil, err
 		}

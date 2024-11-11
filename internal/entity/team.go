@@ -155,6 +155,11 @@ type Body struct {
 	TableCell         map[string]TableCell
 }
 
+type GameFetch struct {
+	ID              int64  `json:"id"`
+	TechLooseTeamID *int64 `json:"techLooseTeamId"`
+}
+
 // {
 // 	"data": [
 // 	  {
