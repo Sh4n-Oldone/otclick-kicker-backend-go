@@ -39,7 +39,15 @@ func makeCreate(s game.IService) endpoint.Endpoint {
 		if role == cnst.CaptainRole && (teamID != rTeam1ID && teamID != rTeam2ID) {
 			serviceLogger.Error().Err(err).Msg("Failed to captain request")
 			err = error_templates.New(errors.WrongUserRole, stderr.New(errors.WrongUserRole), codes.Unauthenticated, http.StatusUnauthorized)
-			return nil, err
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		for _, m := range req.Matches {
+			if m.Team1ID != req.Team1ID || m.Team2ID != req.Team2ID {
+				serviceLogger.Error().Err(err).Msg("Failed to makeCreate")
+				err = error_templates.New(errors.ErrDifferentTeams, stderr.New(errors.ErrDifferentTeams), codes.InvalidArgument, http.StatusBadRequest)
+				return nil, error_templates.WrapErrorEndpoint(err, reqID)
+			}
 		}
 
 		resp, err := s.Create(ctx, req)
@@ -117,7 +125,15 @@ func makeUpdate(s game.IService) endpoint.Endpoint {
 		if role == cnst.CaptainRole && (teamID != rTeam1ID && teamID != rTeam2ID) {
 			serviceLogger.Error().Err(err).Msg("Failed to captain request")
 			err = error_templates.New(errors.WrongUserRole, stderr.New(errors.WrongUserRole), codes.Unauthenticated, http.StatusUnauthorized)
-			return nil, err
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		for _, m := range req.Matches {
+			if m.Team1ID != req.Team1ID || m.Team2ID != req.Team2ID {
+				serviceLogger.Error().Err(err).Msg("Failed to makeUpdate")
+				err = error_templates.New(errors.ErrDifferentTeams, stderr.New(errors.ErrDifferentTeams), codes.InvalidArgument, http.StatusBadRequest)
+				return nil, error_templates.WrapErrorEndpoint(err, reqID)
+			}
 		}
 
 		err = s.Update(ctx, req)

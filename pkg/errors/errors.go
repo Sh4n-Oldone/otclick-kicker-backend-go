@@ -7,7 +7,7 @@ const (
 	WrongParameterError             = "неверный параметр в запросе"
 	ErrEmptyLastName                = "отсутствует фамилия игрока"
 	ValidationErr                   = "ошибка валидации"
-	ErrNoMatches                    = "отсутствует список матчей в запросе"
+	ErrDifferentTeams               = "команды в матчах и в игре не совпадают "
 	ErrNoTeam                       = "отсутствует id команды в запросе"
 	ErrNoDate                       = "отсутствует дата игры в запросе"
 	ErrWrongDate                    = "некорректная дата игры в запросе"
