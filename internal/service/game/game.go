@@ -13,6 +13,21 @@ import (
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 )
 
+// содержится ли leagueID в массиве.
+func contains(arr []entity.LeagueShort, leagueID int64) bool {
+	for _, v := range arr {
+		if v.ID == leagueID {
+			return true
+		}
+	}
+	return false
+}
+
+// содержится ли leagueID в обоих массивах.
+func bothContain(leagueID int64, leaguesTeam1, leaguesTeam2 []entity.LeagueShort) bool {
+	return contains(leaguesTeam1, leagueID) && contains(leaguesTeam2, leagueID)
+}
+
 func (s *Service) Create(ctx context.Context, request entities.CreateGameRequest) (entities.CreateGameResponse, error) {
 	logger := s.logger.With().Interface("service", "game.Create").Logger()
 	timeout, cancel := context.WithTimeout(ctx, s.config.RWDB.MaxIdleConnectionTimeout)
@@ -27,8 +42,10 @@ func (s *Service) Create(ctx context.Context, request entities.CreateGameRequest
 	if err != nil {
 		return entities.CreateGameResponse{}, err
 	}
-	if team1resp.Leagues[0].ID != team2resp.Leagues[0].ID { //todo: лиг может быть много у команд
-		logger.Error().Stack().Err(err).Msg("failed to postgresql.GetTeam")
+
+	leagueID := int64(request.LeagueID)
+	if !bothContain(leagueID, team1resp.Leagues, team2resp.Leagues) {
+		logger.Error().Stack().Err(err).Msg("failed to Create (Played Game) : leagueID is missing from one or both arrays")
 		err = stderr.New(errors.FailedGameByTeamsLeagueMismatch)
 		return entities.CreateGameResponse{}, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
@@ -36,7 +53,6 @@ func (s *Service) Create(ctx context.Context, request entities.CreateGameRequest
 	// Map for keeping player ratings while going game calculation
 	rates := make(map[int]int, 0)
 
-	leagueID := team1resp.Leagues[0].ID //todo: лиг может быть много у команд
 	var matches []entities.GamesMatch
 
 	for _, match := range request.Matches {
@@ -201,14 +217,15 @@ func (s *Service) Delete(ctx context.Context, gameID int) error {
 	if err != nil {
 		return err
 	}
+
+	leagueID := int64(game.LeagueID)
+
 	if team1resp.Leagues == nil || team2resp.Leagues == nil ||
-		(team1resp.Leagues != nil && team2resp.Leagues != nil && int64(team1resp.Leagues[0].ID) != int64(team2resp.Leagues[0].ID)) { //todo: лиг может быть много у команд
+		(team1resp.Leagues != nil && team2resp.Leagues != nil && !bothContain(leagueID, team1resp.Leagues, team2resp.Leagues)) {
 		recalc = false
 	}
 
 	if recalc {
-		leagueID := int64(team1resp.Leagues[0].ID) //todo: лиг может быть много у команд
-
 		// Decreasing rating for each player of game matches
 		plGmRtInc := make(map[int]int, 0) // playerGameRatingIncrease
 		_matches, err := s.rdbOperations.GetMatchListByGameID(ctx, logger, game.ID)
@@ -305,13 +322,14 @@ func (s *Service) Update(ctx context.Context, request entities.UpdateGameRequest
 	if err != nil {
 		return err
 	}
-	if team1resp.Leagues[0].ID != team2resp.Leagues[0].ID { //todo: лиг может быть много у команд
-		logger.Error().Stack().Err(err).Msg("failed to postgresql.GetTeam")
+
+	leagueID := int64(request.LeagueID)
+	if !bothContain(leagueID, team1resp.Leagues, team2resp.Leagues) {
+		logger.Error().Stack().Err(err).Msg("failed to Update (Played Game) : leagueID is missing from one or both arrays")
 		err = stderr.New(errors.FailedGameByTeamsLeagueMismatch)
 		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
-	leagueID := team1resp.Leagues[0].ID //todo: лиг может быть много у команд
 	rates := make(map[int]int, 0)
 
 	// Decreasing rating for each player of game matches
