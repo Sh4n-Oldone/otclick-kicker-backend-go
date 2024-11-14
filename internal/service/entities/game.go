@@ -5,7 +5,7 @@ import "time"
 type Game struct {
 	ID      int
 	CityID  int
-	Date    time.Time
+	Date    *time.Time
 	Team1ID int
 	Team2ID int
 }
@@ -33,8 +33,8 @@ type DeleteGameRequest struct {
 type GetGameResponse struct {
 	ID              int         `json:"id"`
 	CityID          int         `json:"cityId"`
-	Date            time.Time   `json:"date"`
-	PlaceID         int         `json:"placeId"`
+	Date            *time.Time  `json:"date"`
+	PlaceID         *int        `json:"placeId"`
 	LeagueID        int         `json:"leagueId"`
 	Team1ID         int         `json:"team1Id"`
 	Team1Name       string      `json:"team1Name"`
