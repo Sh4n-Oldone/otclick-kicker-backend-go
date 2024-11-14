@@ -10,8 +10,8 @@ import (
 )
 
 var (
-	oldConnectionStringDB       = "postgres://alexthecreator:anarchyintheuk@node71.otclick.ru:5514/kickerdb?sslmode=disable"
-	newConnectionStringDB       = "postgres://alexthecreator:anarchyintheuk@node71.otclick.ru:5516/kickerdb-clone2?sslmode=disable"
+	oldConnectionStringDB       = ""
+	newConnectionStringDB       = ""
 	maxOpenConnection     int32 = 5
 	maxIdleConnection     int32 = 1
 )
