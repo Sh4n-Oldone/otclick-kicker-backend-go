@@ -746,7 +746,7 @@ func (db *RDBOperation) GetTeamGames(logger zerolog.Logger, ctx context.Context,
 				 UNION ALL
 				 SELECT * FROM games_as_team2
 			 ) all_games
-		WHERE date >= CURRENT_DATE or date IS NULL
+		--WHERE date >= CURRENT_DATE or date IS NULL
 		ORDER BY team_id;
 	`
 
