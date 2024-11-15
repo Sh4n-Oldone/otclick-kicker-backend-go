@@ -1,6 +1,9 @@
 package entities
 
-import "time"
+import (
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
+	"time"
+)
 
 type Game struct {
 	ID      int
@@ -29,15 +32,15 @@ type DeleteGameRequest struct {
 }
 
 type GetGameResponse struct {
-	ID        int         `json:"id"`
-	CityID    int         `json:"cityId"`
-	Date      time.Time   `json:"date"`
-	PlaceID   int         `json:"placeId"`
-	Team1ID   int         `json:"team1Id"`
-	Team1Name string      `json:"team1Name"`
-	Team2ID   int         `json:"team2Id"`
-	Team2Name string      `json:"team2Name"`
-	Matches   []FullMatch `json:"matches"`
+	ID        int               `json:"id"`
+	CityID    int               `json:"cityId"`
+	Date      time.Time         `json:"date"`
+	Place     entity.PlaceShort `json:"place"`
+	Team1ID   int               `json:"team1Id"`
+	Team1Name string            `json:"team1Name"`
+	Team2ID   int               `json:"team2Id"`
+	Team2Name string            `json:"team2Name"`
+	Matches   []FullMatch       `json:"matches"`
 }
 
 type UpdateGameRequest struct {
