@@ -164,6 +164,10 @@ func (db *RDBOperation) GetGame(logger zerolog.Logger, ctx context.Context, game
 		g.city_id,
 		g.date AS game_date,
 		g.place_id AS game_place_id,
+		b.id AS game_bar_id,
+		b.name AS game_bar_name,
+		tbl.id AS game_table_id,
+		tbl.name AS game_table_name,
 		t1.id AS team1_id,
 		t1.name AS team1_name,
 		t2.id AS team2_id,
@@ -188,6 +192,12 @@ func (db *RDBOperation) GetGame(logger zerolog.Logger, ctx context.Context, game
 		m.score_team2
 	FROM 
 		public.games g
+	LEFT JOIN 
+		places p ON g.place_id = p.id
+	LEFT JOIN 
+		bars b ON p.bar_id = b.id
+	LEFT JOIN 
+		tables tbl ON p.table_id = tbl.id
 	LEFT JOIN 
 		public.teams t1 ON g.team1_id = t1.id
 	LEFT JOIN 
@@ -226,7 +236,11 @@ func (db *RDBOperation) GetGame(logger zerolog.Logger, ctx context.Context, game
 			&game.ID,
 			&game.CityID,
 			&game.Date,
-			&game.PlaceID,
+			&game.Place.ID,
+			&game.Place.Bar.ID,
+			&game.Place.Bar.Name,
+			&game.Place.Table.ID,
+			&game.Place.Table.Name,
 			&game.Team1ID,
 			&game.Team1Name,
 			&game.Team2ID,
@@ -296,7 +310,7 @@ func (db *RDBOperation) GetGame(logger zerolog.Logger, ctx context.Context, game
 		ID:        game.ID,
 		CityID:    game.CityID,
 		Date:      game.Date,
-		PlaceID:   game.PlaceID,
+		Place:     game.Place,
 		Team1ID:   game.Team1ID,
 		Team1Name: game.Team1Name,
 		Team2ID:   game.Team2ID,
