@@ -43,13 +43,18 @@ type TeamByLeague struct {
 }
 
 // /////////////////////////////////////////////////////////////////////////
+type LeagueShort struct {
+	ID   int64  `db:"id" json:"id"`
+	Name string `db:"name" json:"name"`
+}
+
 type GetTeamResponse struct { //TeamFilledWithFullPlayers
 	ID        int64           `db:"id" json:"id"`
 	Name      string          `db:"name" json:"name"`
 	ShortName string          `db:"short_name" json:"shortName"`
 	Avatar    []byte          `json:"avatar,omitempty"`
 	CityId    *int64          `db:"city_id" json:"cityId"`
-	LeagueId  *int64          `db:"league_id" json:"leagueId"`
+	Leagues   []LeagueShort   `db:"leagues" json:"leagues"`
 	Players   []PlayerGetTeam `db:"players" json:"players"`
 }
 
@@ -148,6 +153,11 @@ type Body struct {
 	GamesPlayed       int64  `json:"gamesPlayed"`
 	GamesToPlay       int64  `json:"gamesToPlay"`
 	TableCell         map[string]TableCell
+}
+
+type GameFetch struct {
+	ID              int64  `json:"id"`
+	TechLooseTeamID *int64 `json:"techLooseTeamId"`
 }
 
 // {

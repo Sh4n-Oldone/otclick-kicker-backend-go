@@ -141,15 +141,14 @@ func (s *Service) GetTeamVsTeamTable(ctx context.Context, cityID, year int64) (e
 	}
 
 	var data []entity.Data
-
-	for _, league := range leagues {
+	//////////////////////////////////
+	for _, league := range leagues { // Проходим по лигам нужного города
 		var dataItem entity.Data
 		dataItem.LeagueID = league.ID
 		dataItem.LeagueName = league.Name
 
 		dataItem.Table.Columns = append(dataItem.Table.Columns, entity.Column{Uid: "teamShortName", Name: "Команда"})
 
-		// 'SELECT id, short_name FROM teams WHERE league_id = $1', league.ID
 		teams, err := s.rdbOperations.FetchTeams(logger, ctx, league.ID)
 		if err != nil {
 			logger.Error().Err(err).Msg("error get teams")
@@ -187,8 +186,8 @@ func (s *Service) GetTeamVsTeamTable(ctx context.Context, cityID, year int64) (e
 			}
 			continue
 		}
-		// ////////////////
-		for _, team := range teams {
+		//////////////////////////////////
+		for _, team := range teams { // Проходим по командам текущей лиги
 			var bodyItem entity.Body
 			bodyItem.TableCell = make(map[string]entity.TableCell, 0)
 
@@ -198,7 +197,8 @@ func (s *Service) GetTeamVsTeamTable(ctx context.Context, cityID, year int64) (e
 			bodyItem.DifferenceInScore = 0
 			bodyItem.GamesPlayed = 0
 			bodyItem.GamesToPlay = int64((len(teams) - 1) * 2)
-			for _, t := range teams {
+			//////////////////////////////////
+			for _, t := range teams { // Проходим по командам-соперникам
 				var cell entity.TableCell
 
 				cell.Game1ID = 0
@@ -232,58 +232,74 @@ func (s *Service) GetTeamVsTeamTable(ctx context.Context, cityID, year int64) (e
 					cell.Game2ID = int64(gamesOut[0].ID)
 				}
 
-				gamesHomeMatches, err := s.rdbOperations.FetchMatches(logger, ctx, cell.Game1ID)
-				if err != nil {
-					logger.Error().Err(err).Msg("database error")
-					return entity.GetTeamVsTeamTableResponse{Message: "database error"}, err
-				}
-				gamesOutMatches, err := s.rdbOperations.FetchMatches(logger, ctx, cell.Game2ID)
-				if err != nil {
-					logger.Error().Err(err).Msg("database error")
-					return entity.GetTeamVsTeamTableResponse{Message: "database error"}, err
-				}
-
 				var match1Team1Score int64 = 0
 				var match1Team2Score int64 = 0
 
 				var match2Team1Score int64 = 0
 				var match2Team2Score int64 = 0
 
-				if len(gamesHomeMatches) != 0 {
-					for _, match := range gamesHomeMatches {
-						if match.Team1ID == int(team.ID) {
-							match1Team1Score += int64(match.ScoreTeam1)
-							match1Team2Score += int64(match.ScoreTeam2)
-						} else {
-							match1Team1Score += int64(match.ScoreTeam2)
-							match1Team2Score += int64(match.ScoreTeam1)
+				if len(gamesHome) != 0 {
+					cell.Game1ID = int64(gamesHome[0].ID)
+					if gamesHome[0].TechLooseTeamID != nil && *gamesHome[0].TechLooseTeamID == team.ID { // Если команда с тех.проигрышем(team.ID) то "30:42" (эта команда проиграла)
+						cell.Score1 = "30:42"
+					} else if gamesHome[0].TechLooseTeamID != nil && *gamesHome[0].TechLooseTeamID == t.ID { // Если противника команда с тех.проигрышем(t.ID) то "42:30" (противник проиграл)
+						cell.Score1 = "42:30"
+						bodyItem.Score += 2 // Добавим себе 2 очка(в целом по игре), если команда противника с тех.проигрышем
+					} else {
+						gamesHomeMatches, err := s.rdbOperations.FetchMatches(logger, ctx, cell.Game1ID)
+						if err != nil {
+							logger.Error().Err(err).Msg("database error")
+							return entity.GetTeamVsTeamTableResponse{Message: "database error"}, err
 						}
+						//////////////////////////////////
+						for _, match := range gamesHomeMatches { // Проходим по домашним матчам
+							if match.Team1ID == int(team.ID) {
+								match1Team1Score += int64(match.ScoreTeam1)
+								match1Team2Score += int64(match.ScoreTeam2)
+							} else {
+								match1Team1Score += int64(match.ScoreTeam2)
+								match1Team2Score += int64(match.ScoreTeam1)
+							}
+						}
+						cell.Score1 = strconv.FormatInt(match1Team1Score, 10) + ":" + strconv.FormatInt(match1Team2Score, 10)
 					}
-					bodyItem.GamesToPlay -= 1
 					bodyItem.GamesPlayed += 1
+					bodyItem.GamesToPlay -= 1
 				}
 
-				if len(gamesOutMatches) != 0 {
-					for _, match := range gamesOutMatches {
-						if match.Team2ID == int(t.ID) {
-							match2Team1Score += int64(match.ScoreTeam1)
-							match2Team2Score += int64(match.ScoreTeam2)
-						} else {
-							match2Team1Score += int64(match.ScoreTeam2)
-							match2Team2Score += int64(match.ScoreTeam1)
+				if len(gamesOut) != 0 {
+					cell.Game2ID = int64(gamesOut[0].ID)
+					if gamesOut[0].TechLooseTeamID != nil && *gamesOut[0].TechLooseTeamID == team.ID { // Если команда с тех.проигрышем(team.ID) то "30:42" (эта команда проиграла)
+						cell.Score2 = "30:42"
+					} else if gamesOut[0].TechLooseTeamID != nil && *gamesOut[0].TechLooseTeamID == t.ID { // Если противника команда с тех.проигрышем(t.ID) то "42:30" (противник проиграл)
+						cell.Score2 = "42:30"
+						bodyItem.Score += 2 // Добавим себе 2 очка(в целом по игре), если команда противника с тех.проигрышем
+					} else {
+						gamesOutMatches, err := s.rdbOperations.FetchMatches(logger, ctx, cell.Game2ID)
+						if err != nil {
+							logger.Error().Err(err).Msg("database error")
+							return entity.GetTeamVsTeamTableResponse{Message: "database error"}, err
 						}
+						//////////////////////////////////
+						for _, match := range gamesOutMatches { // Проходим по выездным матчам
+							if match.Team2ID == int(t.ID) {
+								match2Team1Score += int64(match.ScoreTeam1)
+								match2Team2Score += int64(match.ScoreTeam2)
+							} else {
+								match2Team1Score += int64(match.ScoreTeam2)
+								match2Team2Score += int64(match.ScoreTeam1)
+							}
+						}
+						cell.Score2 = strconv.FormatInt(match2Team1Score, 10) + ":" + strconv.FormatInt(match2Team2Score, 10)
 					}
-					bodyItem.GamesToPlay -= 1
 					bodyItem.GamesPlayed += 1
+					bodyItem.GamesToPlay -= 1
 				}
-
-				cell.Score1 = strconv.FormatInt(match1Team1Score, 10) + ":" + strconv.FormatInt(match1Team2Score, 10)
-				cell.Score2 = strconv.FormatInt(match2Team1Score, 10) + ":" + strconv.FormatInt(match2Team2Score, 10)
 
 				bodyItem.Score = resumScore(bodyItem.Score, match1Team1Score, match1Team2Score)
 				bodyItem.Score = resumScore(bodyItem.Score, match2Team1Score, match2Team2Score)
 				bodyItem.DifferenceInScore += (match1Team1Score - match1Team2Score + match2Team1Score - match2Team2Score)
-				bodyItem.TableCell[t.ShortName] = cell
+				bodyItem.TableCell[t.ShortName] = cell // Выставили ячейку со счетом
 			}
 			dataItem.Table.Body = append(dataItem.Table.Body, bodyItem)
 
