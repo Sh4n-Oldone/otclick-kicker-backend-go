@@ -18,21 +18,40 @@ import (
 func (db *RDBOperation) GetTeam(logger zerolog.Logger, ctx context.Context, teamID int64) (entity.GetTeamResponse, error) {
 	team := entity.GetTeamResponse{}
 
-	const queryGetTeam = `SELECT t.id, t.name, t.short_name, t.avatar, t.city_id, tll.league_id,
-	COALESCE(ARRAY_AGG(ptl.player_id ORDER BY ptl.player_id) FILTER (WHERE ptl.player_id IS NOT NULL), ARRAY[]::int8[])
+	const queryGetTeam = `SELECT t.id, t.name, t.short_name, t.avatar, t.city_id,
+	COALESCE(ARRAY_AGG(DISTINCT tll.league_id ORDER BY tll.league_id) FILTER (WHERE tll.league_id IS NOT NULL), ARRAY[]::int8[]),
+	COALESCE(ARRAY_AGG(DISTINCT ptl.player_id ORDER BY ptl.player_id) FILTER (WHERE ptl.player_id IS NOT NULL), ARRAY[]::int8[])
 	FROM teams t
-	LEFT JOIN players_teams_links ptl ON t.id = ptl.team_id
 	LEFT JOIN teams_leagues_links tll ON t.id = tll.team_id
+	LEFT JOIN players_teams_links ptl ON t.id = ptl.team_id
 	WHERE t.id = $1
-	GROUP BY t.id, tll.league_id`
+	GROUP BY t.id`
 
+	var leagueIDs []int64
 	var playerIDs []int64
-	err := db.db.QueryRow(ctx, queryGetTeam, teamID).Scan(&team.ID, &team.Name, &team.ShortName, &team.Avatar, &team.CityId, &team.LeagueId, &playerIDs)
+	err := db.db.QueryRow(ctx, queryGetTeam, teamID).Scan(&team.ID, &team.Name, &team.ShortName, &team.Avatar, &team.CityId, &leagueIDs, &playerIDs)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to GetTeam")
 		return entity.GetTeamResponse{}, DecodeDatabaseError(err)
 	}
+	// ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	const queryGetLeagueByID = `SELECT name FROM leagues WHERE id = $1;`
+	var leagues = []entity.LeagueShort{}
+	for _, leagueID := range leagueIDs {
+		var l entity.LeagueShort
 
+		l.ID = leagueID
+
+		err := db.db.QueryRow(ctx, queryGetLeagueByID, leagueID).
+			Scan(&l.Name)
+		if err != nil {
+			logger.Error().Stack().Err(err).Msg("failed to postgresql.GetTeam/queryGetPlayerByID")
+			return entity.GetTeamResponse{}, DecodeDatabaseError(stderr.New(errors.ErrGetPlayer))
+		}
+
+		leagues = append(leagues, l)
+	}
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	const queryGetPlayerByID = `
 	SELECT
         p.id,
@@ -74,7 +93,10 @@ func (db *RDBOperation) GetTeam(logger zerolog.Logger, ctx context.Context, team
 		}
 		players = append(players, p)
 	}
+
+	team.Leagues = leagues
 	team.Players = players
+
 	return team, nil
 }
 
@@ -224,8 +246,8 @@ func (db *RDBOperation) FetchTeams(logger zerolog.Logger, ctx context.Context, l
 	return teams, nil
 }
 
-func (db *RDBOperation) FetchGames(logger zerolog.Logger, ctx context.Context, teamID1, teamID2, cityID, year int64) ([]entities.ComingGame, error) {
-	const query = `SELECT id FROM games WHERE team1_id = $1 AND team2_id = $2 AND city_id = $3 AND EXTRACT(year FROM date) = $4`
+func (db *RDBOperation) FetchGames(logger zerolog.Logger, ctx context.Context, teamID1, teamID2, cityID, year int64) ([]entity.GameFetch, error) {
+	const query = `SELECT id, tech_loose_team_id FROM games WHERE team1_id = $1 AND team2_id = $2 AND city_id = $3 AND EXTRACT(year FROM date) = $4`
 
 	rows, err := db.db.Query(ctx, query, teamID1, teamID2, cityID, year)
 
@@ -234,10 +256,10 @@ func (db *RDBOperation) FetchGames(logger zerolog.Logger, ctx context.Context, t
 	}
 	defer rows.Close()
 
-	var games []entities.ComingGame
+	var games []entity.GameFetch
 	for rows.Next() {
-		var game entities.ComingGame
-		err = rows.Scan(&game.ID)
+		var game entity.GameFetch
+		err = rows.Scan(&game.ID, &game.TechLooseTeamID)
 		if err != nil {
 			return nil, err
 		}

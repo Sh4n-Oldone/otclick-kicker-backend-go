@@ -48,15 +48,16 @@ func (db *RWDBOperation) CreatePlayedGame(logger zerolog.Logger, ctx context.Con
 	tx, err := db.db.Begin(ctx)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to postgresql.CreatePlayedGame")
-		return entities.CreateGameResponse{}, DecodeDatabaseError(stderr.New(errors.ErrCreateGame))
+		return entities.CreateGameResponse{}, stderr.New(errors.ErrCreateGame)
 	}
 
-	err = tx.QueryRow(ctx, queryInsertGame, request.CityID, request.PlaceID, request.Date, request.Team1ID, request.Team2ID).
+	err = tx.QueryRow(ctx, queryInsertGame, request.CityID, request.PlaceID, request.LeagueID, request.Date, request.Team1ID, request.Team2ID, request.TechLooseTeamID).
 		Scan(&gameId)
+
 	if err != nil {
 		_ = tx.Rollback(ctx)
 		logger.Error().Err(err).Msg("failed to postgresql.CreatePlayedGame")
-		return entities.CreateGameResponse{}, DecodeDatabaseError(stderr.New(errors.ErrCreateGame))
+		return entities.CreateGameResponse{}, stderr.New(errors.ErrCreateGame)
 	}
 
 	for _, match := range request.Matches {
@@ -92,7 +93,7 @@ func (db *RWDBOperation) CreatePlayedGame(logger zerolog.Logger, ctx context.Con
 		if err != nil {
 			_ = tx.Rollback(ctx)
 			logger.Error().Err(err).Msg("failed to postgresql.CreatePlayedGame")
-			return entities.CreateGameResponse{}, DecodeDatabaseError(stderr.New(errors.ErrCreateMatch))
+			return entities.CreateGameResponse{}, stderr.New(errors.ErrCreateMatch)
 		}
 		matchIds = append(matchIds, matchId)
 	}
@@ -101,7 +102,7 @@ func (db *RWDBOperation) CreatePlayedGame(logger zerolog.Logger, ctx context.Con
 	if err != nil {
 		_ = tx.Rollback(ctx)
 		logger.Error().Err(err).Msg("failed to postgresql.CreatePlayedGame")
-		return entities.CreateGameResponse{}, DecodeDatabaseError(stderr.New(errors.ErrCreateGame))
+		return entities.CreateGameResponse{}, stderr.New(errors.ErrCreateGame)
 	}
 
 	return entities.CreateGameResponse{
@@ -168,10 +169,12 @@ func (db *RDBOperation) GetGame(logger zerolog.Logger, ctx context.Context, game
 		b.name AS game_bar_name,
 		tbl.id AS game_table_id,
 		tbl.name AS game_table_name,
+		g.league_id,
 		t1.id AS team1_id,
 		t1.name AS team1_name,
 		t2.id AS team2_id,
 		t2.name AS team2_name,
+		g.tech_loose_team_id,
 		m.id AS match_id,
 		m.date AS match_date,
 		m.team1_id AS match_team1_id,
@@ -241,10 +244,12 @@ func (db *RDBOperation) GetGame(logger zerolog.Logger, ctx context.Context, game
 			&game.Place.Bar.Name,
 			&game.Place.Table.ID,
 			&game.Place.Table.Name,
+			&game.LeagueID,
 			&game.Team1ID,
 			&game.Team1Name,
 			&game.Team2ID,
 			&game.Team2Name,
+			&game.TechLooseTeamID,
 			&match.ID,
 			&match.Date,
 			&match.Team1ID,
@@ -307,15 +312,17 @@ func (db *RDBOperation) GetGame(logger zerolog.Logger, ctx context.Context, game
 	}
 
 	return entities.GetGameResponse{
-		ID:        game.ID,
-		CityID:    game.CityID,
-		Date:      game.Date,
-		Place:     game.Place,
-		Team1ID:   game.Team1ID,
-		Team1Name: game.Team1Name,
-		Team2ID:   game.Team2ID,
-		Team2Name: game.Team2Name,
-		Matches:   matches,
+		ID:              game.ID,
+		CityID:          game.CityID,
+		Date:            game.Date,
+		Place:           game.Place,
+		LeagueID:        game.LeagueID,
+		Team1ID:         game.Team1ID,
+		Team1Name:       game.Team1Name,
+		Team2ID:         game.Team2ID,
+		Team2Name:       game.Team2Name,
+		TechLooseTeamID: game.TechLooseTeamID,
+		Matches:         matches,
 	}, nil
 }
 
@@ -326,7 +333,8 @@ func (db *RWDBOperation) UpdateGame(logger zerolog.Logger, ctx context.Context, 
 		return stderr.New(errors.ErrUpdateGame)
 	}
 
-	tag, err := tx.Exec(ctx, queryUpdateGame, game.ID, game.Date, game.PlaceID, game.Team1ID, game.Team2ID)
+	tag, err := tx.Exec(ctx, queryUpdateGame, game.ID, game.Date, game.PlaceID, game.LeagueID, game.Team1ID, game.Team2ID, game.TechLooseTeamID)
+
 	if err != nil {
 		_ = tx.Rollback(ctx)
 		logger.Error().Err(err).Msg("failed to postgresql.UpdateGame")
@@ -501,15 +509,16 @@ func (db *RWDBOperation) UpdateFutureGame(logger zerolog.Logger, ctx context.Con
 	const query string = `
 		UPDATE public.games
 		SET 
-			date = $2,
-			place_id = $3,
-			team1_id = $4,
-			team2_id = $5,
+		    league_id = $2,
+			date = $3,
+			place_id = $4,
+			team1_id = $5,
+			team2_id = $6,
 			updated_at = NOW()
 		WHERE id = $1;
 	`
 
-	tag, err := db.db.Exec(ctx, query, request.ID, request.Date, request.PlaceID, request.Team1ID, request.Team2ID)
+	tag, err := db.db.Exec(ctx, query, request.ID, request.LeagueID, request.Date, request.PlaceID, request.Team1ID, request.Team2ID)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to postgresql.UpdateFutureGame")
 		return stderr.New(errors.ErrUpdateGame)
@@ -678,14 +687,14 @@ func (db *RDBOperation) GetFutureGames(logger zerolog.Logger, ctx context.Contex
 
 func (db *RWDBOperation) CreateFutureGame(logger zerolog.Logger, ctx context.Context, request entity.CreateFutureGameRequest) (int, error) {
 	const query string = `
-		INSERT INTO games (city_id, date, place_id, team1_id, team2_id)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO games (city_id, league_id, date, place_id, team1_id, team2_id)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING id;
 	`
 
 	var id int
 
-	err := db.db.QueryRow(ctx, query, request.CityID, request.Date, request.PlaceID, request.Team1ID, request.Team2ID).Scan(&id)
+	err := db.db.QueryRow(ctx, query, request.CityID, request.LeagueID, request.Date, request.PlaceID, request.Team1ID, request.Team2ID).Scan(&id)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to postgresql.CreateFutureGame")
 		return 0, stderr.New(errors.ErrCreateGame)
@@ -751,7 +760,7 @@ func (db *RDBOperation) GetTeamGames(logger zerolog.Logger, ctx context.Context,
 				 UNION ALL
 				 SELECT * FROM games_as_team2
 			 ) all_games
-		WHERE date >= CURRENT_DATE or date IS NULL
+		--WHERE date >= CURRENT_DATE or date IS NULL
 		ORDER BY team_id;
 	`
 
@@ -791,8 +800,9 @@ func (db *RWDBOperation) CreateGameWithRating(
 		return entities.CreateGameResponse{}, stderr.New(errors.ErrCreateGame)
 	}
 
-	err = tx.QueryRow(ctx, queryInsertGame, request.CityID, request.PlaceID, request.Date, request.Team1ID, request.Team2ID).
+	err = tx.QueryRow(ctx, queryInsertGame, request.CityID, request.PlaceID, request.LeagueID, request.Date, request.Team1ID, request.Team2ID, request.TechLooseTeamID).
 		Scan(&gameId)
+
 	if err != nil {
 		_ = tx.Rollback(ctx)
 		logger.Error().Err(err).Msg("failed to postgresql.CreateGameWithRating")
@@ -882,7 +892,7 @@ func (db *RWDBOperation) UpdateGameWithRating(
 		return stderr.New(errors.ErrUpdateGame)
 	}
 
-	tag, err := tx.Exec(ctx, queryUpdateGame, game.ID, game.Date, game.PlaceID, game.Team1ID, game.Team2ID)
+	tag, err := tx.Exec(ctx, queryUpdateGame, game.ID, game.Date, game.PlaceID, game.LeagueID, game.Team1ID, game.Team2ID)
 	if err != nil {
 		_ = tx.Rollback(ctx)
 		logger.Error().Err(err).Msg("failed to postgresql.UpdateGame")
