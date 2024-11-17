@@ -21,7 +21,7 @@ type CreateGameRequest struct {
 	Team1ID         int          `json:"team1Id" validate:"required,gt=0"`
 	Team2ID         int          `json:"team2Id" validate:"required,gt=0"`
 	TechLooseTeamID *int         `json:"techLooseTeamId" validate:"omitempty,gt=0"`
-	Matches         []GamesMatch `json:"matches" validate:"required,min=1"`
+	Matches         []GamesMatch `json:"matches" validate:"omitempty,dive"`
 }
 
 type CreateGameResponse struct {
@@ -34,17 +34,17 @@ type DeleteGameRequest struct {
 }
 
 type GetGameResponse struct {
-	ID              int         	  `json:"id"`
-	CityID          int         	  `json:"cityId"`
-	Date            *time.Time   	  `json:"date"`
+	ID              int               `json:"id"`
+	CityID          int               `json:"cityId"`
+	Date            *time.Time        `json:"date"`
 	Place           entity.PlaceShort `json:"place"`
-	LeagueID        int         	  `json:"leagueId"`
-	Team1ID         int         	  `json:"team1Id"`
-	Team1Name       string      	  `json:"team1Name"`
-	Team2ID         int         	  `json:"team2Id"`
-	Team2Name       string      	  `json:"team2Name"`
-	TechLooseTeamID *int        	  `json:"techLooseTeamId"`
-	Matches         []FullMatch  	  `json:"matches"`
+	LeagueID        int               `json:"leagueId"`
+	Team1ID         int               `json:"team1Id"`
+	Team1Name       string            `json:"team1Name"`
+	Team2ID         int               `json:"team2Id"`
+	Team2Name       string            `json:"team2Name"`
+	TechLooseTeamID *int              `json:"techLooseTeamId"`
+	Matches         []FullMatch       `json:"matches"`
 }
 
 type UpdateGameRequest struct {
@@ -55,7 +55,7 @@ type UpdateGameRequest struct {
 	Team1ID         int        `json:"team1Id" validate:"required,gt=0"`
 	Team2ID         int        `json:"team2Id" validate:"required,gt=0"`
 	TechLooseTeamID *int       `json:"techLooseTeamId" validate:"omitempty,gt=0"`
-	Matches         []NewMatch `json:"matches" validate:"required,min=1,dive"`
+	Matches         []NewMatch `json:"matches" validate:"omitempty,dive"`
 }
 
 type FindGameRequest struct {
