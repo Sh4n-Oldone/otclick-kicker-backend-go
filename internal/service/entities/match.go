@@ -32,8 +32,8 @@ type GamesMatch struct {
 	Player2Team1Id         *int      `json:"player2Team1Id"`
 	Player1Team2Id         int       `json:"player1Team2Id" validate:"required,gt=0"`
 	Player2Team2Id         *int      `json:"player2Team2Id"`
-	ScoreTeam1             int       `json:"scoreTeam1" validate:"required,gte=0"`
-	ScoreTeam2             int       `json:"scoreTeam2" validate:"required,gte=0"`
+	ScoreTeam1             int       `json:"scoreTeam1" validate:"gte=0"`
+	ScoreTeam2             int       `json:"scoreTeam2" validate:"gte=0"`
 	Player1Team1RateBefore *int      `db:"player1_team1_rate_before" json:"player1Team1IdRateBefore"`
 	Player2Team1RateBefore *int      `db:"player2_team1_rate_before" json:"player2Team1IdRateBefore"`
 	Player1Team2RateBefore *int      `db:"player1_team2_rate_before" json:"player1Team2IdRateBefore"`
@@ -70,8 +70,8 @@ type NewMatch struct {
 	Player2Team1Id         *int      `json:"player2Team1Id"`
 	Player1Team2Id         int       `json:"player1Team2Id" validate:"required,gt=0"`
 	Player2Team2Id         *int      `json:"player2Team2Id"`
-	ScoreTeam1             int       `json:"scoreTeam1" validate:"required,gte=0"`
-	ScoreTeam2             int       `json:"scoreTeam2" validate:"required,gte=0"`
+	ScoreTeam1             int       `json:"scoreTeam1" validate:"gte=0"`
+	ScoreTeam2             int       `json:"scoreTeam2" validate:"gte=0"`
 	Player1Team1RateBefore *int      `db:"player1_team1_rate_before" json:"player1Team1IdRateBefore"`
 	Player2Team1RateBefore *int      `db:"player2_team1_rate_before" json:"player2Team1IdRateBefore"`
 	Player1Team2RateBefore *int      `db:"player1_team2_rate_before" json:"player1Team2IdRateBefore"`
