@@ -80,10 +80,10 @@ func (s *Service) Find(ctx context.Context, player entities.FindPlayersRequest) 
 	// если нужно полное описание игрока(KeepSimple != true) то метод продолжает выполнение
 	// и возвращается []entities.FullPlayer
 	var (
-		matches []entities.Match
-		leagues []entities.PlayersLeague
-		games   []entities.Game
-		teamId  int
+		pastMatches []entities.Match
+		leagues     []entities.PlayersLeague
+		pastGames   []entities.Game
+		teamId      int
 	)
 
 	fullPlayers := make([]entities.FullPlayer, len(players))
@@ -98,7 +98,7 @@ func (s *Service) Find(ctx context.Context, player entities.FindPlayersRequest) 
 
 		g.Go(func() error {
 			var err error
-			matches, err = s.rdbOperations.GetMatchesByPlayerID(logger, ctx, p.ID)
+			pastMatches, err = s.rdbOperations.GetPastMatchesByPlayerID(logger, ctx, p.ID)
 			return err
 		})
 
@@ -110,7 +110,7 @@ func (s *Service) Find(ctx context.Context, player entities.FindPlayersRequest) 
 
 		g.Go(func() error {
 			var err error
-			games, err = s.rdbOperations.GetGamesByPlayersTeam(logger, ctx, teamId)
+			pastGames, err = s.rdbOperations.GetPastGamesByPlayersTeam(logger, ctx, teamId)
 			return err
 		})
 
@@ -118,7 +118,7 @@ func (s *Service) Find(ctx context.Context, player entities.FindPlayersRequest) 
 			return entities.FindPlayersResponse{}, err
 		}
 
-		fullPlayer := buildFullPlayer(p, matches, leagues, games)
+		fullPlayer := buildFullPlayer(p, pastMatches, leagues, pastGames)
 
 		fullPlayers[i] = fullPlayer
 	}
@@ -135,10 +135,10 @@ func (s *Service) Get(ctx context.Context, id int) (entities.FullPlayer, error) 
 	defer cancel()
 
 	var (
-		player  entities.Player
-		matches []entities.Match
-		leagues []entities.PlayersLeague
-		teamId  int
+		player      entities.Player
+		pastMatches []entities.Match
+		leagues     []entities.PlayersLeague
+		teamId      int
 	)
 
 	g, ctx := errgroup.WithContext(timeout)
@@ -151,7 +151,7 @@ func (s *Service) Get(ctx context.Context, id int) (entities.FullPlayer, error) 
 
 	g.Go(func() error {
 		var err error
-		matches, err = s.rdbOperations.GetMatchesByPlayerID(logger, ctx, id)
+		pastMatches, err = s.rdbOperations.GetPastMatchesByPlayerID(logger, ctx, id)
 		return err
 	})
 
@@ -170,12 +170,12 @@ func (s *Service) Get(ctx context.Context, id int) (entities.FullPlayer, error) 
 	}
 
 	// игры с участием команды игрока
-	gamesOfPlayersTeam, err := s.rdbOperations.GetGamesByPlayersTeam(logger, timeout, teamId)
+	pastGamesOfPlayersTeam, err := s.rdbOperations.GetPastGamesByPlayersTeam(logger, timeout, teamId)
 	if err != nil {
 		return entities.FullPlayer{}, err
 	}
 
-	fullPlayer := buildFullPlayer(player, matches, leagues, gamesOfPlayersTeam)
+	fullPlayer := buildFullPlayer(player, pastMatches, leagues, pastGamesOfPlayersTeam)
 
 	return fullPlayer, nil
 }
@@ -193,7 +193,7 @@ func (s *Service) GetByTeamID(ctx context.Context, teamID int) ([]entities.Playe
 	return players, nil
 }
 
-func buildFullPlayer(player entities.Player, matches []entities.Match, leagues []entities.PlayersLeague, games []entities.Game) entities.FullPlayer {
+func buildFullPlayer(player entities.Player, pastMatches []entities.Match, leagues []entities.PlayersLeague, pastGames []entities.Game) entities.FullPlayer {
 	//тут будут id игр с участием игрока для подсчета
 	playersGames := make(map[int]struct{})
 
@@ -203,7 +203,7 @@ func buildFullPlayer(player entities.Player, matches []entities.Match, leagues [
 		goalsConcededNumber       int
 	)
 
-	for _, match := range matches {
+	for _, match := range pastMatches {
 		// заполняем игры игрока
 		playersGames[match.GameID] = struct{}{}
 
@@ -218,9 +218,9 @@ func buildFullPlayer(player entities.Player, matches []entities.Match, leagues [
 		}
 	}
 
-	if len(games) > 0 {
+	if len(pastGames) > 0 {
 		//процент участия игрока в играх команды
-		percentageOfParticipation = (float32(len(playersGames)) / float32(len(games))) * 100
+		percentageOfParticipation = (float32(len(playersGames)) / float32(len(pastGames))) * 100
 	}
 
 	leagueItems := make([]entities.LeagueItem, len(leagues))
@@ -237,7 +237,7 @@ func buildFullPlayer(player entities.Player, matches []entities.Match, leagues [
 		SecondName:                player.SecondName,
 		LastName:                  player.LastName,
 		Avatar:                    player.Avatar,
-		MatchesPlayed:             len(matches),
+		MatchesPlayed:             len(pastMatches),
 		GoalsScoredNumber:         goalsScoredNumber,
 		GoalsConcededNumber:       goalsConcededNumber,
 		GamesPlayedNumber:         len(playersGames),
