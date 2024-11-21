@@ -210,12 +210,12 @@ func (s *Service) GetTeamVsTeamTable(ctx context.Context, cityID, year int64) (e
 					bodyItem.TableCell[t.ShortName] = cell
 					continue //команда сама с собой не играет
 				}
-				gamesHome, err := s.rdbOperations.FetchGames(logger, ctx, team.ID, t.ID, cityID, year)
+				gamesHome, err := s.rdbOperations.FetchPastGames(logger, ctx, team.ID, t.ID, cityID, year)
 				if err != nil {
 					logger.Error().Err(err).Msg("database error")
 					return entity.GetTeamVsTeamTableResponse{Message: "database error"}, err
 				}
-				gamesOut, err := s.rdbOperations.FetchGames(logger, ctx, t.ID, team.ID, cityID, year)
+				gamesOut, err := s.rdbOperations.FetchPastGames(logger, ctx, t.ID, team.ID, cityID, year)
 				if err != nil {
 					logger.Error().Err(err).Msg("database error")
 					return entity.GetTeamVsTeamTableResponse{Message: "database error"}, err
