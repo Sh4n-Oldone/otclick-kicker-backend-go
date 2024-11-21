@@ -77,21 +77,22 @@ func (db *RWDBOperation) DeleteMatch(logger zerolog.Logger, ctx context.Context,
 	return true, nil
 }
 
-func (db *RDBOperation) GetMatchesByPlayerID(logger zerolog.Logger, ctx context.Context, playerID int) ([]entities.Match, error) {
+func (db *RDBOperation) GetPastMatchesByPlayerID(logger zerolog.Logger, ctx context.Context, playerID int) ([]entities.Match, error) {
 	query := `
 		SELECT id, date, game_id, team1_id, team2_id, player1_team1_id, player2_team1_id, player1_team2_id, player2_team2_id, score_team1, score_team2
 		FROM public.matches
-		WHERE player1_team1_id = $1
+		WHERE (player1_team1_id = $1
 		   OR player2_team1_id = $1
 		   OR player1_team2_id = $1
-		   OR player2_team2_id = $1
+		   OR player2_team2_id = $1)
+		   AND date < NOW()
 		ORDER BY updated_at;`
 
 	matches := make([]entities.Match, 0)
 
 	rows, err := db.db.Query(ctx, query, playerID)
 	if err != nil {
-		logger.Error().Err(err).Msg("failed to postgresql.GetMatchesByPlayerID")
+		logger.Error().Err(err).Msg("failed to postgresql.GetPastMatchesByPlayerID")
 		return nil, DecodeDatabaseError(stderr.New(errors.ErrGetMatches))
 	}
 	defer rows.Close()
@@ -101,7 +102,7 @@ func (db *RDBOperation) GetMatchesByPlayerID(logger zerolog.Logger, ctx context.
 		err = rows.Scan(&m.ID, &m.Date, &m.GameID, &m.Team1ID, &m.Team2ID, &m.Player1Team1ID, &m.Player2Team1ID,
 			&m.Player1Team2ID, &m.Player2Team2ID, &m.ScoreTeam1, &m.ScoreTeam2)
 		if err != nil {
-			logger.Error().Err(err).Msg("failed to postgresql.GetMatchesByPlayerID")
+			logger.Error().Err(err).Msg("failed to postgresql.GetPastMatchesByPlayerID")
 			return nil, DecodeDatabaseError(stderr.New(errors.ErrGetMatches))
 		}
 
@@ -116,7 +117,7 @@ func (db *RDBOperation) GetMatchListByGameID(ctx context.Context, logger zerolog
 
 	rows, err := db.db.Query(ctx, queryGetMatchListByGameID, gameID)
 	if err != nil {
-		logger.Error().Err(err).Msg("failed to postgresql.GetMatchesByPlayerID")
+		logger.Error().Err(err).Msg("failed to postgresql.GetPastMatchesByPlayerID")
 		return nil, DecodeDatabaseError(stderr.New(errors.ErrGetMatches))
 	}
 	defer rows.Close()
@@ -258,7 +259,7 @@ func (db *RWDBOperation) RewriteMatchesAndPlayerRatings(logger zerolog.Logger, c
 			match.Player1Team1RateAfter,
 			match.Player1Team2RateAfter,
 			match.Player2Team1RateAfter,
-			match.Player2Team2RateAfter,)
+			match.Player2Team2RateAfter)
 		if err != nil {
 			_ = tx.Rollback(ctx)
 			logger.Error().Err(err).Msg("failed to update match in postgresql.RewriteMatchesAndPlayerRatings")
