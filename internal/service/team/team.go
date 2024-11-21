@@ -242,9 +242,13 @@ func (s *Service) GetTeamVsTeamTable(ctx context.Context, cityID, year int64) (e
 					cell.Game1ID = int64(gamesHome[0].ID)
 					if gamesHome[0].TechLooseTeamID != nil && *gamesHome[0].TechLooseTeamID == team.ID { // Если команда с тех.проигрышем(team.ID) то "30:42" (эта команда проиграла)
 						cell.Score1 = "30:42"
+						bodyItem.GamesPlayed += 1
+						bodyItem.GamesToPlay -= 1
 					} else if gamesHome[0].TechLooseTeamID != nil && *gamesHome[0].TechLooseTeamID == t.ID { // Если противника команда с тех.проигрышем(t.ID) то "42:30" (противник проиграл)
 						cell.Score1 = "42:30"
 						bodyItem.Score += 2 // Добавим себе 2 очка(в целом по игре), если команда противника с тех.проигрышем
+						bodyItem.GamesPlayed += 1
+						bodyItem.GamesToPlay -= 1
 					} else {
 						gamesHomeMatches, err := s.rdbOperations.FetchMatches(logger, ctx, cell.Game1ID)
 						if err != nil {
@@ -262,18 +266,25 @@ func (s *Service) GetTeamVsTeamTable(ctx context.Context, cityID, year int64) (e
 							}
 						}
 						cell.Score1 = strconv.FormatInt(match1Team1Score, 10) + ":" + strconv.FormatInt(match1Team2Score, 10)
+
+						if len(gamesHomeMatches) != 0 {
+							bodyItem.GamesPlayed += 1
+							bodyItem.GamesToPlay -= 1
+						}
 					}
-					bodyItem.GamesPlayed += 1
-					bodyItem.GamesToPlay -= 1
 				}
 
 				if len(gamesOut) != 0 {
 					cell.Game2ID = int64(gamesOut[0].ID)
 					if gamesOut[0].TechLooseTeamID != nil && *gamesOut[0].TechLooseTeamID == team.ID { // Если команда с тех.проигрышем(team.ID) то "30:42" (эта команда проиграла)
 						cell.Score2 = "30:42"
+						bodyItem.GamesPlayed += 1
+						bodyItem.GamesToPlay -= 1
 					} else if gamesOut[0].TechLooseTeamID != nil && *gamesOut[0].TechLooseTeamID == t.ID { // Если противника команда с тех.проигрышем(t.ID) то "42:30" (противник проиграл)
 						cell.Score2 = "42:30"
 						bodyItem.Score += 2 // Добавим себе 2 очка(в целом по игре), если команда противника с тех.проигрышем
+						bodyItem.GamesPlayed += 1
+						bodyItem.GamesToPlay -= 1
 					} else {
 						gamesOutMatches, err := s.rdbOperations.FetchMatches(logger, ctx, cell.Game2ID)
 						if err != nil {
@@ -291,9 +302,12 @@ func (s *Service) GetTeamVsTeamTable(ctx context.Context, cityID, year int64) (e
 							}
 						}
 						cell.Score2 = strconv.FormatInt(match2Team1Score, 10) + ":" + strconv.FormatInt(match2Team2Score, 10)
+
+						if len(gamesOutMatches) != 0 {
+							bodyItem.GamesPlayed += 1
+							bodyItem.GamesToPlay -= 1
+						}
 					}
-					bodyItem.GamesPlayed += 1
-					bodyItem.GamesToPlay -= 1
 				}
 
 				bodyItem.Score = resumScore(bodyItem.Score, match1Team1Score, match1Team2Score)
