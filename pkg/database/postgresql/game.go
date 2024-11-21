@@ -10,18 +10,18 @@ import (
 	"time"
 )
 
-func (db *RDBOperation) GetGamesByPlayersTeam(logger zerolog.Logger, ctx context.Context, teamID int) ([]entities.Game, error) {
+func (db *RDBOperation) GetPastGamesByPlayersTeam(logger zerolog.Logger, ctx context.Context, teamID int) ([]entities.Game, error) {
 	const query string = `
 		SELECT id, city_id, date, team1_id, team2_id
 		FROM public.games
-		WHERE team1_id = $1 OR team2_id = $1
+		WHERE (team1_id = $1 OR team2_id = $1) AND date < NOW()
 	`
 
 	var games []entities.Game
 
 	rows, err := db.db.Query(ctx, query, teamID)
 	if err != nil {
-		logger.Error().Err(err).Msg("failed to postgresql.GetGamesByPlayersTeam")
+		logger.Error().Err(err).Msg("failed to postgresql.GetPastGamesByPlayersTeam")
 		return nil, DecodeDatabaseError(stderr.New(errors.ErrGetGameList))
 	}
 	defer rows.Close()
@@ -31,7 +31,7 @@ func (db *RDBOperation) GetGamesByPlayersTeam(logger zerolog.Logger, ctx context
 
 		err = rows.Scan(&game.ID, &game.CityID, &game.Date, &game.Team1ID, &game.Team2ID)
 		if err != nil {
-			logger.Error().Err(err).Msg("failed to postgresql.GetGamesByPlayersTeam")
+			logger.Error().Err(err).Msg("failed to postgresql.GetPastGamesByPlayersTeam")
 			return nil, DecodeDatabaseError(stderr.New(errors.ErrGetGame))
 		}
 

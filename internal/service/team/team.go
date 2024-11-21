@@ -49,18 +49,18 @@ func (s *Service) addPlayersProperties(ctx context.Context, players []entity.Pla
 	for i := range players {
 		p := &players[i] // Создаём указатель на текущий элемент массива
 
-		matches, err := s.rdbOperations.GetMatchesByPlayerID(logger, timeout, p.ID)
+		pastMatches, err := s.rdbOperations.GetPastMatchesByPlayerID(logger, timeout, p.ID)
 		if err != nil {
 			return err
 		}
 
-		propertyCounting(p, matches)
+		propertyCounting(p, pastMatches)
 	}
 
 	return nil
 }
 
-func propertyCounting(player *entity.PlayerGetTeam, matches []entities.Match) {
+func propertyCounting(player *entity.PlayerGetTeam, pastMatches []entities.Match) {
 	playersGames := make(map[int]struct{})
 
 	var (
@@ -68,7 +68,7 @@ func propertyCounting(player *entity.PlayerGetTeam, matches []entities.Match) {
 		goalsConcededNumber int
 	)
 
-	for _, match := range matches {
+	for _, match := range pastMatches {
 		playersGames[match.GameID] = struct{}{}
 
 		if match.Player1Team1ID == player.ID || (match.Player2Team1ID != nil && *match.Player2Team1ID == player.ID) {
@@ -81,7 +81,7 @@ func propertyCounting(player *entity.PlayerGetTeam, matches []entities.Match) {
 		}
 	}
 
-	player.MatchesPlayed = len(matches)
+	player.MatchesPlayed = len(pastMatches)
 	player.GamesPlayedNumber = len(playersGames)
 	player.GoalsScoredNumber = goalsScoredNumber
 	player.GoalsConcededNumber = goalsConcededNumber
