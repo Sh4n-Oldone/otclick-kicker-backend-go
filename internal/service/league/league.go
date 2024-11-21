@@ -145,7 +145,7 @@ func (s *Service) Recalc(ctx context.Context, id int64) error {
 		matches[i].Player2Team1RateBefore = &_rating21
 		matches[i].Player2Team2RateBefore = &_rating22
 
-		rating11, rating21, rating12, rating22, err := calculator.MatchRaitingCalculation(ctx, int(*match.ScoreTeam1), int(*match.ScoreTeam2), int(_rating11), int(_rating12), int(_rating21), int(_rating22))
+		rating11, rating12, rating21, rating22, err := calculator.MatchRaitingCalculation(ctx, int(*match.ScoreTeam1), int(*match.ScoreTeam2), int(_rating11), int(_rating12), int(_rating21), int(_rating22))
 		if err != nil {
 			return err
 		}
