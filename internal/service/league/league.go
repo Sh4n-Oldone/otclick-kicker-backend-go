@@ -67,7 +67,7 @@ func (s *Service) Recalc(ctx context.Context, id int64) error {
 		rating := &entity.Rating{
 			PlayerID: playerID,
 			LeagueID: id,
-			Value: int64(constant.DefaultRating),
+			Value:    int64(constant.DefaultRating),
 		}
 		ratings[playerID] = *rating
 	}
@@ -81,7 +81,7 @@ func (s *Service) Recalc(ctx context.Context, id int64) error {
 	// Recalc and update all matches
 	for i, match := range matches {
 		var _rating11, _rating12, _rating21, _rating22 int64
-		
+
 		_, ok := ratings[int64(*match.Player1Team1ID)]
 		if ok {
 			_rating11 = ratings[int64(*match.Player1Team1ID)].Value
@@ -89,12 +89,12 @@ func (s *Service) Recalc(ctx context.Context, id int64) error {
 			rating := &entity.Rating{
 				PlayerID: int64(*match.Player1Team1ID),
 				LeagueID: id,
-				Value: int64(constant.DefaultRating),
+				Value:    int64(constant.DefaultRating),
 			}
 			ratings[int64(*match.Player1Team1ID)] = *rating
 			_rating11 = rating.Value
 		}
-		
+
 		_, ok = ratings[int64(*match.Player1Team2ID)]
 		if ok {
 			_rating12 = ratings[int64(*match.Player1Team2ID)].Value
@@ -102,12 +102,12 @@ func (s *Service) Recalc(ctx context.Context, id int64) error {
 			rating := &entity.Rating{
 				PlayerID: int64(*match.Player1Team2ID),
 				LeagueID: id,
-				Value: int64(constant.DefaultRating),
+				Value:    int64(constant.DefaultRating),
 			}
 			ratings[int64(*match.Player1Team2ID)] = *rating
 			_rating12 = rating.Value
 		}
-		
+
 		_rating21 = 0
 		if match.Player2Team1ID != nil && *match.Player2Team1ID > 0 {
 			_, ok = ratings[int64(*match.Player2Team1ID)]
@@ -117,13 +117,13 @@ func (s *Service) Recalc(ctx context.Context, id int64) error {
 				rating := &entity.Rating{
 					PlayerID: int64(*match.Player2Team1ID),
 					LeagueID: id,
-					Value: int64(constant.DefaultRating),
+					Value:    int64(constant.DefaultRating),
 				}
 				ratings[int64(*match.Player2Team1ID)] = *rating
 				_rating21 = rating.Value
 			}
 		}
-		
+
 		_rating22 = 0
 		if match.Player2Team2ID != nil && *match.Player2Team2ID > 0 {
 			_, ok = ratings[int64(*match.Player2Team2ID)]
@@ -133,7 +133,7 @@ func (s *Service) Recalc(ctx context.Context, id int64) error {
 				rating := &entity.Rating{
 					PlayerID: int64(*match.Player2Team2ID),
 					LeagueID: id,
-					Value: int64(constant.DefaultRating),
+					Value:    int64(constant.DefaultRating),
 				}
 				ratings[int64(*match.Player2Team2ID)] = *rating
 				_rating22 = rating.Value
@@ -144,8 +144,8 @@ func (s *Service) Recalc(ctx context.Context, id int64) error {
 		matches[i].Player1Team2RateBefore = &_rating12
 		matches[i].Player2Team1RateBefore = &_rating21
 		matches[i].Player2Team2RateBefore = &_rating22
-		
-		rating11, rating21, rating12, rating22, err := calculator.MatchRaitingCalculation(ctx, int(*match.ScoreTeam1), int(*match.ScoreTeam2), int(_rating11), int(_rating21), int(_rating12), int(_rating22))
+
+		rating11, rating12, rating21, rating22, err := calculator.MatchRaitingCalculation(ctx, int(*match.ScoreTeam1), int(*match.ScoreTeam2), int(_rating11), int(_rating12), int(_rating21), int(_rating22))
 		if err != nil {
 			return err
 		}
@@ -162,12 +162,12 @@ func (s *Service) Recalc(ctx context.Context, id int64) error {
 		ratings[int64(*match.Player1Team1ID)] = entity.Rating{
 			PlayerID: int64(*match.Player1Team1ID),
 			LeagueID: id,
-			Value: int64(rating11),
+			Value:    int64(rating11),
 		}
 		ratings[int64(*match.Player1Team2ID)] = entity.Rating{
 			PlayerID: int64(*match.Player1Team2ID),
 			LeagueID: id,
-			Value: int64(rating12),
+			Value:    int64(rating12),
 		}
 		if match.Player2Team1ID != nil && *match.Player2Team1ID > 0 {
 			r21 := int64(rating21)
@@ -176,7 +176,7 @@ func (s *Service) Recalc(ctx context.Context, id int64) error {
 			ratings[int64(*match.Player2Team1ID)] = entity.Rating{
 				PlayerID: int64(*match.Player2Team1ID),
 				LeagueID: id,
-				Value: int64(rating21),
+				Value:    int64(rating21),
 			}
 		}
 		if match.Player2Team2ID != nil && *match.Player2Team2ID > 0 {
@@ -186,7 +186,7 @@ func (s *Service) Recalc(ctx context.Context, id int64) error {
 			ratings[int64(*match.Player2Team2ID)] = entity.Rating{
 				PlayerID: int64(*match.Player2Team2ID),
 				LeagueID: id,
-				Value: int64(rating22),
+				Value:    int64(rating22),
 			}
 		}
 	}

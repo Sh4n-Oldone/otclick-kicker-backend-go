@@ -5,14 +5,14 @@ import (
 	"math"
 )
 
-func MatchRaitingCalculation(ctx context.Context, score1, score2, rating11, rating21, rating12, rating22 int) (int, int, int, int, error){
+func MatchRaitingCalculation(ctx context.Context, score1, score2, rating11, rating21, rating12, rating22 int) (int, int, int, int, error) {
 	// average rate for team1
 	averRating1 := rating11
 	if rating12 > 0 {
 		if rating11 > rating12 {
-			averRating1 = (2 * rating11 + rating12) / 3  
+			averRating1 = (2*rating11 + rating12) / 3
 		} else {
-			averRating1 = (2 * rating12 + rating11) / 3
+			averRating1 = (2*rating12 + rating11) / 3
 		}
 	}
 
@@ -20,9 +20,9 @@ func MatchRaitingCalculation(ctx context.Context, score1, score2, rating11, rati
 	averRating2 := rating21
 	if rating22 > 0 {
 		if rating21 > rating22 {
-			averRating2 = (2 * rating21 + rating22) / 3  
+			averRating2 = (2*rating21 + rating22) / 3
 		} else {
-			averRating2 = (2 * rating22 + rating21) / 3
+			averRating2 = (2*rating22 + rating21) / 3
 		}
 	}
 
@@ -41,26 +41,26 @@ func MatchRaitingCalculation(ctx context.Context, score1, score2, rating11, rati
 	rd = 1 / rd
 	rd = 1 - rd
 	rd = rd * 6
-	rd = rd * math.Abs(float64(score1) - float64(score2))
+	rd = rd * math.Abs(float64(score1)-float64(score2))
 	rd = math.Round(rd)
-	x := int(rd)
+	x := int(rd) // -6
 
 	// ratings recalculate
-	if (score1 > score2) {
+	if score1 > score2 {
 		rating11 += x
 		rating21 -= x
-		if (rating12 > 0 && rating22 > 0) {
+		if rating12 > 0 && rating22 > 0 {
 			rating12 += x
 			rating22 -= x
 		}
 	} else {
 		rating11 -= x
 		rating21 += x
-		if (rating12 > 0 && rating22 > 0) {
+		if rating12 > 0 && rating22 > 0 {
 			rating12 -= x
 			rating22 += x
 		}
-	}			
-	
+	}
+
 	return rating11, rating21, rating12, rating22, nil
 }
