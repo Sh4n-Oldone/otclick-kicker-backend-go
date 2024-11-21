@@ -100,7 +100,7 @@ type RDBOperationer interface {
 
 	FetchLeagues(logger zerolog.Logger, ctx context.Context, cityID int64) ([]entity.League, error)
 	FetchTeams(logger zerolog.Logger, ctx context.Context, leagueID int64) ([]entity.Team, error)
-	FetchGames(logger zerolog.Logger, ctx context.Context, teamID1, teamID2, cityID, year int64) ([]entity.GameFetch, error)
+	FetchPastGames(logger zerolog.Logger, ctx context.Context, teamID1, teamID2, cityID, year int64) ([]entity.GameFetch, error)
 	FetchMatches(logger zerolog.Logger, ctx context.Context, gameID int64) ([]entities.Match, error)
 	TeamsHaveNoGames(logger zerolog.Logger, ctx context.Context, teams []entity.Team, year int64) (bool, error)
 

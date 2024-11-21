@@ -246,8 +246,8 @@ func (db *RDBOperation) FetchTeams(logger zerolog.Logger, ctx context.Context, l
 	return teams, nil
 }
 
-func (db *RDBOperation) FetchGames(logger zerolog.Logger, ctx context.Context, teamID1, teamID2, cityID, year int64) ([]entity.GameFetch, error) {
-	const query = `SELECT id, tech_loose_team_id FROM games WHERE team1_id = $1 AND team2_id = $2 AND city_id = $3 AND EXTRACT(year FROM date) = $4`
+func (db *RDBOperation) FetchPastGames(logger zerolog.Logger, ctx context.Context, teamID1, teamID2, cityID, year int64) ([]entity.GameFetch, error) {
+	const query = `SELECT id, tech_loose_team_id FROM games WHERE team1_id = $1 AND team2_id = $2 AND city_id = $3 AND EXTRACT(year FROM date) = $4 AND date < now()`
 
 	rows, err := db.db.Query(ctx, query, teamID1, teamID2, cityID, year)
 
