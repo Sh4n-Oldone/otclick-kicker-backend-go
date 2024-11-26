@@ -46,7 +46,6 @@ type RWDBOperationer interface {
 	UpdateLeague(logger zerolog.Logger, ctx context.Context, league entity.League, teams []int64) error
 	DeleteLeague(logger zerolog.Logger, ctx context.Context, id int64) error
 
-	CreatePlayedGame(logger zerolog.Logger, ctx context.Context, request entities.CreateGameRequest) (entities.CreateGameResponse, error)
 	DeleteGame(logger zerolog.Logger, ctx context.Context, gameID int) error
 	UpdateGame(logger zerolog.Logger, ctx context.Context, request entities.UpdateGameRequest, rates []entity.Rating) error
 	UpdateFutureGame(logger zerolog.Logger, ctx context.Context, request entity.UpdateFutureGameRequest) error

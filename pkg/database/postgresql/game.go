@@ -41,76 +41,6 @@ func (db *RDBOperation) GetPastGamesByPlayersTeam(logger zerolog.Logger, ctx con
 	return games, nil
 }
 
-func (db *RWDBOperation) CreatePlayedGame(logger zerolog.Logger, ctx context.Context, request entities.CreateGameRequest) (entities.CreateGameResponse, error) {
-	var gameId int
-	matchIds := make([]int, 0)
-
-	tx, err := db.db.Begin(ctx)
-	if err != nil {
-		logger.Error().Err(err).Msg("failed to postgresql.CreatePlayedGame")
-		return entities.CreateGameResponse{}, stderr.New(errors.ErrCreateGame)
-	}
-
-	err = tx.QueryRow(ctx, queryInsertGame, request.CityID, request.PlaceID, request.LeagueID, request.Date, request.Team1ID, request.Team2ID, request.TechLooseTeamID).
-		Scan(&gameId)
-
-	if err != nil {
-		_ = tx.Rollback(ctx)
-		logger.Error().Err(err).Msg("failed to postgresql.CreatePlayedGame")
-		return entities.CreateGameResponse{}, stderr.New(errors.ErrCreateGame)
-	}
-
-	for _, match := range request.Matches {
-		var matchId int
-
-		if match.Player2Team1Id != nil && *match.Player2Team1Id == 0 {
-			match.Player2Team1Id = nil
-		}
-		if match.Player2Team2Id != nil && *match.Player2Team2Id == 0 {
-			match.Player2Team2Id = nil
-		}
-
-		err = tx.QueryRow(ctx, queryInsertMatchesToPlayedGame,
-			match.Date,
-			gameId,
-			match.Team1ID,
-			match.Team2ID,
-			match.Player1Team1Id,
-			match.Player2Team1Id,
-			match.Player1Team2Id,
-			match.Player2Team2Id,
-			match.ScoreTeam1,
-			match.ScoreTeam2,
-			match.Player1Team1RateBefore,
-			match.Player1Team2RateBefore,
-			match.Player2Team1RateBefore,
-			match.Player2Team2RateBefore,
-			match.Player1Team1RateAfter,
-			match.Player1Team2RateAfter,
-			match.Player2Team1RateAfter,
-			match.Player2Team2RateAfter).
-			Scan(&matchId)
-		if err != nil {
-			_ = tx.Rollback(ctx)
-			logger.Error().Err(err).Msg("failed to postgresql.CreatePlayedGame")
-			return entities.CreateGameResponse{}, stderr.New(errors.ErrCreateMatch)
-		}
-		matchIds = append(matchIds, matchId)
-	}
-
-	err = tx.Commit(ctx)
-	if err != nil {
-		_ = tx.Rollback(ctx)
-		logger.Error().Err(err).Msg("failed to postgresql.CreatePlayedGame")
-		return entities.CreateGameResponse{}, stderr.New(errors.ErrCreateGame)
-	}
-
-	return entities.CreateGameResponse{
-		GameID:   gameId,
-		MatchIDs: matchIds,
-	}, nil
-}
-
 func (db *RWDBOperation) DeleteGame(logger zerolog.Logger, ctx context.Context, gameID int) error {
 	const query1 string = `
 		DELETE FROM public.matches
@@ -217,7 +147,7 @@ func (db *RDBOperation) GetGame(logger zerolog.Logger, ctx context.Context, game
 		public.players pt2_2 ON m.player2_team2_id = pt2_2.id
 	WHERE 
 		g.id = $1
-	ORDER BY m.updated_at 
+	ORDER BY m.sort, m.updated_at
 	`
 
 	var game entities.GetGameResponse
@@ -391,7 +321,8 @@ func (db *RWDBOperation) UpdateGame(logger zerolog.Logger, ctx context.Context, 
 				match.Player1Team1RateAfter,
 				match.Player1Team2RateAfter,
 				match.Player2Team1RateAfter,
-				match.Player2Team2RateAfter)
+				match.Player2Team2RateAfter,
+				match.Sort)
 			if err != nil {
 				_ = tx.Rollback(ctx)
 				logger.Error().Err(err).Msg("failed to create match in postgresql.UpdateGame")
@@ -418,6 +349,7 @@ func (db *RWDBOperation) UpdateGame(logger zerolog.Logger, ctx context.Context, 
 				match.Player1Team2RateAfter,
 				match.Player2Team1RateAfter,
 				match.Player2Team2RateAfter,
+				match.Sort,
 				game.ID)
 			if err != nil {
 				_ = tx.Rollback(ctx)
@@ -837,7 +769,8 @@ func (db *RWDBOperation) CreateGameWithRating(
 			match.Player1Team1RateAfter,
 			match.Player1Team2RateAfter,
 			match.Player2Team1RateAfter,
-			match.Player2Team2RateAfter).
+			match.Player2Team2RateAfter,
+			match.Sort).
 			Scan(&matchId)
 		if err != nil {
 			_ = tx.Rollback(ctx)
@@ -881,116 +814,4 @@ func (db *RWDBOperation) CreateGameWithRating(
 		GameID:   gameId,
 		MatchIDs: matchIds,
 	}, nil
-}
-
-func (db *RWDBOperation) UpdateGameWithRating(
-	logger zerolog.Logger, ctx context.Context, game entities.UpdateGameRequest, rates map[int]int, operator *string, leagueID int64) error {
-
-	tx, err := db.db.Begin(ctx)
-	if err != nil {
-		logger.Error().Err(err).Msg("failed to postgresql.UpdateGame")
-		return stderr.New(errors.ErrUpdateGame)
-	}
-
-	tag, err := tx.Exec(ctx, queryUpdateGame, game.ID, game.Date, game.PlaceID, game.LeagueID, game.Team1ID, game.Team2ID)
-	if err != nil {
-		_ = tx.Rollback(ctx)
-		logger.Error().Err(err).Msg("failed to postgresql.UpdateGame")
-		return stderr.New(errors.ErrUpdateGame)
-	}
-	if tag.RowsAffected() == 0 {
-		_ = tx.Rollback(ctx)
-		err = stderr.New(errors.ErrGameNotFound)
-		logger.Error().Err(err).Msg("failed to postgresql.UpdateGame")
-		return err
-	}
-
-	ids := make([]int, 0)
-	for _, match := range game.Matches {
-		if match.ID != nil {
-			ids = append(ids, *match.ID)
-		}
-	}
-
-	_, err = tx.Exec(ctx, queryDeleteMatchesToUpdateGame, ids, game.ID)
-	if err != nil {
-		_ = tx.Rollback(ctx)
-		err2 := stderr.New(errors.ErrDeleteMatch)
-		logger.Error().Err(err).Msg("failed to delete match in postgresql.UpdateGame")
-		return err2
-	}
-
-	for _, match := range game.Matches {
-
-		if match.Player2Team1Id != nil && *match.Player2Team1Id == 0 {
-			match.Player2Team1Id = nil
-		}
-		if match.Player2Team2Id != nil && *match.Player2Team2Id == 0 {
-			match.Player2Team2Id = nil
-		}
-
-		//если id матча нет создаем новый
-		if match.ID == nil {
-			_, err = tx.Exec(ctx, queryInsertMatchesToUpdateGame,
-				match.Date,
-				game.ID,
-				match.Team1ID,
-				match.Team2ID,
-				match.Player1Team1Id,
-				match.Player2Team1Id,
-				match.Player1Team2Id,
-				match.Player2Team2Id,
-				match.ScoreTeam1,
-				match.ScoreTeam2,
-				match.Player1Team1RateBefore,
-				match.Player1Team2RateBefore,
-				match.Player2Team1RateBefore,
-				match.Player2Team2RateBefore,
-				match.Player1Team1RateAfter,
-				match.Player1Team2RateAfter,
-				match.Player2Team1RateAfter,
-				match.Player2Team2RateAfter)
-			if err != nil {
-				_ = tx.Rollback(ctx)
-				logger.Error().Err(err).Msg("failed to create match in postgresql.UpdateGame")
-				return stderr.New(errors.ErrUpdateMatch)
-			}
-			// если id матча есть то обновляем
-		} else {
-			_, err = tx.Exec(ctx, queryUpdateMatchesToUpdateGame,
-				match.ID,
-				match.Date,
-				match.Team1ID,
-				match.Team2ID,
-				match.Player1Team1Id,
-				match.Player2Team1Id,
-				match.Player1Team2Id,
-				match.Player2Team2Id,
-				match.ScoreTeam1,
-				match.ScoreTeam2,
-				match.Player1Team1RateBefore,
-				match.Player1Team2RateBefore,
-				match.Player2Team1RateBefore,
-				match.Player2Team2RateBefore,
-				match.Player1Team1RateAfter,
-				match.Player1Team2RateAfter,
-				match.Player2Team1RateAfter,
-				match.Player2Team2RateAfter,
-				game.ID)
-			if err != nil {
-				_ = tx.Rollback(ctx)
-				logger.Error().Err(err).Msg("failed to update match in postgresql.UpdateGame")
-				return stderr.New(errors.ErrUpdateMatch)
-			}
-		}
-	}
-
-	err = tx.Commit(ctx)
-	if err != nil {
-		_ = tx.Rollback(ctx)
-		logger.Error().Err(err).Msg("failed to postgresql.UpdateGame")
-		return stderr.New(errors.ErrUpdateGame)
-	}
-
-	return nil
 }
