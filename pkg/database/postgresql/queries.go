@@ -184,8 +184,9 @@ const (
 		                            player1_team1_rate_after,
 		                            player1_team2_rate_after,
 		                            player2_team1_rate_after,
-		                            player2_team2_rate_after)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+		                            player2_team2_rate_after,
+		                            sort)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
 		RETURNING id;`
 
 	queryGetMatchListByGameID string = `
@@ -231,8 +232,9 @@ const (
 			player1_team2_rate_after = $16,
 			player2_team1_rate_after = $17,
 			player2_team2_rate_after = $18,
+			sort = $19,
 			updated_at = NOW()
-		WHERE id = $1 AND game_id = $19;`
+		WHERE id = $1 AND game_id = $20;`
 
 	queryInsertMatchesToUpdateGame string = `
 		INSERT INTO public.matches 
@@ -255,9 +257,10 @@ const (
 			 player1_team2_rate_after,
 			 player2_team1_rate_after,
 			 player2_team2_rate_after,
+		     sort,
 		     updated_at
 		     )
-		VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW());`
+		VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, NOW());`
 
 	queryDeleteMatchesToUpdateGame string = `
 		DELETE FROM public.matches m
