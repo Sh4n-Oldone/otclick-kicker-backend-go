@@ -86,7 +86,7 @@ func (db *RDBOperation) GetPastMatchesByPlayerID(logger zerolog.Logger, ctx cont
 		   OR player1_team2_id = $1
 		   OR player2_team2_id = $1)
 		   AND date < NOW()
-		ORDER BY updated_at;`
+		ORDER BY sort, updated_at;`
 
 	matches := make([]entities.Match, 0)
 
@@ -181,7 +181,7 @@ func (db *RDBOperation) GetMatchListByLeagueID(logger zerolog.Logger, ctx contex
 		JOIN teams_leagues_links as t2 ON g.team2_id = t2.team_id
 		JOIN leagues as l ON t1.league_id = l.id AND t2.league_id = l.id
 		WHERE l.id = $1 
-		ORDER BY g.date, g.updated_at, m.updated_at;`
+		ORDER BY g.date, g.updated_at, m.sort, m.updated_at;`
 
 	matches := make([]entity.Match, 0)
 

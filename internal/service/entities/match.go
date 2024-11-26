@@ -42,6 +42,7 @@ type GamesMatch struct {
 	Player2Team1RateAfter  *int      `db:"player2_team1_rate_after" json:"player2Team1IdRateAfter"`
 	Player1Team2RateAfter  *int      `db:"player1_team2_rate_after" json:"player1Team2IdRateAfter"`
 	Player2Team2RateAfter  *int      `db:"player2_team2_rate_after" json:"player2Team2IdRateAfter"`
+	Sort                   int       `json:"sort" validate:"gte=0"`
 }
 
 type FullMatch struct {
@@ -80,4 +81,5 @@ type NewMatch struct {
 	Player2Team1RateAfter  *int      `db:"player2_team1_rate_after" json:"player2Team1IdRateAfter"`
 	Player1Team2RateAfter  *int      `db:"player1_team2_rate_after" json:"player1Team2IdRateAfter"`
 	Player2Team2RateAfter  *int      `db:"player2_team2_rate_after" json:"player2Team2IdRateAfter"`
+	Sort                   int       `json:"sort" validate:"gte=0"`
 }
