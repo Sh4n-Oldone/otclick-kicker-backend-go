@@ -92,6 +92,8 @@ type FullPlayer struct {
 	CityName                  *string      `json:"cityName"`
 	Leagues                   []LeagueItem `json:"leagues,omitempty"`
 	Rating                    *int         `json:"rating,omitempty"`
+
+	Teams []TeamItem `json:"teams,omitempty"`
 }
 
 type LeagueItem struct {
@@ -102,4 +104,13 @@ type LeagueItem struct {
 
 type OkResponse struct {
 	Message string `json:"message"`
+}
+
+type TeamItem struct {
+	ID        int    `json:"id"`
+	Name      string `json:"name,omitempty"`
+	ShortName string `json:"shortName,omitempty"`
+	Avatar    []byte `json:"avatar,omitempty"`
+	CityID    int    `json:"city_id"`
+	Leagues   []int  `json:"leagues"`
 }

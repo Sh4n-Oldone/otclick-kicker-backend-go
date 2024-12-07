@@ -528,3 +528,39 @@ func (db *RWDBOperation) RemovePlayerFromTeam(logger zerolog.Logger, ctx context
 
 	return true, nil
 }
+
+func (db *RDBOperation) GetTeamsByPlayerID(logger zerolog.Logger, ctx context.Context, playerID int) ([]entities.TeamItem, error) {
+	const query = `SELECT t.id, t.name, t.short_name, t.avatar, t.city_id,
+	COALESCE(
+		ARRAY_AGG(
+			DISTINCT tll.league_id ORDER BY tll.league_id) 
+				FILTER (WHERE tll.league_id IS NOT NULL), ARRAY[]::int8[]) AS leagues
+	FROM teams t
+	LEFT JOIN teams_leagues_links tll ON t.id = tll.team_id
+	JOIN players_teams_links ptl ON t.id = ptl.team_id
+	WHERE ptl.player_id = $1
+	GROUP BY t.id;`
+
+	rows, err := db.db.Query(ctx, query, playerID)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to GetTeamsByPlayerID")
+		return nil, DecodeDatabaseError(err)
+	}
+	defer rows.Close()
+
+	var teams []entities.TeamItem
+
+	for rows.Next() {
+		var team entities.TeamItem
+
+		err = rows.Scan(&team.ID, &team.Name, &team.ShortName, &team.Avatar, &team.CityID, &team.Leagues)
+		if err != nil {
+			logger.Error().Err(err).Msg("failed to scan team list")
+			return nil, DecodeDatabaseError(err)
+		}
+
+		teams = append(teams, team)
+	}
+
+	return teams, nil
+}

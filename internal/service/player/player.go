@@ -83,7 +83,8 @@ func (s *Service) Find(ctx context.Context, player entities.FindPlayersRequest) 
 		pastMatches []entities.Match
 		leagues     []entities.PlayersLeague
 		pastGames   []entities.Game
-		teamId      int
+		// teamId      int
+		teams       []entities.TeamItem
 	)
 
 	fullPlayers := make([]entities.FullPlayer, len(players))
@@ -92,9 +93,10 @@ func (s *Service) Find(ctx context.Context, player entities.FindPlayersRequest) 
 
 		g, ctx := errgroup.WithContext(timeout)
 
-		if p.TeamID != nil {
-			teamId = *p.TeamID
-		}
+		// depricated
+		// if p.TeamID != nil {
+		// 	teamId = *p.TeamID
+		// }
 
 		g.Go(func() error {
 			var err error
@@ -110,7 +112,7 @@ func (s *Service) Find(ctx context.Context, player entities.FindPlayersRequest) 
 
 		g.Go(func() error {
 			var err error
-			pastGames, err = s.rdbOperations.GetPastGamesByPlayersTeam(logger, ctx, teamId)
+			teams, err = s.rdbOperations.GetTeamsByPlayerID(logger, ctx, p.ID)
 			return err
 		})
 
@@ -118,7 +120,16 @@ func (s *Service) Find(ctx context.Context, player entities.FindPlayersRequest) 
 			return entities.FindPlayersResponse{}, err
 		}
 
-		fullPlayer := buildFullPlayer(p, pastMatches, leagues, pastGames)
+		var teamIds []int
+		for _, _team := range teams {
+			teamIds = append(teamIds, _team.ID)
+		}
+		pastGames, err = s.rdbOperations.GetPastGamesByPlayersTeams(logger, ctx, teamIds)
+		if err != nil {
+			return entities.FindPlayersResponse{}, err
+		}
+
+		fullPlayer := buildFullPlayer(p, pastMatches, leagues, teams, pastGames)
 
 		fullPlayers[i] = fullPlayer
 	}
@@ -138,7 +149,8 @@ func (s *Service) Get(ctx context.Context, id int) (entities.FullPlayer, error) 
 		player      entities.Player
 		pastMatches []entities.Match
 		leagues     []entities.PlayersLeague
-		teamId      int
+		// teamId      int
+		teams       []entities.TeamItem
 	)
 
 	g, ctx := errgroup.WithContext(timeout)
@@ -161,21 +173,34 @@ func (s *Service) Get(ctx context.Context, id int) (entities.FullPlayer, error) 
 		return err
 	})
 
+	g.Go(func() error {
+		var err error
+		teams, err = s.rdbOperations.GetTeamsByPlayerID(logger, ctx, id)
+		return err
+	})
+
 	if err := g.Wait(); err != nil {
 		return entities.FullPlayer{}, err
 	}
 
-	if player.TeamID != nil {
-		teamId = *player.TeamID
+	// depricated
+	// if player.TeamID != nil {
+	// 	teamId = *player.TeamID
+	// }
+
+	var teamIds []int
+	for _, _team := range teams {
+		teamIds = append(teamIds, _team.ID)
 	}
 
 	// игры с участием команды игрока
-	pastGamesOfPlayersTeam, err := s.rdbOperations.GetPastGamesByPlayersTeam(logger, timeout, teamId)
+	pastGamesOfPlayersTeam, err := s.rdbOperations.GetPastGamesByPlayersTeams(logger, timeout, teamIds)
 	if err != nil {
 		return entities.FullPlayer{}, err
 	}
 
-	fullPlayer := buildFullPlayer(player, pastMatches, leagues, pastGamesOfPlayersTeam)
+	fullPlayer := buildFullPlayer(player, pastMatches, leagues, teams, pastGamesOfPlayersTeam)
+	fullPlayer.Teams = teams
 
 	return fullPlayer, nil
 }
@@ -193,7 +218,7 @@ func (s *Service) GetByTeamID(ctx context.Context, teamID int) ([]entities.Playe
 	return players, nil
 }
 
-func buildFullPlayer(player entities.Player, pastMatches []entities.Match, leagues []entities.PlayersLeague, pastGames []entities.Game) entities.FullPlayer {
+func buildFullPlayer(player entities.Player, pastMatches []entities.Match, leagues []entities.PlayersLeague, teams []entities.TeamItem, pastGames []entities.Game) entities.FullPlayer {
 	//тут будут id игр с участием игрока для подсчета
 	playersGames := make(map[int]struct{})
 
@@ -250,5 +275,6 @@ func buildFullPlayer(player entities.Player, pastMatches []entities.Match, leagu
 		CityName:                  player.CityName,
 		Leagues:                   leagueItems,
 		Rating:                    player.Rating,
+		Teams:                     teams,
 	}
 }
