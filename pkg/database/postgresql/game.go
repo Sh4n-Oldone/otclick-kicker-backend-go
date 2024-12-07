@@ -41,6 +41,37 @@ func (db *RDBOperation) GetPastGamesByPlayersTeam(logger zerolog.Logger, ctx con
 	return games, nil
 }
 
+func (db *RDBOperation) GetPastGamesByPlayersTeams(logger zerolog.Logger, ctx context.Context, teamIDs []int) ([]entities.Game, error) {
+	const query string = `
+		SELECT id, city_id, date, team1_id, team2_id
+		FROM public.games
+		WHERE (team1_id = ANY ($1::int[])) OR (team2_id = ANY ($1::int[])) AND date < NOW();
+	`
+
+	var games []entities.Game
+
+	rows, err := db.db.Query(ctx, query, teamIDs)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to postgresql.GetPastGamesByPlayersTeams")
+		return nil, DecodeDatabaseError(stderr.New(errors.ErrGetGameList))
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var game entities.Game
+
+		err = rows.Scan(&game.ID, &game.CityID, &game.Date, &game.Team1ID, &game.Team2ID)
+		if err != nil {
+			logger.Error().Err(err).Msg("failed to postgresql.GetPastGamesByPlayersTeams")
+			return nil, DecodeDatabaseError(stderr.New(errors.ErrGetGame))
+		}
+
+		games = append(games, game)
+	}
+
+	return games, nil
+}
+
 func (db *RWDBOperation) DeleteGame(logger zerolog.Logger, ctx context.Context, gameID int) error {
 	const query1 string = `
 		DELETE FROM public.matches
