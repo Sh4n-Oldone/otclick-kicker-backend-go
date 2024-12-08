@@ -5,6 +5,7 @@ import "time"
 type Match struct {
 	ID                     int
 	Date                   time.Time
+	LeagueID               *int
 	GameID                 int
 	Team1ID                int
 	Team2ID                int

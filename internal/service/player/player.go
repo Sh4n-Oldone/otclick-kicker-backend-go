@@ -2,6 +2,8 @@ package player
 
 import (
 	"context"
+	"slices"
+
 	"golang.org/x/sync/errgroup"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 )
@@ -70,7 +72,7 @@ func (s *Service) Find(ctx context.Context, player entities.FindPlayersRequest) 
 
 	// если нужно краткое описание игрока(KeepSimple == true) то метод прекращает выполнение здесь
 	// и возвращается []entities.Player
-	if player.KeepSimple != nil && *player.KeepSimple == true {
+	if player.KeepSimple != nil && *player.KeepSimple {
 		return entities.FindPlayersResponse{
 			Players:     players,
 			FullPlayers: nil,
@@ -83,7 +85,6 @@ func (s *Service) Find(ctx context.Context, player entities.FindPlayersRequest) 
 		pastMatches []entities.Match
 		leagues     []entities.PlayersLeague
 		pastGames   []entities.Game
-		// teamId      int
 		teams       []entities.TeamItem
 	)
 
@@ -92,11 +93,6 @@ func (s *Service) Find(ctx context.Context, player entities.FindPlayersRequest) 
 	for i, p := range players {
 
 		g, ctx := errgroup.WithContext(timeout)
-
-		// depricated
-		// if p.TeamID != nil {
-		// 	teamId = *p.TeamID
-		// }
 
 		g.Go(func() error {
 			var err error
@@ -124,7 +120,8 @@ func (s *Service) Find(ctx context.Context, player entities.FindPlayersRequest) 
 		for _, _team := range teams {
 			teamIds = append(teamIds, _team.ID)
 		}
-		pastGames, err = s.rdbOperations.GetPastGamesByPlayersTeams(logger, ctx, teamIds)
+
+		pastGames, err = s.rdbOperations.GetPastGamesByPlayersTeams(logger, timeout, teamIds)
 		if err != nil {
 			return entities.FindPlayersResponse{}, err
 		}
@@ -149,7 +146,6 @@ func (s *Service) Get(ctx context.Context, id int) (entities.FullPlayer, error) 
 		player      entities.Player
 		pastMatches []entities.Match
 		leagues     []entities.PlayersLeague
-		// teamId      int
 		teams       []entities.TeamItem
 	)
 
@@ -183,24 +179,18 @@ func (s *Service) Get(ctx context.Context, id int) (entities.FullPlayer, error) 
 		return entities.FullPlayer{}, err
 	}
 
-	// depricated
-	// if player.TeamID != nil {
-	// 	teamId = *player.TeamID
-	// }
-
 	var teamIds []int
 	for _, _team := range teams {
 		teamIds = append(teamIds, _team.ID)
 	}
 
-	// игры с участием команды игрока
+	// игры с участием команд игрока
 	pastGamesOfPlayersTeam, err := s.rdbOperations.GetPastGamesByPlayersTeams(logger, timeout, teamIds)
 	if err != nil {
 		return entities.FullPlayer{}, err
 	}
 
 	fullPlayer := buildFullPlayer(player, pastMatches, leagues, teams, pastGamesOfPlayersTeam)
-	fullPlayer.Teams = teams
 
 	return fullPlayer, nil
 }
@@ -219,62 +209,89 @@ func (s *Service) GetByTeamID(ctx context.Context, teamID int) ([]entities.Playe
 }
 
 func buildFullPlayer(player entities.Player, pastMatches []entities.Match, leagues []entities.PlayersLeague, teams []entities.TeamItem, pastGames []entities.Game) entities.FullPlayer {
-	//тут будут id игр с участием игрока для подсчета
-	playersGames := make(map[int]struct{})
-
-	var (
-		percentageOfParticipation float32
+	type leagueStat struct {
 		goalsScoredNumber         int
 		goalsConcededNumber       int
-	)
+		playersGames              map[int]bool
+		playersMatches            int
+	}
+
+	leagueStats := make(map[int]leagueStat)
 
 	for _, match := range pastMatches {
+		var stat leagueStat
+		stat.playersGames = make(map[int]bool)
+		if entry, ok := leagueStats[*match.LeagueID]; ok {
+			stat = entry
+		}
+
 		// заполняем игры игрока
-		playersGames[match.GameID] = struct{}{}
+		stat.playersGames[match.GameID] = false
 
 		// подсчет голов
 		if match.Player1Team1ID == player.ID || (match.Player2Team1ID != nil && *match.Player2Team1ID == player.ID) {
-			goalsScoredNumber += match.ScoreTeam1
-			goalsConcededNumber += match.ScoreTeam2
+			stat.goalsScoredNumber += match.ScoreTeam1
+			stat.goalsConcededNumber += match.ScoreTeam2
+			stat.playersMatches ++
 		}
 		if match.Player1Team2ID == player.ID || (match.Player2Team2ID != nil && *match.Player2Team2ID == player.ID) {
-			goalsScoredNumber += match.ScoreTeam2
-			goalsConcededNumber += match.ScoreTeam1
+			stat.goalsScoredNumber += match.ScoreTeam2
+			stat.goalsConcededNumber += match.ScoreTeam1
+			stat.playersMatches ++
 		}
+
+		leagueStats[*match.LeagueID] = stat
 	}
 
-	if len(pastGames) > 0 {
-		//процент участия игрока в играх команды
-		percentageOfParticipation = (float32(len(playersGames)) / float32(len(pastGames))) * 100
+	leaguePlayedGames := make(map[int]int)
+	for _, game := range pastGames {
+		games := 0
+		if entry, ok := leaguePlayedGames[*game.LeagueID]; ok {
+			games = entry
+		}
+		games++
+		leaguePlayedGames[*game.LeagueID] = games
 	}
 
 	leagueItems := make([]entities.LeagueItem, len(leagues))
-
 	for i, league := range leagues {
 		leagueItems[i].ID = league.ID
 		leagueItems[i].Name = league.Name
 		leagueItems[i].Rating = league.Rating
+
+		games := 0
+		if entry, ok := leaguePlayedGames[league.ID]; ok {
+			games = entry
+		}
+
+		if entry, ok := leagueStats[league.ID]; ok {
+			leagueItems[i].GamesPlayedNumber = len(entry.playersGames)
+			leagueItems[i].GoalsScoredNumber = entry.goalsScoredNumber
+			leagueItems[i].GoalsConcededNumber = entry.goalsConcededNumber
+			leagueItems[i].MatchesPlayed = entry.playersMatches
+
+			if games > 0 {
+				leagueItems[i].PercentageOfParticipation = (float32(len(entry.playersGames)) / float32(games)) * 100
+			}
+		}
+
+		for _, team := range teams {
+			if slices.Contains(team.Leagues, league.ID) {
+				leagueItems[i].Teams = append(leagueItems[i].Teams, team)
+			}
+		}
 	}
 
 	return entities.FullPlayer{
-		ID:                        player.ID,
-		Name:                      player.Name,
-		SecondName:                player.SecondName,
-		LastName:                  player.LastName,
-		Avatar:                    player.Avatar,
-		MatchesPlayed:             len(pastMatches),
-		GoalsScoredNumber:         goalsScoredNumber,
-		GoalsConcededNumber:       goalsConcededNumber,
-		GamesPlayedNumber:         len(playersGames),
-		PercentageOfParticipation: percentageOfParticipation,
-		ActivePlayer:              player.ActivePlayer,
-		Deleted:                   player.DeletedAt != nil,
-		TeamName:                  player.TeamName,
-		TeamShortName:             player.TeamShortName,
-		CityID:                    player.CityID,
-		CityName:                  player.CityName,
-		Leagues:                   leagueItems,
-		Rating:                    player.Rating,
-		Teams:                     teams,
+		ID:           player.ID,
+		Name:         player.Name,
+		SecondName:   player.SecondName,
+		LastName:     player.LastName,
+		Avatar:       player.Avatar,
+		ActivePlayer: player.ActivePlayer,
+		Deleted:      player.DeletedAt != nil,
+		CityID:       player.CityID,
+		CityName:     player.CityName,
+		Leagues:      leagueItems,
 	}
 }
