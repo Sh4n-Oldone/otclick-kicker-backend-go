@@ -79,14 +79,26 @@ func (db *RWDBOperation) DeleteMatch(logger zerolog.Logger, ctx context.Context,
 
 func (db *RDBOperation) GetPastMatchesByPlayerID(logger zerolog.Logger, ctx context.Context, playerID int) ([]entities.Match, error) {
 	query := `
-		SELECT id, date, game_id, team1_id, team2_id, player1_team1_id, player2_team1_id, player1_team2_id, player2_team2_id, score_team1, score_team2
-		FROM public.matches
-		WHERE (player1_team1_id = $1
-		   OR player2_team1_id = $1
-		   OR player1_team2_id = $1
-		   OR player2_team2_id = $1)
-		   AND date < NOW()
-		ORDER BY sort, updated_at;`
+		SELECT pm.id, 
+			pm.date, 
+			pg.league_id,
+			pm.game_id, 
+			pm.team1_id, 
+			pm.team2_id, 
+			pm.player1_team1_id, 
+			pm.player2_team1_id, 
+			pm.player1_team2_id, 
+			pm.player2_team2_id, 
+			pm.score_team1, 
+			pm.score_team2
+		FROM public.matches AS pm  
+		JOIN public.games AS pg ON pm.game_id = pg.id
+		WHERE (pm.player1_team1_id = $1
+		   OR pm.player2_team1_id = $1
+		   OR pm.player1_team2_id = $1
+		   OR pm.player2_team2_id = $1)
+		   AND pm.date < NOW()
+		ORDER BY pm.sort, pm.updated_at;`
 
 	matches := make([]entities.Match, 0)
 
@@ -99,7 +111,7 @@ func (db *RDBOperation) GetPastMatchesByPlayerID(logger zerolog.Logger, ctx cont
 
 	for rows.Next() {
 		var m entities.Match
-		err = rows.Scan(&m.ID, &m.Date, &m.GameID, &m.Team1ID, &m.Team2ID, &m.Player1Team1ID, &m.Player2Team1ID,
+		err = rows.Scan(&m.ID, &m.Date, &m.LeagueID, &m.GameID, &m.Team1ID, &m.Team2ID, &m.Player1Team1ID, &m.Player2Team1ID,
 			&m.Player1Team2ID, &m.Player2Team2ID, &m.ScoreTeam1, &m.ScoreTeam2)
 		if err != nil {
 			logger.Error().Err(err).Msg("failed to postgresql.GetPastMatchesByPlayerID")

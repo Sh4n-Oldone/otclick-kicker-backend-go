@@ -11,6 +11,7 @@ type Game struct {
 	Date    *time.Time
 	Team1ID int
 	Team2ID int
+	LeagueID *int
 }
 
 type CreateGameRequest struct {

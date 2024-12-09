@@ -74,32 +74,55 @@ type Player struct {
 }
 
 type FullPlayer struct {
-	ID                        int          `json:"id"`
-	Name                      *string      `json:"name,omitempty"`
-	SecondName                *string      `json:"secondName,omitempty"`
-	LastName                  string       `json:"lastName,omitempty"`
-	Avatar                    []byte       `json:"avatar,omitempty"`
-	MatchesPlayed             int          `json:"matchesPlayed"`
-	GoalsScoredNumber         int          `json:"goalsScoredNumber"`
-	GoalsConcededNumber       int          `json:"goalsConcededNumber"`
-	GamesPlayedNumber         int          `json:"gamesPlayedNumber"`
-	PercentageOfParticipation float32      `json:"percentageOfParticipation"`
-	ActivePlayer              *bool        `json:"activePlayer"`
-	Deleted                   bool         `json:"deleted"`
-	TeamName                  *string      `json:"teamName"`
-	TeamShortName             *string      `json:"teamShortName"`
-	CityID                    *int         `json:"cityId"`
-	CityName                  *string      `json:"cityName"`
-	Leagues                   []LeagueItem `json:"leagues,omitempty"`
-	Rating                    *int         `json:"rating,omitempty"`
+	ID           int     `json:"id"`
+	Name         *string `json:"name,omitempty"`
+	SecondName   *string `json:"secondName,omitempty"`
+	LastName     string  `json:"lastName,omitempty"`
+	Avatar       []byte  `json:"avatar,omitempty"`
+	ActivePlayer *bool   `json:"activePlayer"`
+	Deleted      bool    `json:"deleted"`
+	CityID       *int    `json:"cityId"`
+	CityName     *string `json:"cityName"`
+
+	Leagues []LeagueItem `json:"leagues,omitempty"`
+
+	// total stats
+	MatchesPlayed             int     `json:"matchesPlayed"`
+	GoalsScoredNumber         int     `json:"goalsScoredNumber"`
+	GoalsConcededNumber       int     `json:"goalsConcededNumber"`
+	GamesPlayedNumber         int     `json:"gamesPlayedNumber"`
+	PercentageOfParticipation float32 `json:"percentageOfParticipation"`
+
+	// deprecated
+	// TeamName                  *string      `json:"teamName"`
+	// TeamShortName             *string      `json:"teamShortName"`
+	// Rating                    *int         `json:"rating,omitempty"`
 }
 
 type LeagueItem struct {
 	ID     int    `json:"id"`
 	Name   string `json:"name"`
 	Rating int    `json:"rating"`
+
+	// league stats
+	MatchesPlayed             int     `json:"matchesPlayed"`
+	GoalsScoredNumber         int     `json:"goalsScoredNumber"`
+	GoalsConcededNumber       int     `json:"goalsConcededNumber"`
+	GamesPlayedNumber         int     `json:"gamesPlayedNumber"`
+	PercentageOfParticipation float32 `json:"percentageOfParticipation"`
+
+	Teams []TeamItem `json:"teams,omitempty"`
 }
 
 type OkResponse struct {
 	Message string `json:"message"`
+}
+
+type TeamItem struct {
+	ID        int    `json:"id"`
+	Name      string `json:"name,omitempty"`
+	ShortName string `json:"shortName,omitempty"`
+	Avatar    []byte `json:"avatar,omitempty"`
+	CityID    int    `json:"city_id"`
+	Leagues   []int  `json:"leagues"`
 }
