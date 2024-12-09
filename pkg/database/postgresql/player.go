@@ -205,7 +205,7 @@ func (db *RDBOperation) FindPlayers(logger zerolog.Logger, ctx context.Context, 
 		LEFT JOIN players_teams_links ptl ON p.id = ptl.player_id
 		LEFT JOIN teams t ON t.id = ptl.team_id
 		LEFT JOIN teams_leagues_links tll ON t.id = tll.team_id
-		LEFT JOIN rating r ON r.player_id = p.id
+		LEFT JOIN rating r ON r.player_id = p.id AND r.league_id = tll.league_id
 		LEFT JOIN cities c ON c.id = p.city_id
 		WHERE 
 		    ($1::int IS NULL OR tll.league_id = $1)

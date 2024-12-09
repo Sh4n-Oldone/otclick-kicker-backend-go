@@ -73,7 +73,11 @@ type RDBOperationer interface {
 	GetPastMatchesByPlayerID(logger zerolog.Logger, ctx context.Context, playerID int) ([]entities.Match, error)
 	GetLeaguesByPlayerID(logger zerolog.Logger, ctx context.Context, playerID int) ([]entities.PlayersLeague, error)
 
+	GetTeamsByPlayerID(logger zerolog.Logger, ctx context.Context, playerID int) ([]entities.TeamItem, error)
+
 	GetPastGamesByPlayersTeam(logger zerolog.Logger, ctx context.Context, teamID int) ([]entities.Game, error)
+
+	GetPastGamesByPlayersTeams(logger zerolog.Logger, ctx context.Context, teamIDs []int) ([]entities.Game, error)
 
 	FindPlayers(logger zerolog.Logger, ctx context.Context, player entities.FindPlayersRequest) ([]entities.Player, error)
 
