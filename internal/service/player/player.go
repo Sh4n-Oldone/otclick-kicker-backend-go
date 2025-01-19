@@ -81,16 +81,17 @@ func (s *Service) Find(ctx context.Context, player entities.FindPlayersRequest) 
 
 	// если нужно полное описание игрока(KeepSimple != true) то метод продолжает выполнение
 	// и возвращается []entities.FullPlayer
-	var (
-		pastMatches []entities.Match
-		leagues     []entities.PlayersLeague
-		pastGames   []entities.Game
-		teams       []entities.TeamItem
-	)
 
 	fullPlayers := make([]entities.FullPlayer, len(players))
 
 	for i, p := range players {
+
+		var (
+			pastMatches []entities.Match
+			leagues     []entities.PlayersLeague
+			pastGames   []entities.Game
+			teams       []entities.TeamItem
+		)
 
 		g, ctx := errgroup.WithContext(timeout)
 
@@ -210,10 +211,10 @@ func (s *Service) GetByTeamID(ctx context.Context, teamID int) ([]entities.Playe
 
 func buildFullPlayer(player entities.Player, pastMatches []entities.Match, leagues []entities.PlayersLeague, teams []entities.TeamItem, pastGames []entities.Game) entities.FullPlayer {
 	type leagueStat struct {
-		goalsScoredNumber         int
-		goalsConcededNumber       int
-		playersGames              map[int]bool
-		playersMatches            int
+		goalsScoredNumber   int
+		goalsConcededNumber int
+		playersGames        map[int]bool
+		playersMatches      int
 	}
 
 	leagueStats := make(map[int]leagueStat)
@@ -232,12 +233,12 @@ func buildFullPlayer(player entities.Player, pastMatches []entities.Match, leagu
 		if match.Player1Team1ID == player.ID || (match.Player2Team1ID != nil && *match.Player2Team1ID == player.ID) {
 			stat.goalsScoredNumber += match.ScoreTeam1
 			stat.goalsConcededNumber += match.ScoreTeam2
-			stat.playersMatches ++
+			stat.playersMatches++
 		}
 		if match.Player1Team2ID == player.ID || (match.Player2Team2ID != nil && *match.Player2Team2ID == player.ID) {
 			stat.goalsScoredNumber += match.ScoreTeam2
 			stat.goalsConcededNumber += match.ScoreTeam1
-			stat.playersMatches ++
+			stat.playersMatches++
 		}
 
 		leagueStats[*match.LeagueID] = stat
@@ -257,7 +258,9 @@ func buildFullPlayer(player entities.Player, pastMatches []entities.Match, leagu
 	for i, league := range leagues {
 		leagueItems[i].ID = league.ID
 		leagueItems[i].Name = league.Name
-		leagueItems[i].Rating = league.Rating
+		if league.Rating != nil {
+			leagueItems[i].Rating = *league.Rating
+		}
 
 		games := 0
 		if entry, ok := leaguePlayedGames[league.ID]; ok {
