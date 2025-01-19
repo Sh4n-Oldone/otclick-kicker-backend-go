@@ -168,7 +168,7 @@ func (db *RDBOperation) GetLeaguesByPlayerID(logger zerolog.Logger, ctx context.
   			JOIN public.teams t ON ptl.team_id = t.id
   			JOIN public.teams_leagues_links tll ON t.id = tll.team_id
   			JOIN public.leagues l ON tll.league_id = l.id
-  			LEFT JOIN public.rating r ON p.id = r.player_id       --// Рейтинг к плейеру (если к лиге то весь рейтинг лиги выведет)
+  			LEFT JOIN public.rating r ON p.id = r.player_id AND r.league_id = l.id 
   		WHERE p.id = $1`
 
 	leagues := make([]entities.PlayersLeague, 0)
