@@ -162,10 +162,14 @@ func (db *RWDBOperation) DeleteLeague(logger zerolog.Logger, ctx context.Context
 
 func (db *RDBOperation) GetLeaguesByPlayerID(logger zerolog.Logger, ctx context.Context, playerID int) ([]entities.PlayersLeague, error) {
 	const query string = `
-		SELECT l.id, l.name, l.city_id, r.value
-		FROM public.rating r
-		JOIN public.leagues l ON l.id = r.league_id
-		WHERE player_id = $1`
+  		SELECT l.id, l.name, l.city_id, r.value
+  		FROM public.players p
+  			JOIN public.players_teams_links ptl ON p.id = ptl.player_id
+  			JOIN public.teams t ON ptl.team_id = t.id
+  			JOIN public.teams_leagues_links tll ON t.id = tll.team_id
+  			JOIN public.leagues l ON tll.league_id = l.id
+  			LEFT JOIN public.rating r ON p.id = r.player_id AND r.league_id = l.id 
+  		WHERE p.id = $1`
 
 	leagues := make([]entities.PlayersLeague, 0)
 
