@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	"golang.org/x/sync/errgroup"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/constant"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 )
 
@@ -260,6 +261,8 @@ func buildFullPlayer(player entities.Player, pastMatches []entities.Match, leagu
 		leagueItems[i].Name = league.Name
 		if league.Rating != nil {
 			leagueItems[i].Rating = *league.Rating
+		} else {
+			leagueItems[i].Rating = constant.DefaultRating
 		}
 
 		games := 0
