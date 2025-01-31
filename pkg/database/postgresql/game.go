@@ -773,65 +773,69 @@ func (db *RWDBOperation) CreateGameWithRating(
 		return entities.CreateGameResponse{}, stderr.New(errors.ErrCreateGame)
 	}
 
-	for _, match := range request.Matches {
-		var matchId int
-
-		if match.Player2Team1Id != nil && *match.Player2Team1Id == 0 {
-			match.Player2Team1Id = nil
+	if len(request.Matches) > 0 {
+		for _, match := range request.Matches {
+			var matchId int
+	
+			if match.Player2Team1Id != nil && *match.Player2Team1Id == 0 {
+				match.Player2Team1Id = nil
+			}
+			if match.Player2Team2Id != nil && *match.Player2Team2Id == 0 {
+				match.Player2Team2Id = nil
+			}
+	
+			err = tx.QueryRow(ctx, queryInsertMatchesToPlayedGame,
+				match.Date,
+				gameId,
+				match.Team1ID,
+				match.Team2ID,
+				match.Player1Team1Id,
+				match.Player2Team1Id,
+				match.Player1Team2Id,
+				match.Player2Team2Id,
+				match.ScoreTeam1,
+				match.ScoreTeam2,
+				match.Player1Team1RateBefore,
+				match.Player1Team2RateBefore,
+				match.Player2Team1RateBefore,
+				match.Player2Team2RateBefore,
+				match.Player1Team1RateAfter,
+				match.Player1Team2RateAfter,
+				match.Player2Team1RateAfter,
+				match.Player2Team2RateAfter,
+				match.Sort).
+				Scan(&matchId)
+			if err != nil {
+				_ = tx.Rollback(ctx)
+				logger.Error().Err(err).Msg("failed to postgresql.CreateGameWithRating")
+				return entities.CreateGameResponse{}, stderr.New(errors.ErrCreateMatch)
+			}
+			matchIds = append(matchIds, matchId)
 		}
-		if match.Player2Team2Id != nil && *match.Player2Team2Id == 0 {
-			match.Player2Team2Id = nil
-		}
-
-		err = tx.QueryRow(ctx, queryInsertMatchesToPlayedGame,
-			match.Date,
-			gameId,
-			match.Team1ID,
-			match.Team2ID,
-			match.Player1Team1Id,
-			match.Player2Team1Id,
-			match.Player1Team2Id,
-			match.Player2Team2Id,
-			match.ScoreTeam1,
-			match.ScoreTeam2,
-			match.Player1Team1RateBefore,
-			match.Player1Team2RateBefore,
-			match.Player2Team1RateBefore,
-			match.Player2Team2RateBefore,
-			match.Player1Team1RateAfter,
-			match.Player1Team2RateAfter,
-			match.Player2Team1RateAfter,
-			match.Player2Team2RateAfter,
-			match.Sort).
-			Scan(&matchId)
-		if err != nil {
-			_ = tx.Rollback(ctx)
-			logger.Error().Err(err).Msg("failed to postgresql.CreateGameWithRating")
-			return entities.CreateGameResponse{}, stderr.New(errors.ErrCreateMatch)
-		}
-		matchIds = append(matchIds, matchId)
 	}
 
-	for playerID, value := range rates {
-		if playerID == 0 {
-			continue
-		}
-		rate := &entity.Rating{
-			PlayerID: int64(playerID),
-			LeagueID: leagueID,
-			Value:    int64(value),
-		}
-
-		query := queryCreateRating
-		if operator != nil && *operator == "insertIgnore" {
-			query = queryCreateRatingInsertIgnore
-		}
-
-		_, err = tx.Exec(ctx, query, rate.PlayerID, rate.LeagueID, rate.Value)
-		if err != nil {
-			_ = tx.Rollback(ctx)
-			logger.Error().Err(err).Msg("failed to postgresql.CreateGameWithRating")
-			return entities.CreateGameResponse{}, stderr.New(errors.ErrRating)
+	if len(rates) > 0 {
+		for playerID, value := range rates {
+			if playerID == 0 {
+				continue
+			}
+			rate := &entity.Rating{
+				PlayerID: int64(playerID),
+				LeagueID: leagueID,
+				Value:    int64(value),
+			}
+	
+			query := queryCreateRating
+			if operator != nil && *operator == "insertIgnore" {
+				query = queryCreateRatingInsertIgnore
+			}
+	
+			_, err = tx.Exec(ctx, query, rate.PlayerID, rate.LeagueID, rate.Value)
+			if err != nil {
+				_ = tx.Rollback(ctx)
+				logger.Error().Err(err).Msg("failed to postgresql.CreateGameWithRating")
+				return entities.CreateGameResponse{}, stderr.New(errors.ErrRating)
+			}
 		}
 	}
 
