@@ -55,141 +55,143 @@ func (s *Service) Create(ctx context.Context, request entities.CreateGameRequest
 
 	var matches []entities.GamesMatch
 
-	for _, match := range request.Matches {
-		if match.ScoreTeam1 == 0 && match.ScoreTeam2 == 0 {
-			continue
-		}
-
-		player1team1rate := 0
-		player1team1ID := match.Player1Team1Id
-		value, ok := rates[player1team1ID]
-		if ok {
-			player1team1rate = value
-		} else {
-			resp, err := s.rdbOperations.GetRatingByPlayerIDAndByLeagueID(logger, ctx, int64(player1team1ID), leagueID)
-			if err != nil {
-				if outputError, ok := (err).(*error_templates.OutputError); ok {
-					code, _ := outputError.GetHTTP()
-					if code == http.StatusNotFound {
-						resp = 1000
+	if len(request.Matches) > 0 {
+		for _, match := range request.Matches {
+			if match.ScoreTeam1 == 0 && match.ScoreTeam2 == 0 {
+				continue
+			}
+	
+			player1team1rate := 0
+			player1team1ID := match.Player1Team1Id
+			value, ok := rates[player1team1ID]
+			if ok {
+				player1team1rate = value
+			} else {
+				resp, err := s.rdbOperations.GetRatingByPlayerIDAndByLeagueID(logger, ctx, int64(player1team1ID), leagueID)
+				if err != nil {
+					if outputError, ok := (err).(*error_templates.OutputError); ok {
+						code, _ := outputError.GetHTTP()
+						if code == http.StatusNotFound {
+							resp = 1000
+						} else {
+							return entities.CreateGameResponse{}, err
+						}
 					} else {
 						return entities.CreateGameResponse{}, err
 					}
-				} else {
-					return entities.CreateGameResponse{}, err
 				}
+				player1team1rate = int(resp)
 			}
-			player1team1rate = int(resp)
-		}
-
-		player1team2rate := 0
-		player1team2ID := match.Player1Team2Id
-		value, ok = rates[player1team2ID]
-		if ok {
-			player1team2rate = value
-		} else {
-			resp, err := s.rdbOperations.GetRatingByPlayerIDAndByLeagueID(logger, ctx, int64(player1team2ID), leagueID)
-			if err != nil {
-				if outputError, ok := (err).(*error_templates.OutputError); ok {
-					code, _ := outputError.GetHTTP()
-					if code == http.StatusNotFound {
-						resp = 1000
+	
+			player1team2rate := 0
+			player1team2ID := match.Player1Team2Id
+			value, ok = rates[player1team2ID]
+			if ok {
+				player1team2rate = value
+			} else {
+				resp, err := s.rdbOperations.GetRatingByPlayerIDAndByLeagueID(logger, ctx, int64(player1team2ID), leagueID)
+				if err != nil {
+					if outputError, ok := (err).(*error_templates.OutputError); ok {
+						code, _ := outputError.GetHTTP()
+						if code == http.StatusNotFound {
+							resp = 1000
+						} else {
+							return entities.CreateGameResponse{}, err
+						}
 					} else {
 						return entities.CreateGameResponse{}, err
 					}
-				} else {
-					return entities.CreateGameResponse{}, err
+				}
+				player1team2rate = int(resp)
+			}
+	
+			var player2team1ID, player2team1rate int
+			if match.Player2Team1Id != nil {
+				player2team1ID = *match.Player2Team1Id
+				if player2team1ID > 0 {
+					value, ok = rates[player2team1ID]
+					if ok {
+						player2team1rate = value
+					} else {
+						resp, err := s.rdbOperations.GetRatingByPlayerIDAndByLeagueID(logger, ctx, int64(player2team1ID), leagueID)
+						if err != nil {
+							if outputError, ok := (err).(*error_templates.OutputError); ok {
+								code, _ := outputError.GetHTTP()
+								if code == http.StatusNotFound {
+									resp = 1000
+								} else {
+									return entities.CreateGameResponse{}, err
+								}
+							} else {
+								return entities.CreateGameResponse{}, err
+							}
+						}
+						player2team1rate = int(resp)
+					}
 				}
 			}
-			player1team2rate = int(resp)
-		}
-
-		var player2team1ID, player2team1rate int
-		if match.Player2Team1Id != nil {
-			player2team1ID = *match.Player2Team1Id
+	
+			var player2team2ID, player2team2rate int
+			if match.Player2Team2Id != nil {
+				player2team2ID = *match.Player2Team2Id
+				if player2team2ID > 0 {
+					value, ok = rates[player2team2ID]
+					if ok {
+						player2team2rate = value
+					} else {
+						resp, err := s.rdbOperations.GetRatingByPlayerIDAndByLeagueID(logger, ctx, int64(player2team2ID), leagueID)
+						if err != nil {
+							if outputError, ok := (err).(*error_templates.OutputError); ok {
+								code, _ := outputError.GetHTTP()
+								if code == http.StatusNotFound {
+									resp = 1000
+								} else {
+									return entities.CreateGameResponse{}, err
+								}
+							} else {
+								return entities.CreateGameResponse{}, err
+							}
+						}
+						player2team2rate = int(resp)
+					}
+				}
+			}
+	
+			p1t1r := player1team1rate
+			p1t2r := player1team2rate
+			p2t1r := player2team1rate
+			p2t2r := player2team2rate
+	
+			match.Player1Team1RateBefore = &p1t1r
+			match.Player1Team2RateBefore = &p1t2r
+			match.Player2Team1RateBefore = &p2t1r
+			match.Player2Team2RateBefore = &p2t2r
+	
+			player1team1rateAfter, player1team2rateAfter, player2team1rateAfter, player2team2rateAfter, err := calculator.MatchRaitingCalculation(
+				ctx, match.ScoreTeam1, match.ScoreTeam2, player1team1rate, player1team2rate, player2team1rate, player2team2rate)
+			if err != nil {
+				return entities.CreateGameResponse{}, err
+			}
+	
+			match.Player1Team1RateAfter = &player1team1rateAfter
+			match.Player1Team2RateAfter = &player1team2rateAfter
+			match.Player2Team1RateAfter = &player2team1rateAfter
+			match.Player2Team2RateAfter = &player2team2rateAfter
+	
+			rates[match.Player1Team1Id] = player1team1rateAfter
+			rates[match.Player1Team2Id] = player1team2rateAfter
 			if player2team1ID > 0 {
-				value, ok = rates[player2team1ID]
-				if ok {
-					player2team1rate = value
-				} else {
-					resp, err := s.rdbOperations.GetRatingByPlayerIDAndByLeagueID(logger, ctx, int64(player2team1ID), leagueID)
-					if err != nil {
-						if outputError, ok := (err).(*error_templates.OutputError); ok {
-							code, _ := outputError.GetHTTP()
-							if code == http.StatusNotFound {
-								resp = 1000
-							} else {
-								return entities.CreateGameResponse{}, err
-							}
-						} else {
-							return entities.CreateGameResponse{}, err
-						}
-					}
-					player2team1rate = int(resp)
-				}
+				rates[*match.Player2Team1Id] = player2team1rateAfter
 			}
-		}
-
-		var player2team2ID, player2team2rate int
-		if match.Player2Team2Id != nil {
-			player2team2ID = *match.Player2Team2Id
 			if player2team2ID > 0 {
-				value, ok = rates[player2team2ID]
-				if ok {
-					player2team2rate = value
-				} else {
-					resp, err := s.rdbOperations.GetRatingByPlayerIDAndByLeagueID(logger, ctx, int64(player2team2ID), leagueID)
-					if err != nil {
-						if outputError, ok := (err).(*error_templates.OutputError); ok {
-							code, _ := outputError.GetHTTP()
-							if code == http.StatusNotFound {
-								resp = 1000
-							} else {
-								return entities.CreateGameResponse{}, err
-							}
-						} else {
-							return entities.CreateGameResponse{}, err
-						}
-					}
-					player2team2rate = int(resp)
-				}
+				rates[*match.Player2Team2Id] = player2team2rateAfter
 			}
+	
+			matches = append(matches, match)
 		}
-
-		p1t1r := player1team1rate
-		p1t2r := player1team2rate
-		p2t1r := player2team1rate
-		p2t2r := player2team2rate
-
-		match.Player1Team1RateBefore = &p1t1r
-		match.Player1Team2RateBefore = &p1t2r
-		match.Player2Team1RateBefore = &p2t1r
-		match.Player2Team2RateBefore = &p2t2r
-
-		player1team1rateAfter, player1team2rateAfter, player2team1rateAfter, player2team2rateAfter, err := calculator.MatchRaitingCalculation(
-			ctx, match.ScoreTeam1, match.ScoreTeam2, player1team1rate, player1team2rate, player2team1rate, player2team2rate)
-		if err != nil {
-			return entities.CreateGameResponse{}, err
-		}
-
-		match.Player1Team1RateAfter = &player1team1rateAfter
-		match.Player1Team2RateAfter = &player1team2rateAfter
-		match.Player2Team1RateAfter = &player2team1rateAfter
-		match.Player2Team2RateAfter = &player2team2rateAfter
-
-		rates[match.Player1Team1Id] = player1team1rateAfter
-		rates[match.Player1Team2Id] = player1team2rateAfter
-		if player2team1ID > 0 {
-			rates[*match.Player2Team1Id] = player2team1rateAfter
-		}
-		if player2team2ID > 0 {
-			rates[*match.Player2Team2Id] = player2team2rateAfter
-		}
-
-		matches = append(matches, match)
+	
+		request.Matches = matches
 	}
-
-	request.Matches = matches
 
 	operator := "insertIgnore"
 
