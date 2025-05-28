@@ -18,6 +18,7 @@ vendor/
 # Generated files
 .idea
 .vscode
+app
 builded_app
 
 # Pprof

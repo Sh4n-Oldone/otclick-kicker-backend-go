@@ -52,7 +52,7 @@ func (db *RDBOperation) GetTeam(logger zerolog.Logger, ctx context.Context, team
 		leagues = append(leagues, l)
 	}
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	const queryGetPlayerByID = `
+	queryGetPlayerByID := `
 	SELECT
         p.id,
         p.name,
@@ -68,9 +68,18 @@ func (db *RDBOperation) GetTeam(logger zerolog.Logger, ctx context.Context, team
     FROM players p
     LEFT JOIN players_teams_links ptl ON p.id = ptl.player_id
     LEFT JOIN teams t ON t.id = ptl.team_id
-    LEFT JOIN rating r ON p.id = r.player_id
+    LEFT JOIN rating r ON p.id = r.player_id %s
     WHERE p.id = $1;
 	`
+	// возможно, проще было сделать через слияние SQL запросов
+	if len(leagueIDs) == 0 {
+		queryGetPlayerByID = fmt.Sprintf(queryGetPlayerByID, "")
+	} else {
+		queryGetPlayerByID = fmt.Sprintf(queryGetPlayerByID, "AND r.league_id IN ("+strings.Trim(strings.ReplaceAll(fmt.Sprint(leagueIDs), " ", ", "), "[]")+")")
+	}
+	// альтернативные варианты перевода массива чисел в строку
+	//strings.Trim(strings.Join(strings.Fields(fmt.Sprint(leagueIDs)), ", "), "[]")
+	//strings.Trim(strings.Join(strings.Split(fmt.Sprint(leagueIDs), " "), ", "), "[]")
 	var players = []entity.PlayerGetTeam{}
 	for _, playerID := range playerIDs {
 		var p entity.PlayerGetTeam
