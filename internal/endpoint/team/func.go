@@ -132,7 +132,7 @@ func makeGetTeamVsTeamTable(s team.IService) endpoint.Endpoint {
 		// 	return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		// }
 
-		teamsResp, err := s.GetTeamVsTeamTable(ctx, req.CityID, req.Year)
+		teamsResp, err := s.GetTeamVsTeamTable(ctx, req.CityID, req.SeasonID)
 		if err != nil {
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}

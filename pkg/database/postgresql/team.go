@@ -211,8 +211,8 @@ func (db *RDBOperation) GetTeamsByLeague(logger zerolog.Logger, ctx context.Cont
 // ///////////////////////////////////////////////////////////////////////////////////
 // ///////////////////////////////////////////////////////////////////////////////////
 
-func (db *RDBOperation) FetchLeagues(logger zerolog.Logger, ctx context.Context, cityID int64) ([]entity.League, error) {
-	rows, err := db.db.Query(ctx, "SELECT id, name FROM leagues WHERE city_id = $1", cityID)
+func (db *RDBOperation) FetchLeagues(logger zerolog.Logger, ctx context.Context, cityID int64, seasonID int64) ([]entity.League, error) {
+	rows, err := db.db.Query(ctx, "SELECT id, name FROM leagues WHERE city_id = $1 AND season_id = $2", cityID, seasonID)
 	if err != nil {
 		return nil, err
 	}
@@ -308,12 +308,15 @@ func (db *RDBOperation) FetchMatches(logger zerolog.Logger, ctx context.Context,
 }
 
 // /////////////////////////
-func (db *RDBOperation) TeamsHaveNoGames(logger zerolog.Logger, ctx context.Context, teams []entity.Team, year int64) (bool, error) {
-	const queryGame = `SELECT id FROM games WHERE (team1_id = $1 OR team2_id = $1)
-					AND EXTRACT(year FROM date) = $2
+func (db *RDBOperation) TeamsHaveNoGames(logger zerolog.Logger, ctx context.Context, teams []entity.Team, seasonID int64) (bool, error) {
+	const queryGame = `SELECT g.id
+					   FROM games g
+					   JOIN leagues l ON g.league_id = l.id
+					   WHERE (g.team1_id = $1 OR g.team2_id = $1)
+					   AND l.season_id = $2
 					`
 	for _, team := range teams {
-		rows, err := db.db.Query(ctx, queryGame, team.ID, year)
+		rows, err := db.db.Query(ctx, queryGame, team.ID, seasonID)
 		if err != nil {
 			return false, err
 		}

@@ -50,6 +50,9 @@ import (
 	epBar "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/bar"
 	srvBar "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/bar"
 
+	epSeason "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/season"
+	srvSeason "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/season"
+
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/healthchecker"
 
 	tpHTTP "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http"
@@ -61,6 +64,7 @@ import (
 	tpHTTPPlace "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/place"
 	tpHTTPPlayer "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/player"
 	tpHTTPRole "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/role"
+	tpHTTPSeason "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/season"
 	tpHTTPTable "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/table"
 	tpHTTPTeam "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/team"
 	tpHTTPUser "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/user"
@@ -204,6 +208,13 @@ func initKitHTTP(appConfig *config.Configuration, service srvUser.IService, endp
 			appConfig,
 			service))
 
+	router.Mount("/Kicker.v1.SeasonService/",
+		tpHTTPSeason.NewServer(
+			endpoints.SeasonEP,
+			serverOptions,
+			appConfig,
+			service))
+
 	if webDebugEnabled {
 		router.Mount("/dbg", ProfilerHandler())
 	}
@@ -300,6 +311,7 @@ func initEndpoints(
 	tableSrv := srvTable.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
 	barSrv := srvBar.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
 	placeSrv := srvPlace.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
+	seasonSrv := srvSeason.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
 
 	return endpoint.ServicesEndpoints{
 		CityEP:   epCity.MakeEndpoints(citySrv),
@@ -313,5 +325,6 @@ func initEndpoints(
 		TableEP:  epTable.MakeEndpoints(tableSrv),
 		BarEP:    epBar.MakeEndpoints(barSrv),
 		PlaceEP:  epPlace.MakeEndpoints(placeSrv),
+		SeasonEP: epSeason.MakeEndpoints(seasonSrv),
 	}
 }

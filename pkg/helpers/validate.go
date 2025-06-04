@@ -310,3 +310,45 @@ func validateDate(fl validator.FieldLevel) bool {
 	date := fl.Field().Interface().(time.Time)
 	return !(date.Equal(time.Unix(0, 0)) || date.IsZero() || date.Year() == 0)
 }
+
+func ValidateCreateSeasonRequest(request *entity.CreateSeasonRequest) error {
+	if request.Name == "" {
+		err := error_templates.New("invalid request fields", errors.New("invalid request fields"), codes.InvalidArgument, http.StatusBadRequest)
+		return error_templates.WrapErrorDetail(err, fmt.Sprintf("wrong value of parameter %T", request.Name))
+	}
+
+	return nil
+}
+
+func ValidateUpdateSeasonRequest(request *entity.UpdateSeasonRequest) error {
+	if request.ID <= 0 {
+		err := error_templates.New("invalid request fields", errors.New("invalid request fields"), codes.InvalidArgument, http.StatusBadRequest)
+		return error_templates.WrapErrorDetail(err, fmt.Sprintf("wrong value of parameter %T", request.ID))
+	}
+
+	if request.Name != nil {
+		if *request.Name == "" {
+			err := errors.New(customerr.ErrEmptyField)
+			err = error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+			return error_templates.WrapErrorDetail(err, fmt.Sprintf("wrong value of parameter %T", request.Name))
+		}
+	}
+	if request.Description != nil {
+		if *request.Description == "" {
+			err := errors.New(customerr.ErrEmptyField)
+			err = error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+			return error_templates.WrapErrorDetail(err, fmt.Sprintf("wrong value of parameter %T", request.Description))
+		}
+	}
+
+	return nil
+}
+
+func ValidateDeleteSeasonRequest(request *entity.DeleteSeasonRequest) error {
+	if request.ID <= 0 {
+		err := error_templates.New("invalid request fields", errors.New("invalid request fields"), codes.InvalidArgument, http.StatusBadRequest)
+		return error_templates.WrapErrorDetail(err, fmt.Sprintf("wrong value of parameter %T", request.ID))
+	}
+
+	return nil
+}

@@ -9,6 +9,7 @@ import (
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/place"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/player"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/role"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/season"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/table"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/team"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/user"
@@ -20,10 +21,11 @@ type ServicesEndpoints struct {
 	RoleEP   role.Endpoints
 	MatchEP  match.Endpoints
 	PlayerEP player.Endpoints
-	TableEP table.Endpoints
-	BarEP bar.Endpoints
-	PlaceEP place.Endpoints
+	TableEP  table.Endpoints
+	BarEP    bar.Endpoints
+	PlaceEP  place.Endpoints
 	LeagueEP league.Endpoints
 	TeamEP   team.Endpoints
 	GameEP   game.Endpoints
+	SeasonEP season.Endpoints
 }

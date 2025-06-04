@@ -1,28 +1,20 @@
-package team
+package season
 
 import (
 	"context"
 
 	"github.com/rs/zerolog"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql"
 
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql"
 )
 
 type IService interface {
-	GetTeam(ctx context.Context, teamID int64) (entity.GetTeamResponse, error)
-	GetTeams(ctx context.Context, cityId int64, onlyFree bool) ([]entity.TeamShort, error)
-	GetTeamsByCity(ctx context.Context, onlyFree bool, cityID int64) ([]entity.TeamShort, error)
-	GetTeamsByLeague(ctx context.Context, leagueID int64) ([]entity.TeamByLeague, error)
-	GetTeamVsTeamTable(ctx context.Context, cityID, seasonID int64) (entity.GetTeamVsTeamTableResponse, error)
-
-	Create(ctx context.Context, team entity.CreateTeamRequest) (int64, error)
-	Update(ctx context.Context, team entity.UpdateTeamRequest) (bool, error)
+	GetList(ctx context.Context) ([]entity.Season, error)
+	Create(ctx context.Context, entity entity.Season) (*int64, error)
+	Update(ctx context.Context, entity entity.UpdateSeasonRequest) error
 	Delete(ctx context.Context, id int64) (bool, error)
-
-	AddPlayerIntoTeam(ctx context.Context, playerID, teamID int64) (bool, error)
-	RemovePlayerFromTeam(ctx context.Context, playerID, teamID int64) (bool, error)
 
 	GetLogger() *zerolog.Logger
 }

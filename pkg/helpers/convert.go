@@ -65,14 +65,16 @@ func ConvertUpdateMatchRequestToMatch(request *entity.UpdateMatchRequest) *entit
 
 func ConvertCreateLeagueRequestToLeague(request *entity.CreateLeagueRequest) *entity.League {
 	return &entity.League{
-		CityID: request.CityID,
-		Name:   request.Name,
+		CityID:   request.CityID,
+		Name:     request.Name,
+		SeasonID: request.SeasonID,
 	}
 }
 
 func ConvertUpdateLeagueRequestToLeague(request *entity.UpdateLeagueRequest) *entity.League {
 	return &entity.League{
-		ID:   request.ID,
-		Name: request.Name,
+		ID:       request.ID,
+		Name:     request.Name,
+		SeasonID: request.SeasonID,
 	}
 }

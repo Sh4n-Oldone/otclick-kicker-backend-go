@@ -48,7 +48,7 @@ func (db *RWDBOperation) CreateLeague(logger zerolog.Logger, ctx context.Context
 		return 0, DecodeDatabaseError(err)
 	}
 
-	err = tx.QueryRow(ctx, queryCreateLeague, league.Name, league.CityID).Scan(&id)
+	err = tx.QueryRow(ctx, queryCreateLeague, league.Name, league.CityID, league.SeasonID).Scan(&id)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to create League record")
 		_ = tx.Rollback(ctx)
@@ -81,7 +81,7 @@ func (db *RWDBOperation) UpdateLeague(logger zerolog.Logger, ctx context.Context
 		return DecodeDatabaseError(err)
 	}
 
-	_, err = tx.Exec(ctx, queryUpdateLeague, league.Name, league.ID)
+	_, err = tx.Exec(ctx, queryUpdateLeague, league.ID, league.Name, league.SeasonID)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to update League record")
 		_ = tx.Rollback(ctx)
