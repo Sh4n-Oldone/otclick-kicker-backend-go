@@ -1,0 +1,12 @@
+BEGIN;
+
+CREATE TABLE IF NOT EXISTS seasons (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR UNIQUE NOT NULL,
+    description VARCHAR
+);
+
+ALTER TABLE leagues
+ADD COLUMN season_id INT REFERENCES seasons(id);
+
+COMMIT;

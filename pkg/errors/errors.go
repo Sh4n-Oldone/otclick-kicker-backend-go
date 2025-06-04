@@ -70,4 +70,7 @@ const (
 	ErrMatchNotFound       = "матч не найден"
 
 	ErrRating = "ошибка при сохранении рейтинга"
+
+	ErrCreateSeason = "ошибка создания сезона"
+	ErrUpdateSeason = "ошибка обновления данных сезона"
 )

@@ -56,6 +56,10 @@ type RWDBOperationer interface {
 	UpdateRating(logger zerolog.Logger, ctx context.Context, entity entity.Rating) error
 
 	RewriteMatchesAndPlayerRatings(logger zerolog.Logger, ctx context.Context, matches []entity.Match, ratings map[int64]entity.Rating) error
+
+	CreateSeason(logger zerolog.Logger, ctx context.Context, entity entity.Season) (id *int64, err error)
+	UpdateSeason(logger zerolog.Logger, ctx context.Context, entity entity.UpdateSeasonRequest) error
+	DeleteSeason(logger zerolog.Logger, ctx context.Context, id int64) (bool, error)
 }
 
 // RDBOperationer is the interface that implemented by the RDBOperation structure.
@@ -101,11 +105,11 @@ type RDBOperationer interface {
 	GetTeamsByCity(logger zerolog.Logger, ctx context.Context, onlyFree bool, cityID int64) ([]entity.TeamShort, error)
 	GetTeamsByLeague(logger zerolog.Logger, ctx context.Context, leagueID int64) ([]entity.TeamByLeague, error)
 
-	FetchLeagues(logger zerolog.Logger, ctx context.Context, cityID int64) ([]entity.League, error)
+	FetchLeagues(logger zerolog.Logger, ctx context.Context, cityID int64, seasonID int64) ([]entity.League, error)
 	FetchTeams(logger zerolog.Logger, ctx context.Context, leagueID int64) ([]entity.Team, error)
 	FetchPastGames(logger zerolog.Logger, ctx context.Context, teamID1, teamID2, cityID, leagueID int64) ([]entity.GameFetch, error)
 	FetchMatches(logger zerolog.Logger, ctx context.Context, gameID int64) ([]entities.Match, error)
-	TeamsHaveNoGames(logger zerolog.Logger, ctx context.Context, teams []entity.Team, year int64) (bool, error)
+	TeamsHaveNoGames(logger zerolog.Logger, ctx context.Context, teams []entity.Team, seasonID int64) (bool, error)
 
 	GetRatingByPlayerIDAndByLeagueID(logger zerolog.Logger, ctx context.Context, playerID, leagueID int64) (int64, error)
 
@@ -113,6 +117,8 @@ type RDBOperationer interface {
 
 	GetPlayerIDsByLeagueID(logger zerolog.Logger, ctx context.Context, leagueID int64) ([]int64, error)
 	GetMatchListByLeagueID(logger zerolog.Logger, ctx context.Context, leagueID int64) ([]entity.Match, error)
+
+	GetSeasonList(logger zerolog.Logger, ctx context.Context) ([]entity.Season, error)
 }
 
 type dbp struct {

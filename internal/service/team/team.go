@@ -126,9 +126,9 @@ func (s *Service) GetTeamsByLeague(ctx context.Context, leagueID int64) ([]entit
 // ///////////////////////////////////////////////////////////////////////////////////
 // ///////////////////////////////////////////////////////////////////////////////////
 
-func (s *Service) GetTeamVsTeamTable(ctx context.Context, cityID, year int64) (entity.GetTeamVsTeamTableResponse, error) {
+func (s *Service) GetTeamVsTeamTable(ctx context.Context, cityID, seasonID int64) (entity.GetTeamVsTeamTableResponse, error) {
 	logger := s.logger.With().Interface("service", "GetTeamVsTeamTable").Logger()
-	leagues, err := s.rdbOperations.FetchLeagues(logger, ctx, cityID)
+	leagues, err := s.rdbOperations.FetchLeagues(logger, ctx, cityID, seasonID)
 
 	if err != nil {
 		logger.Error().Err(err).Msg("error GetTeamVsTeamTable")
@@ -157,7 +157,7 @@ func (s *Service) GetTeamVsTeamTable(ctx context.Context, cityID, year int64) (e
 		if len(teams) == 0 {
 			continue
 		}
-		noGames, err := s.rdbOperations.TeamsHaveNoGames(logger, ctx, teams, year)
+		noGames, err := s.rdbOperations.TeamsHaveNoGames(logger, ctx, teams, seasonID)
 		if err != nil {
 			logger.Error().Err(err).Msg("database error")
 			return entity.GetTeamVsTeamTableResponse{Message: "database error"}, err

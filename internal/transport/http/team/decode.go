@@ -147,19 +147,19 @@ func decodeGetTeamVsTeamTableRequest(_ context.Context, r *http.Request) (interf
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
-	yearParam := r.URL.Query().Get("year")
-	if yearParam == "" {
+	seasonIdParam := r.URL.Query().Get("season")
+	if seasonIdParam == "" {
 		err := stderr.New(errors.EmptyParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
-	year, err := strconv.ParseInt(yearParam, 10, 64)
+	seasonId, err := strconv.ParseInt(seasonIdParam, 10, 64)
 	if err != nil {
 		err := stderr.New(errors.WrongParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
 	request.CityID = cityID
-	request.Year = year
+	request.SeasonID = seasonId
 
 	return request, nil
 }

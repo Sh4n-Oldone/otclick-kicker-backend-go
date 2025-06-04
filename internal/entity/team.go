@@ -100,8 +100,8 @@ type GetTeamsByLeagueRequest struct {
 // //////////////////////////////////
 
 type GetTeamVsTeamTableRequest struct {
-	CityID int64 `json:"cityId"`
-	Year   int64 `json:"year"`
+	CityID   int64 `json:"cityId"`
+	SeasonID int64 `json:"seasonId"`
 	// WithoutEmpty bool  `json:" withoutEmpty"`
 }
 

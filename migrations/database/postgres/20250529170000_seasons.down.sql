@@ -1,0 +1,7 @@
+BEGIN;
+
+ALTER TABLE leagues DROP COLUMN season_id;
+
+DROP TABLE IF EXISTS seasons;
+
+COMMIT;

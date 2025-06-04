@@ -9,15 +9,17 @@ type GetLeagueListResponse struct {
 }
 
 type League struct {
-	ID     int64  `db:"id" json:"id"`
-	Name   string `db:"name" json:"name"`
-	CityID int64  `db:"city_id" json:"cityId"`
+	ID       int64  `db:"id" json:"id"`
+	Name     string `db:"name" json:"name"`
+	CityID   int64  `db:"city_id" json:"cityId"`
+	SeasonID *int64 `db:"seasonId" json:"seasonId"`
 }
 
 type CreateLeagueRequest struct {
-	CityID int64   `db:"city_id" json:"cityId"`
-	Name   string  `db:"name" json:"name"`
-	Teams  []int64 `json:"teams"`
+	CityID   int64   `db:"city_id" json:"cityId"`
+	Name     string  `db:"name" json:"name"`
+	Teams    []int64 `json:"teams"`
+	SeasonID *int64  `db:"seasonId" json:"seasonId"`
 }
 
 type CreateLeagueResponse struct {
@@ -25,9 +27,10 @@ type CreateLeagueResponse struct {
 }
 
 type UpdateLeagueRequest struct {
-	ID    int64   `db:"id" json:"id"`
-	Name  string  `db:"name" json:"name"`
-	Teams []int64 `json:"teams"`
+	ID       int64   `db:"id" json:"id"`
+	Name     string  `db:"name" json:"name"`
+	Teams    []int64 `json:"teams"`
+	SeasonID *int64  `db:"seasonId" json:"seasonId"`
 }
 
 type UpdateLeagueResponse struct {

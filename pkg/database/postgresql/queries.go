@@ -481,18 +481,20 @@ const (
 		ORDER BY id;`
 
 	queryCreateLeague string = `
-		INSERT INTO leagues (name, city_id) 
+		INSERT INTO leagues (name, city_id, season_id) 
 		VALUES 
 		(
 			$1,
-			$2
+			$2,
+			$3
 		) RETURNING id;`
 
 	queryUpdateLeague string = `
 		UPDATE leagues
 		SET 
-		    name = $1
-		WHERE id = $2;`
+		    name = COALESCE($2, name),
+		    season_id = COALESCE($3, season_id)
+		WHERE id = $1;`
 
 	queryUpdateTeamsLeagueID = `
 		INSERT INTO teams_leagues_links (team_id, league_id)
@@ -539,4 +541,29 @@ const (
 			team2_id = $6,
 			tech_loose_team_id = $7
 		WHERE id = $1;`
+
+	queryCreateSeason string = `
+		INSERT INTO seasons (name, description) 
+		VALUES 
+		(
+			$1,
+			$2
+		) RETURNING id;`
+
+	queryUpdateSeason string = `
+		UPDATE seasons
+		SET
+		    name = COALESCE($2, name),
+    		description = COALESCE($3, description)
+		WHERE id = $1;`
+
+	queryDeleteSeason string = `DELETE FROM seasons WHERE id = $1`
+
+	queryDeleteLeagueSeasonId string = `
+		UPDATE leagues
+		SET
+		    season_id = null
+		WHERE season_id = $1;`
+
+	queryGetSeasonList string = `SELECT id, name, description FROM seasons;`
 )
