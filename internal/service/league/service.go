@@ -18,6 +18,13 @@ type IService interface {
 
 	Recalc(ctx context.Context, id int64) error
 
+	CreateExtraPoints(ctx context.Context, req *entity.CreateExtraPointsRequest) (int64, error)
+	UpdateExtraPoints(ctx context.Context, req *entity.UpdateExtraPointsRequest) (bool, error)
+	DeleteExtraPoints(ctx context.Context, extraPointsId int64) (bool, error)
+
+	GetExtraPointsListByTeamAndLeagueId(ctx context.Context, teamId, leagueId int64) ([]entity.ExtraPoints, error)
+	GetExtraPointsById(ctx context.Context, extraPointsId int64) (entity.ExtraPoints, error)
+
 	GetLogger() *zerolog.Logger
 }
 
