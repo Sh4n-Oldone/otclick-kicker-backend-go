@@ -198,3 +198,61 @@ func (s *Service) Recalc(ctx context.Context, id int64) error {
 
 	return nil
 }
+
+///////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////
+
+func (s *Service) CreateExtraPoints(ctx context.Context, req *entity.CreateExtraPointsRequest) (int64, error) {
+	logger := s.logger.With().Str("service", "CreateExtraPoints").Logger()
+
+	id, err := s.rwdbOperations.CreateExtraPoints(logger, ctx, req)
+	if err != nil {
+		return 0, err
+	}
+
+	return id, nil
+}
+
+func (s *Service) UpdateExtraPoints(ctx context.Context, req *entity.UpdateExtraPointsRequest) (bool, error) {
+	logger := s.logger.With().Str("service", "UpdateExtraPoints").Logger()
+
+	res, err := s.rwdbOperations.UpdateExtraPoints(logger, ctx, req)
+	if err != nil {
+		return res, err
+	}
+
+	return res, err
+}
+
+func (s *Service) DeleteExtraPoints(ctx context.Context, extraPointsId int64) (bool, error) {
+	logger := s.logger.With().Str("service", "DeleteExtraPoints").Logger()
+
+	res, err := s.rwdbOperations.DeleteExtraPoints(logger, ctx, extraPointsId)
+	if err != nil {
+		return res, err
+	}
+
+	return res, err
+}
+
+func (s *Service) GetExtraPointsListByTeamAndLeagueId(ctx context.Context, teamId, leagueId int64) ([]entity.ExtraPoints, error) {
+	logger := s.logger.With().Str("service", "GetExtraPointsListByTeamAndLeagueId").Logger()
+
+	res, err := s.rdbOperations.GetExtraPointsListByTeamAndLeagueId(logger, ctx, teamId, leagueId)
+	if err != nil {
+		return res, err
+	}
+
+	return res, nil
+}
+
+func (s *Service) GetExtraPointsById(ctx context.Context, extraPointsId int64) (entity.ExtraPoints, error) {
+	logger := s.logger.With().Str("service", "GetExtraPointsById").Logger()
+
+	res, err := s.rdbOperations.GetExtraPointsById(logger, ctx, extraPointsId)
+	if err != nil {
+		return res, err
+	}
+
+	return res, nil
+}

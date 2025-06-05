@@ -57,6 +57,10 @@ type RWDBOperationer interface {
 
 	RewriteMatchesAndPlayerRatings(logger zerolog.Logger, ctx context.Context, matches []entity.Match, ratings map[int64]entity.Rating) error
 
+	CreateExtraPoints(logger zerolog.Logger, ctx context.Context, req *entity.CreateExtraPointsRequest) (int64, error)
+	UpdateExtraPoints(logger zerolog.Logger, ctx context.Context, req *entity.UpdateExtraPointsRequest) (bool, error)
+	DeleteExtraPoints(logger zerolog.Logger, ctx context.Context, extraPointsId int64) (bool, error)
+
 	CreateSeason(logger zerolog.Logger, ctx context.Context, entity entity.Season) (id *int64, err error)
 	UpdateSeason(logger zerolog.Logger, ctx context.Context, entity entity.UpdateSeasonRequest) error
 	DeleteSeason(logger zerolog.Logger, ctx context.Context, id int64) (bool, error)
@@ -117,6 +121,10 @@ type RDBOperationer interface {
 
 	GetPlayerIDsByLeagueID(logger zerolog.Logger, ctx context.Context, leagueID int64) ([]int64, error)
 	GetMatchListByLeagueID(logger zerolog.Logger, ctx context.Context, leagueID int64) ([]entity.Match, error)
+
+	GetTeamExtraPointsCount(logger zerolog.Logger, ctx context.Context, teamID, leagueID int64) (int64, error)
+	GetExtraPointsListByTeamAndLeagueId(logger zerolog.Logger, ctx context.Context, teamId, leagueId int64) ([]entity.ExtraPoints, error)
+	GetExtraPointsById(logger zerolog.Logger, ctx context.Context, extraPointsId int64) (entity.ExtraPoints, error)
 
 	GetSeasonList(logger zerolog.Logger, ctx context.Context) ([]entity.Season, error)
 }

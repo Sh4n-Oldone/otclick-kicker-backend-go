@@ -44,3 +44,35 @@ type DeleteLeagueRequest struct {
 type RecalcLeagueRequest struct {
 	ID int64
 }
+
+type ExtraPoints struct {
+	Id       int64  `json:"id"`
+	TeamId   int64  `json:"teamId"`
+	LeagueId int64  `json:"leagueId"`
+	Reason   string `json:"reason"`
+	Points   int64  `json:"points"`
+}
+
+type CreateExtraPointsRequest struct {
+	TeamId   int64  `json:"teamId"`
+	LeagueId int64  `json:"leagueId"`
+	Reason   string `json:"reason"`
+	Points   int64  `json:"points"`
+}
+
+type UpdateExtraPointsRequest struct {
+	Id       int64   `json:"id"`
+	TeamId   *int64  `json:"teamId"`
+	LeagueId *int64  `json:"leagueId"`
+	Reason   *string `json:"reason"`
+	Points   *int64  `json:"points"`
+}
+
+type IdRequest struct {
+	Id int64 `json:"id"`
+}
+
+type TeamLeagueIdRequest struct {
+	TeamId   int64 `json:"teamId"`
+	LeagueId int64 `json:"leagueId"`
+}

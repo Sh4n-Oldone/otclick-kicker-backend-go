@@ -311,6 +311,53 @@ func validateDate(fl validator.FieldLevel) bool {
 	return !(date.Equal(time.Unix(0, 0)) || date.IsZero() || date.Year() == 0)
 }
 
+func ValidateCreateExtraPointsRequest(request *entity.CreateExtraPointsRequest) error {
+	if request.TeamId <= 0 {
+		err := fmt.Errorf("wrong value of parameter %T", request.TeamId)
+		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	if request.LeagueId <= 0 {
+		err := fmt.Errorf("wrong value of parameter %T", request.LeagueId)
+		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	if request.Reason == "" {
+		err := fmt.Errorf("wrong value of parameter %T", request.Reason)
+		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	return nil
+}
+
+func ValidateUpdateExtraPointsRequest(request *entity.UpdateExtraPointsRequest) error {
+	if request.Id <= 0 {
+		err := fmt.Errorf("wrong value of parameter %T", request.Id)
+		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	return nil
+}
+
+func ValidateTeamLeagueIdRequest(request *entity.TeamLeagueIdRequest) error {
+	if request.TeamId <= 0 {
+		err := fmt.Errorf("wrong value of parameter %T", request.TeamId)
+		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	if request.LeagueId <= 0 {
+		err := fmt.Errorf("wrong value of parameter %T", request.LeagueId)
+		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	return nil
+}
+
+func ValidateIdRequest(request *entity.IdRequest) error {
+	if request.Id <= 0 {
+		err := fmt.Errorf("wrong value of parameter %T", request.Id)
+		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	return nil
+}
+
 func ValidateCreateSeasonRequest(request *entity.CreateSeasonRequest) error {
 	if request.Name == "" {
 		err := error_templates.New("invalid request fields", errors.New("invalid request fields"), codes.InvalidArgument, http.StatusBadRequest)

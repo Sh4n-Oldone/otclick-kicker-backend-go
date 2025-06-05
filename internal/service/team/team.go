@@ -316,6 +316,14 @@ func (s *Service) GetTeamVsTeamTable(ctx context.Context, cityID, seasonID int64
 
 				bodyItem.Score = resumScore(bodyItem.Score, match1Team1Score, match1Team2Score)
 				bodyItem.Score = resumScore(bodyItem.Score, match2Team1Score, match2Team2Score)
+
+				extraPoints, err := s.rdbOperations.GetTeamExtraPointsCount(logger, ctx, team.ID, league.ID)
+				if err != nil {
+					logger.Error().Err(err).Msg("database error")
+					return entity.GetTeamVsTeamTableResponse{Message: "database error"}, err
+				}
+				bodyItem.Score += extraPoints // Один раз за лигу считаем дополнительные очки команды
+
 				bodyItem.DifferenceInScore += (match1Team1Score - match1Team2Score + match2Team1Score - match2Team2Score)
 				bodyItem.TableCell[t.ShortName] = cell // Выставили ячейку со счетом
 			}

@@ -142,3 +142,118 @@ func decodeRecalcRequest(_ context.Context, r *http.Request) (interface{}, error
 
 	return request, nil
 }
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Create ExtraPoints
+func decodeCreateExtraPointsRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	request := &entity.CreateExtraPointsRequest{}
+
+	buf := bytebufferpool.Get()
+	defer bytebufferpool.Put(buf)
+
+	_, err := io.Copy(buf, r.Body)
+	if err != nil {
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	err = json.Unmarshal(buf.Bytes(), &request)
+	if err != nil {
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	return request, nil
+}
+
+// Update ExtraPoints
+func decodeUpdateExtraPointsRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	request := &entity.UpdateExtraPointsRequest{}
+
+	buf := bytebufferpool.Get()
+	defer bytebufferpool.Put(buf)
+
+	_, err := io.Copy(buf, r.Body)
+	if err != nil {
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	err = json.Unmarshal(buf.Bytes(), &request)
+	if err != nil {
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	return request, nil
+}
+
+// Delete ExtraPoints
+func decodeDeleteExtraPointsRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	request := &entity.IdRequest{}
+
+	idParam := chi.URLParam(r, "id")
+	if idParam == "" {
+		err := stderr.New(errors.EmptyParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	extraPointsId, err := strconv.ParseInt(idParam, 10, 64)
+	if err != nil {
+		err := stderr.New(errors.WrongParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	request.Id = extraPointsId
+	return request, nil
+}
+
+// Get ExtraPointsListByTeamAndLeagueId
+func decodeGetExtraPointsListByTeamAndLeagueIdRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	request := &entity.TeamLeagueIdRequest{}
+
+	teamIdParam := chi.URLParam(r, "team_id")
+	if teamIdParam == "" {
+		err := stderr.New(errors.EmptyParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	teamId, err := strconv.ParseInt(teamIdParam, 10, 64)
+	if err != nil {
+		err := stderr.New(errors.WrongParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	leagueIdParam := chi.URLParam(r, "league_id")
+	if leagueIdParam == "" {
+		err := stderr.New(errors.EmptyParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	leagueId, err := strconv.ParseInt(leagueIdParam, 10, 64)
+	if err != nil {
+		err := stderr.New(errors.WrongParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	request.TeamId = teamId
+	request.LeagueId = leagueId
+
+	return request, nil
+}
+
+// Get ExtraPointsById
+func decodeGetExtraPointsByIdRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	request := &entity.IdRequest{}
+
+	idParam := chi.URLParam(r, "id")
+	if idParam == "" {
+		err := stderr.New(errors.EmptyParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	extraPointsId, err := strconv.ParseInt(idParam, 10, 64)
+	if err != nil {
+		err := stderr.New(errors.WrongParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	request.Id = extraPointsId
+	return request, nil
+}

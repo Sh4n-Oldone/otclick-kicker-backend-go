@@ -576,3 +576,134 @@ func (db *RDBOperation) GetTeamsByPlayerID(logger zerolog.Logger, ctx context.Co
 
 	return teams, nil
 }
+
+func (db *RDBOperation) GetTeamExtraPointsCount(logger zerolog.Logger, ctx context.Context, teamID, leagueID int64) (int64, error) {
+	const query = `SELECT COALESCE(SUM(points), 0)
+	FROM team_extra_points
+	WHERE team_id = $1 AND league_id = $2;`
+
+	var extraPoints int64
+
+	err := db.db.QueryRow(ctx, query, teamID, leagueID).Scan(&extraPoints)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to postgresql.GetTeamExtraPoints")
+		return 0, DecodeDatabaseError(err)
+	}
+
+	return extraPoints, nil
+}
+
+// ///////////////////////////////////////////////////////////////////////////////////////
+// ///////////////////////////////////////////////////////////////////////////////////////
+func (db *RWDBOperation) CreateExtraPoints(logger zerolog.Logger, ctx context.Context, req *entity.CreateExtraPointsRequest) (int64, error) {
+	const query = "INSERT INTO team_extra_points(team_id, league_id, reason, points) VALUES($1, $2, $3, $4) RETURNING id"
+
+	var id int64
+	err := db.db.QueryRow(ctx, query, req.TeamId, req.LeagueId, req.Reason, req.Points).Scan(&id)
+
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to postgresql.GetExtraPointsListByTeamAndLeagueId")
+		return 0, DecodeDatabaseError(err)
+	}
+
+	return id, nil
+}
+
+func (db *RWDBOperation) UpdateExtraPoints(logger zerolog.Logger, ctx context.Context, req *entity.UpdateExtraPointsRequest) (bool, error) {
+	const query = `UPDATE team_extra_points SET
+		team_id = COALESCE($2, team_id),
+		league_id = COALESCE($3, league_id),
+		reason = COALESCE($4, reason),
+		points = COALESCE($5, points),
+		updated_at = now()
+		WHERE id = $1`
+
+	tag, err := db.db.Exec(ctx, query, req.Id, req.TeamId, req.LeagueId, req.Reason, req.Points)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to postgresql.UpdateExtraPoints")
+		return false, DecodeDatabaseError(err)
+	}
+	if tag.RowsAffected() == 0 {
+		err = stderr.New("No rows affected, failed to postgresql.UpdateExtraPoints")
+		logger.Error().Msg(err.Error())
+		return false, DecodeDatabaseError(err)
+	}
+	return true, nil
+}
+
+func (db *RWDBOperation) DeleteExtraPoints(logger zerolog.Logger, ctx context.Context, extraPointsId int64) (bool, error) {
+	const query = `DELETE FROM team_extra_points WHERE id = $1`
+
+	tag, err := db.db.Exec(ctx, query, extraPointsId)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to postgresql.DeleteExtraPoints")
+		return false, DecodeDatabaseError(err)
+	}
+	if tag.RowsAffected() == 0 {
+		err = stderr.New("No rows affected, failed to postgresql.DeleteExtraPoints")
+		logger.Error().Msg(err.Error())
+		return false, DecodeDatabaseError(err)
+	}
+	return true, nil
+}
+
+func (db *RDBOperation) GetExtraPointsListByTeamAndLeagueId(logger zerolog.Logger, ctx context.Context, teamId, leagueId int64) ([]entity.ExtraPoints, error) {
+	const query = `SELECT id, team_id, league_id, reason, points
+	FROM team_extra_points
+	WHERE team_id = $1 AND league_id = $2;`
+
+	rows, err := db.db.Query(ctx, query, teamId, leagueId)
+
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to postgresql.GetExtraPointsListByTeamAndLeagueId")
+		return nil, DecodeDatabaseError(err)
+	}
+
+	var extraPointsList []entity.ExtraPoints
+
+	for rows.Next() {
+		var extraPoints entity.ExtraPoints
+
+		err = rows.Scan(
+			&extraPoints.Id,
+			&extraPoints.TeamId,
+			&extraPoints.LeagueId,
+			&extraPoints.Reason,
+			&extraPoints.Points,
+		)
+		if err != nil {
+			logger.Error().Err(err).Msg("failed to scan extraPoints list")
+			return nil, DecodeDatabaseError(err)
+		}
+
+		extraPointsList = append(extraPointsList, extraPoints)
+	}
+
+	return extraPointsList, nil
+}
+
+func (db *RDBOperation) GetExtraPointsById(logger zerolog.Logger, ctx context.Context, extraPointsId int64) (entity.ExtraPoints, error) {
+	const query = `SELECT id, team_id, league_id, reason, points
+	FROM team_extra_points
+	WHERE id = $1`
+
+	var extraPoints entity.ExtraPoints
+
+	err := db.db.QueryRow(ctx, query, extraPointsId).Scan(
+		&extraPoints.Id,
+		&extraPoints.TeamId,
+		&extraPoints.LeagueId,
+		&extraPoints.Reason,
+		&extraPoints.Points,
+	)
+
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to postgresql.GetExtraPointsById")
+		return entity.ExtraPoints{}, DecodeDatabaseError(err)
+	}
+
+	return extraPoints, nil
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////
