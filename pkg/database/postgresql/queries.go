@@ -566,4 +566,6 @@ const (
 		WHERE season_id = $1;`
 
 	queryGetSeasonList string = `SELECT id, name, description FROM seasons;`
+
+	queryDeleteFutureGame string = `DELETE FROM public.games WHERE id = $1 AND date > NOW();`
 )

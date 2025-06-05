@@ -399,3 +399,15 @@ func ValidateDeleteSeasonRequest(request *entity.DeleteSeasonRequest) error {
 
 	return nil
 }
+
+func ValidateDeleteFutureGame(request entity.DeleteFutureGameRequest) error {
+	if request.Team1ID <= 0 {
+		err := fmt.Errorf("wrong value of parameter %T", request.Team1ID)
+		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	if request.Team2ID <= 0 {
+		err := fmt.Errorf("wrong value of parameter %T", request.Team2ID)
+		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	return nil
+}
