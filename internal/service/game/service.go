@@ -21,6 +21,7 @@ type IService interface {
 	GetFutureGames(ctx context.Context, cityID int) (entity.GetFutureGamesResponse, error)
 	CreateFutureGame(ctx context.Context, request entity.CreateFutureGameRequest) (entity.CreateFutureGameResponse, error)
 	GetTeamGames(ctx context.Context, teamID int) (entity.GetTeamGamesResponse, error)
+	DeleteFutureGame(ctx context.Context, gameID int64) error
 
 	GetLogger() *zerolog.Logger
 }

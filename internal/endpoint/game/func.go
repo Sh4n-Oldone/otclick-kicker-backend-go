@@ -323,3 +323,43 @@ func makeGetTeamGames(s game.IService) endpoint.Endpoint {
 		return resp, nil
 	}
 }
+
+func makeDeleteFutureGame(s game.IService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "game.makeDeleteFutureGame").Logger()
+
+		req, err := helpers.CastRequest[entity.DeleteFutureGameRequest](request)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed to cast request")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		err = helpers.ValidateDeleteFutureGame(req)
+		if err != nil {
+			serviceLogger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).Msg(errors.FailedValidateRequest)
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		// Проверяем, что капитан удаляет именно свою игру
+		role := ctx.Value(cnst.RoleNameContextKey)
+		teamID := ctx.Value(cnst.TeamIDContextKey)
+		rTeam1ID := req.Team1ID
+		rTeam2ID := req.Team2ID
+		if role == cnst.CaptainRole && (teamID != rTeam1ID && teamID != rTeam2ID) {
+			err = error_templates.New(errors.WrongUserRole, stderr.New(errors.WrongUserRole), codes.Unauthenticated, http.StatusUnauthorized)
+			serviceLogger.Error().Err(err).Msg("Failed to captain request")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		err = s.DeleteFutureGame(ctx, req.ID)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed to game.DeleteFutureGame")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		return entities.OkResponse{
+			Message: "OK",
+		}, nil
+	}
+}

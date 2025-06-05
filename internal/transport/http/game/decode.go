@@ -283,3 +283,36 @@ func decodeGetTeamIDRequest(_ context.Context, r *http.Request) (interface{}, er
 
 	return id, nil
 }
+
+func decodeDeleteFutureGameRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	request := entity.DeleteFutureGameRequest{}
+
+	buf := bytebufferpool.Get()
+	defer bytebufferpool.Put(buf)
+
+	idParam := chi.URLParam(r, "id")
+	if idParam == "" {
+		err := stderr.New(errors.EmptyParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	id, err := strconv.ParseInt(idParam, 10, 64)
+	if err != nil {
+		err := stderr.New(errors.WrongParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	_, err = io.Copy(buf, r.Body)
+	if err != nil {
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	err = json.Unmarshal(buf.Bytes(), &request)
+	if err != nil {
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	request.ID = id
+
+	return request, nil
+}

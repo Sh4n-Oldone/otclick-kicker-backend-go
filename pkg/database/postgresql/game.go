@@ -5,7 +5,9 @@ import (
 	stderr "errors"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog"
+
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
@@ -776,14 +778,14 @@ func (db *RWDBOperation) CreateGameWithRating(
 	if len(request.Matches) > 0 {
 		for _, match := range request.Matches {
 			var matchId int
-	
+
 			if match.Player2Team1Id != nil && *match.Player2Team1Id == 0 {
 				match.Player2Team1Id = nil
 			}
 			if match.Player2Team2Id != nil && *match.Player2Team2Id == 0 {
 				match.Player2Team2Id = nil
 			}
-	
+
 			err = tx.QueryRow(ctx, queryInsertMatchesToPlayedGame,
 				match.Date,
 				gameId,
@@ -824,12 +826,12 @@ func (db *RWDBOperation) CreateGameWithRating(
 				LeagueID: leagueID,
 				Value:    int64(value),
 			}
-	
+
 			query := queryCreateRating
 			if operator != nil && *operator == "insertIgnore" {
 				query = queryCreateRatingInsertIgnore
 			}
-	
+
 			_, err = tx.Exec(ctx, query, rate.PlayerID, rate.LeagueID, rate.Value)
 			if err != nil {
 				_ = tx.Rollback(ctx)
@@ -850,4 +852,20 @@ func (db *RWDBOperation) CreateGameWithRating(
 		GameID:   gameId,
 		MatchIDs: matchIds,
 	}, nil
+}
+
+func (db *RWDBOperation) DeleteFutureGame(logger zerolog.Logger, ctx context.Context, gameID int64) error {
+	res, err := db.db.Exec(ctx, queryDeleteFutureGame, gameID)
+	if err != nil {
+		logger.Error().Stack().Err(err).Msg("failed to postgresql.DeleteFutureGame")
+		return DecodeDatabaseError(err)
+	}
+
+	if res.RowsAffected() == 0 {
+		err = pgx.ErrNoRows
+		logger.Error().Stack().Err(err).Msg("failed find to postgresql.DeleteFutureGame")
+		return DecodeDatabaseError(err)
+	}
+
+	return nil
 }

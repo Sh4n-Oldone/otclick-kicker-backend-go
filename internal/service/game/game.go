@@ -60,7 +60,7 @@ func (s *Service) Create(ctx context.Context, request entities.CreateGameRequest
 			if match.ScoreTeam1 == 0 && match.ScoreTeam2 == 0 {
 				continue
 			}
-	
+
 			player1team1rate := 0
 			player1team1ID := match.Player1Team1Id
 			value, ok := rates[player1team1ID]
@@ -82,7 +82,7 @@ func (s *Service) Create(ctx context.Context, request entities.CreateGameRequest
 				}
 				player1team1rate = int(resp)
 			}
-	
+
 			player1team2rate := 0
 			player1team2ID := match.Player1Team2Id
 			value, ok = rates[player1team2ID]
@@ -104,7 +104,7 @@ func (s *Service) Create(ctx context.Context, request entities.CreateGameRequest
 				}
 				player1team2rate = int(resp)
 			}
-	
+
 			var player2team1ID, player2team1rate int
 			if match.Player2Team1Id != nil {
 				player2team1ID = *match.Player2Team1Id
@@ -130,7 +130,7 @@ func (s *Service) Create(ctx context.Context, request entities.CreateGameRequest
 					}
 				}
 			}
-	
+
 			var player2team2ID, player2team2rate int
 			if match.Player2Team2Id != nil {
 				player2team2ID = *match.Player2Team2Id
@@ -156,28 +156,28 @@ func (s *Service) Create(ctx context.Context, request entities.CreateGameRequest
 					}
 				}
 			}
-	
+
 			p1t1r := player1team1rate
 			p1t2r := player1team2rate
 			p2t1r := player2team1rate
 			p2t2r := player2team2rate
-	
+
 			match.Player1Team1RateBefore = &p1t1r
 			match.Player1Team2RateBefore = &p1t2r
 			match.Player2Team1RateBefore = &p2t1r
 			match.Player2Team2RateBefore = &p2t2r
-	
+
 			player1team1rateAfter, player1team2rateAfter, player2team1rateAfter, player2team2rateAfter, err := calculator.MatchRaitingCalculation(
 				ctx, match.ScoreTeam1, match.ScoreTeam2, player1team1rate, player1team2rate, player2team1rate, player2team2rate)
 			if err != nil {
 				return entities.CreateGameResponse{}, err
 			}
-	
+
 			match.Player1Team1RateAfter = &player1team1rateAfter
 			match.Player1Team2RateAfter = &player1team2rateAfter
 			match.Player2Team1RateAfter = &player2team1rateAfter
 			match.Player2Team2RateAfter = &player2team2rateAfter
-	
+
 			rates[match.Player1Team1Id] = player1team1rateAfter
 			rates[match.Player1Team2Id] = player1team2rateAfter
 			if player2team1ID > 0 {
@@ -186,10 +186,10 @@ func (s *Service) Create(ctx context.Context, request entities.CreateGameRequest
 			if player2team2ID > 0 {
 				rates[*match.Player2Team2Id] = player2team2rateAfter
 			}
-	
+
 			matches = append(matches, match)
 		}
-	
+
 		request.Matches = matches
 	}
 
@@ -640,4 +640,16 @@ func (s *Service) GetTeamGames(ctx context.Context, teamID int) (entity.GetTeamG
 	}
 
 	return entity.GetTeamGamesResponse{Games: games}, nil
+}
+
+func (s *Service) DeleteFutureGame(ctx context.Context, gameID int64) error {
+	logger := s.logger.With().Interface("service", "game.DeleteFutureGame").Logger()
+	timeout, cancel := context.WithTimeout(ctx, s.config.RDB.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	err := s.rwdbOperations.DeleteFutureGame(logger, timeout, gameID)
+	if err != nil {
+		return err
+	}
+	return nil
 }

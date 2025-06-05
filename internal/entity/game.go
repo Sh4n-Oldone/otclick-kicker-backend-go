@@ -57,3 +57,9 @@ type TeamGame struct {
 	Place      PlaceShort `json:"place"`
 	Date       *time.Time `json:"date,omitempty"`
 }
+
+type DeleteFutureGameRequest struct {
+	ID      int64 `json:"id" validate:"required,gt=0"`
+	Team1ID int64 `json:"team1Id" validate:"required,gt=0"`
+	Team2ID int64 `json:"team2Id" validate:"required,gt=0"`
+}

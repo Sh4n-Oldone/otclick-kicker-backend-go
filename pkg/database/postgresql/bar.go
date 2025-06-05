@@ -92,13 +92,13 @@ func (db *RWDBOperation) CreateBar(logger zerolog.Logger, ctx context.Context, e
 func (db *RWDBOperation) UpdateBar(logger zerolog.Logger, ctx context.Context, entity entity.UpdateBarRequest) error {
 	res, err := db.db.Exec(ctx, queryUpdateBar, entity.ID, entity.Name, entity.Description)
 	if err != nil {
-		logger.Error().Stack().Err(err).Msg("failed to postgresql.CreateBar")
+		logger.Error().Stack().Err(err).Msg("failed to postgresql.UpdateBar")
 		return DecodeDatabaseError(err)
 	}
 
 	if res.RowsAffected() == 0 {
 		err = pgx.ErrNoRows
-		logger.Error().Stack().Err(err).Msg("failed find to postgresql.CreateBar")
+		logger.Error().Stack().Err(err).Msg("failed find to postgresql.UpdateBar")
 		return DecodeDatabaseError(err)
 	}
 
@@ -108,13 +108,13 @@ func (db *RWDBOperation) UpdateBar(logger zerolog.Logger, ctx context.Context, e
 func (db *RWDBOperation) DeleteBar(logger zerolog.Logger, ctx context.Context, id int64) error {
 	res, err := db.db.Exec(ctx, queryDeleteBar, id)
 	if err != nil {
-		logger.Error().Stack().Err(err).Msg("failed to postgresql.CreateBar")
+		logger.Error().Stack().Err(err).Msg("failed to postgresql.DeleteBar")
 		return DecodeDatabaseError(err)
 	}
 
 	if res.RowsAffected() == 0 {
 		err = pgx.ErrNoRows
-		logger.Error().Stack().Err(err).Msg("failed find to postgresql.CreateBar")
+		logger.Error().Stack().Err(err).Msg("failed find to postgresql.DeleteBar")
 		return DecodeDatabaseError(err)
 	}
 

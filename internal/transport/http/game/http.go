@@ -50,5 +50,7 @@ func NewServer(endpoints game.Endpoints, options []kithttp.ServerOption, cfg *co
 	// Get "/games/teams/{team_id}" - получает список будущих домашних игр для указанной команды
 	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdminCapitan()).
 		Get("/games/teams/{team_id}", kithttp.NewServer(endpoints.GetTeamGames, decodeGetTeamIDRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdminCapitan()).
+		Delete("/games/future/{id}", kithttp.NewServer(endpoints.DeleteFutureGame, decodeDeleteFutureGameRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 	return r
 }
