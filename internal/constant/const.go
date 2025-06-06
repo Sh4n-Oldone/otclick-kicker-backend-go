@@ -3,12 +3,12 @@ package constant
 type contextKey uint
 
 const (
-	AccessToken  = "Access-Token"
-	RefreshToken = "Refresh-Token"
+	AccessToken = "Access-Token"
 
 	SuperUserRole string = "superuser"
 	AdminRole     string = "admin"
 	CaptainRole   string = "captain"
+	CaptainRoleId int    = 3
 
 	UserIDContextKey contextKey = iota
 	UserEmailContextKey
@@ -22,4 +22,8 @@ const (
 	JwtClaimsAttrTokenExpire = "token_exp"
 
 	DefaultRating int = 1000
+
+	WinPoints      int = 2
+	TechWinGoals   int = 42
+	TechLooseGoals int = 30
 )

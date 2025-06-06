@@ -63,3 +63,15 @@ type DeleteFutureGameRequest struct {
 	Team1ID int64 `json:"team1Id" validate:"required,gt=0"`
 	Team2ID int64 `json:"team2Id" validate:"required,gt=0"`
 }
+
+type Game struct {
+	Id              int        `json:"id"`
+	CityId          int        `json:"cityId"`
+	PlaceId         int        `json:"placeId"`
+	Date            *time.Time `json:"date,omitempty"`
+	Team1Id         int        `json:"team1Id"`
+	Team2Id         int        `json:"team2Id"`
+	LeagueId        int        `json:"leagueId"`
+	TechLooseTeamId *int       `json:"techLooseTeamId,omitempty"`
+	IsHomeGame      bool       `json:"isHomeGame"`
+}

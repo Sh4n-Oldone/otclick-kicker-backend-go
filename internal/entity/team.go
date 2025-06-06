@@ -43,6 +43,7 @@ type TeamByLeague struct {
 }
 
 // /////////////////////////////////////////////////////////////////////////
+
 type LeagueShort struct {
 	ID   int64  `db:"id" json:"id"`
 	Name string `db:"name" json:"name"`
@@ -56,6 +57,34 @@ type GetTeamResponse struct { //TeamFilledWithFullPlayers
 	CityId    *int64          `db:"city_id" json:"cityId"`
 	Leagues   []LeagueShort   `db:"leagues" json:"leagues"`
 	Players   []PlayerGetTeam `db:"players" json:"players"`
+}
+
+type GetTeamResponseV2 struct {
+	ID           int64            `db:"id" json:"id"`
+	Name         string           `db:"name" json:"name"`
+	ShortName    string           `db:"short_name" json:"shortName"`
+	Avatar       []byte           `json:"avatar,omitempty"`
+	CityId       *int64           `db:"city_id" json:"cityId"`
+	Captain      User             `json:"captain"`
+	LeaguesStats []TeamLeagueStat `json:"leaguesStats"`
+	Players      []FullPlayer     `db:"players" json:"players"`
+}
+
+type TeamV2 struct {
+	Id         int64   `db:"id" json:"id"`
+	Name       string  `db:"name" json:"name"`
+	ShortName  string  `db:"short_name" json:"shortName"`
+	CityId     *int64  `db:"city_id" json:"cityId"`
+	Avatar     []byte  `json:"avatar,omitempty"`
+	PlayersIds []int64 `json:"playersIds"`
+}
+
+type TeamLeagueStat struct {
+	League          LeagueShort `json:"league"`
+	Points          int         `json:"points"`
+	ScoreDifference int         `json:"scoreDifference"`
+	GamesCount      int         `json:"gamesCount"`
+	BestPlayer      FullPlayer  `json:"bestPlayer,omitempty"`
 }
 
 // /////////////////////////////////////////////////////////////////////////
@@ -92,6 +121,7 @@ type GetTeamsByCityRequest struct {
 	OnlyFree bool  `json:"onlyFree"`
 	CityID   int64 `db:"city_id" json:"city_id" validate:"required,gt=0"`
 }
+
 type GetTeamsByLeagueRequest struct {
 	OnlyFree bool  `json:"onlyFree"`
 	LeagueID int64 `db:"league_id" json:"league_id" validate:"required,gt=0"`
@@ -107,16 +137,18 @@ type GetTeamVsTeamTableRequest struct {
 
 // //////////////////////////////////
 // используется в entity/user.go
+
 type Team struct {
-	ID        int64  `json:"id" db:"id"`
-	Name      string `json:"name" db:"name"`
-	ShortName string `json:"short_name" db:"shortName"`
-	Avatar    []byte `json:"avatar,omitempty"`
-	League    League
-	City      City
+	ID        int64   `json:"id" db:"id"`
+	Name      string  `json:"name" db:"name"`
+	ShortName string  `json:"shortName" db:"short_name"`
+	Avatar    []byte  `json:"avatar,omitempty"`
+	League    *League `json:"league,omitempty"`
+	City      *City   `json:"city,omitempty"`
 }
 
 // /////////////////////////////////////////////////////////////////////
+
 type GetTeamVsTeamTableResponse struct {
 	Data    []Data `json:"data"`
 	Message string `json:"message"`
