@@ -3,13 +3,14 @@ package team
 import (
 	"context"
 	"errors"
-	"net/http"
-	"strconv"
-
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
+	"math"
+	"net/http"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/constant"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
+	"strconv"
 )
 
 // GetTeam {id}
@@ -24,70 +25,180 @@ import (
 
 // AddPlayerIntoTeam
 // RemovePlayerFromTeam
-// //////////////////////////////////////////////////////////////////////////////////////////////////////////////
-func (s *Service) GetTeam(ctx context.Context, teamID int64) (entity.GetTeamResponse, error) {
-	logger := s.logger.With().Interface("service", "GetTeam").Logger()
 
-	response, err := s.rdbOperations.GetTeam(logger, ctx, teamID)
-	if err != nil {
-		return response, err
-	}
-
-	if err := s.addPlayersProperties(ctx, response.Players); err != nil {
-		logger.Error().Err(err).Msg("Failed to add player properties")
-		return response, err
-	}
-
-	return response, nil
-}
-
-func (s *Service) addPlayersProperties(ctx context.Context, players []entity.PlayerGetTeam) error {
-	logger := s.logger.With().Interface("service", "addPlayersProperties").Logger()
+func (s *Service) GetTeam(ctx context.Context, teamID int64) (entity.GetTeamResponseV2, error) {
+	logger := s.logger.With().Str("service", "GetTeam").Logger()
 	timeout, cancel := context.WithTimeout(ctx, s.config.RDB.MaxIdleConnectionTimeout)
 	defer cancel()
 
-	for i := range players {
-		p := &players[i] // Создаём указатель на текущий элемент массива
-
-		pastMatches, err := s.rdbOperations.GetPastMatchesByPlayerID(logger, timeout, p.ID)
-		if err != nil {
-			return err
-		}
-
-		propertyCounting(p, pastMatches)
-	}
-
-	return nil
-}
-
-func propertyCounting(player *entity.PlayerGetTeam, pastMatches []entities.Match) {
-	playersGames := make(map[int]struct{})
-
 	var (
-		goalsScoredNumber   int
-		goalsConcededNumber int
+		teamResponse    entity.GetTeamResponseV2
+		team            entity.TeamV2
+		teamLeagues     []entity.LeagueShort
+		captain         entity.User
+		teamLeagueStats []entity.TeamLeagueStat
 	)
 
-	for _, match := range pastMatches {
-		playersGames[match.GameID] = struct{}{}
+	g, ctx := errgroup.WithContext(timeout)
 
-		if match.Player1Team1ID == player.ID || (match.Player2Team1ID != nil && *match.Player2Team1ID == player.ID) {
-			goalsScoredNumber += match.ScoreTeam1
-			goalsConcededNumber += match.ScoreTeam2
-		}
-		if match.Player1Team2ID == player.ID || (match.Player2Team2ID != nil && *match.Player2Team2ID == player.ID) {
-			goalsScoredNumber += match.ScoreTeam2
-			goalsConcededNumber += match.ScoreTeam1
-		}
+	g.Go(func() error {
+		var err error
+		team, err = s.rdbOperations.GetTeamById(logger, timeout, teamID)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		teamLeagues, err = s.rdbOperations.GetLeagueListByTeamId(logger, timeout, teamID)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		captain, err = s.rdbOperations.GetCaptainByTeamId(logger, timeout, teamID)
+		return err
+	})
+
+	if err := g.Wait(); err != nil {
+		return entity.GetTeamResponseV2{}, err
 	}
 
-	player.MatchesPlayed = len(pastMatches)
-	player.GamesPlayedNumber = len(playersGames)
-	player.GoalsScoredNumber = goalsScoredNumber
-	player.GoalsConcededNumber = goalsConcededNumber
+	fullPlayers, err := s.getPlayersAddStat(timeout, team.PlayersIds)
+	if err != nil {
+		return entity.GetTeamResponseV2{}, err
+	}
+
+	for _, l := range teamLeagues {
+		teamLeagueStat := entity.TeamLeagueStat{}
+
+		games, err := s.rdbOperations.GetTeamGamesInLeague(logger, timeout, teamID, l.ID)
+		if err != nil {
+			return entity.GetTeamResponseV2{}, err
+		}
+
+		var scoredGoals int = 0
+		var concededGoals int = 0
+		var points int = 0
+
+		for _, game := range games {
+
+			// если есть техническое поражение у игры,то матчи не смотрим,т.к. такой матч не создаётся
+			if game.TechLooseTeamId != nil {
+				if *game.TechLooseTeamId != int(teamID) {
+					scoredGoals += constant.TechWinGoals
+					concededGoals += constant.TechLooseGoals
+					points += constant.WinPoints
+					continue
+				} else if *game.TechLooseTeamId == int(teamID) {
+					concededGoals += constant.TechWinGoals
+					scoredGoals += constant.TechWinGoals
+					continue
+				}
+			}
+
+			matches, err := s.rdbOperations.GetMatchListByGameID(timeout, logger, game.Id)
+			if err != nil {
+				return entity.GetTeamResponseV2{}, err
+			}
+
+			for _, m := range matches {
+				if game.IsHomeGame {
+					scoredGoals += m.ScoreTeam1
+					concededGoals += m.ScoreTeam2
+					if m.ScoreTeam1 > m.ScoreTeam2 {
+						points += constant.WinPoints
+					}
+				} else {
+					scoredGoals += m.ScoreTeam2
+					concededGoals += m.ScoreTeam1
+					if m.ScoreTeam2 > m.ScoreTeam1 {
+						points += constant.WinPoints
+					}
+				}
+			}
+		}
+
+		teamLeagueStat.League = l
+		teamLeagueStat.Points = points
+		teamLeagueStat.ScoreDifference = scoredGoals - concededGoals
+		teamLeagueStat.GamesCount = len(games)
+		teamLeagueStat.BestPlayer = findBestPlayer(fullPlayers, int(l.ID))
+
+		teamLeagueStats = append(teamLeagueStats, teamLeagueStat)
+	}
+
+	teamResponse.ID = team.Id
+	teamResponse.Name = team.Name
+	teamResponse.ShortName = team.ShortName
+	teamResponse.Avatar = team.Avatar
+	teamResponse.CityId = team.CityId
+	teamResponse.Captain = captain
+	teamResponse.LeaguesStats = teamLeagueStats
+	teamResponse.Players = fullPlayers
+
+	return teamResponse, nil
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+func (s *Service) getPlayersAddStat(ctx context.Context, playersIds []int64) ([]entity.FullPlayer, error) {
+	logger := s.logger.With().Str("service", "getPlayersAddStat").Logger()
+
+	var fullPlayers []entity.FullPlayer
+
+	for i := range playersIds {
+
+		var fp entity.FullPlayer
+
+		fullPlayer, err := s.playerSrv.Get(ctx, int(playersIds[i]))
+		if err != nil {
+			logger.Error().Err(err).Msg("Failed to get player.Get in team.GetTeam")
+			return nil, err
+		}
+
+		fp.ID = fullPlayer.ID
+		fp.Name = fullPlayer.Name
+		fp.SecondName = fullPlayer.SecondName
+		fp.LastName = fullPlayer.LastName
+		fp.Avatar = fullPlayer.Avatar
+		fp.ActivePlayer = fullPlayer.ActivePlayer
+		fp.Deleted = fullPlayer.Deleted
+		fp.CityID = fullPlayer.CityID
+		fp.CityName = fullPlayer.CityName
+
+		if fullPlayer.Leagues != nil {
+
+			fp.Leagues = make([]entity.LeagueItem, len(fullPlayer.Leagues))
+
+			for j, l := range fullPlayer.Leagues {
+				fp.Leagues[j].ID = l.ID
+				fp.Leagues[j].Name = l.Name
+				fp.Leagues[j].Rating = l.Rating
+				fp.Leagues[j].MatchesPlayed = l.MatchesPlayed
+				fp.Leagues[j].GoalsScoredNumber = l.GoalsScoredNumber
+				fp.Leagues[j].GoalsConcededNumber = l.GoalsConcededNumber
+				fp.Leagues[j].GamesPlayedNumber = l.GamesPlayedNumber
+				fp.Leagues[j].PercentageOfParticipation = l.PercentageOfParticipation
+
+				if l.Teams != nil {
+
+					fp.Leagues[j].Teams = make([]entity.TeamItem, len(l.Teams))
+
+					for k, t := range l.Teams {
+						fp.Leagues[j].Teams[k].ID = t.ID
+						fp.Leagues[j].Teams[k].Name = t.Name
+						fp.Leagues[j].Teams[k].ShortName = t.ShortName
+						fp.Leagues[j].Teams[k].Avatar = t.Avatar
+						fp.Leagues[j].Teams[k].CityID = t.CityID
+						fp.Leagues[j].Teams[k].Leagues = t.Leagues
+					}
+				}
+			}
+		}
+
+		fullPlayers = append(fullPlayers, fp)
+	}
+
+	return fullPlayers, nil
+}
 
 func (s *Service) GetTeams(ctx context.Context, cityId int64, onlyFree bool) ([]entity.TeamShort, error) {
 	logger := s.logger.With().Interface("service", "GetTeams").Logger()
@@ -364,6 +475,7 @@ func resumScore(score, team1Score, team2Score int64) int64 {
 // ///////////////////////////////////////////////////////////////////////////////////
 // ///////////////////////////////////////////////////////////////////////////////////
 // ///////////////////////////////////////////////////////////////////////////////////
+
 func (s *Service) Create(ctx context.Context, team entity.CreateTeamRequest) (int64, error) {
 	logger := s.logger.With().Interface("service", "Create").Logger()
 
@@ -398,6 +510,7 @@ func (s *Service) Delete(ctx context.Context, id int64) (bool, error) {
 }
 
 // ///////////////////////////////////////////////////////////////////////////////////
+
 func (s *Service) AddPlayerIntoTeam(ctx context.Context, playerID, teamID int64) (bool, error) {
 	logger := s.logger.With().Interface("service", "AddPlayerIntoTeam").Logger()
 
@@ -418,4 +531,22 @@ func (s *Service) RemovePlayerFromTeam(ctx context.Context, playerID, teamID int
 	}
 
 	return res, nil
+}
+
+func findBestPlayer(players []entity.FullPlayer, leagueId int) entity.FullPlayer {
+	var bestPlayer = entity.FullPlayer{}
+
+	var maxRating = math.MinInt
+
+	for _, player := range players {
+		for _, lp := range player.Leagues {
+			if lp.ID == leagueId && lp.Rating > maxRating {
+				maxRating = lp.Rating
+				bestPlayer = player
+				break
+			}
+		}
+	}
+
+	return bestPlayer
 }

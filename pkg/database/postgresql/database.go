@@ -2,11 +2,12 @@ package postgresql
 
 import (
 	"context"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 )
 
 type RWDBOperationer interface {
@@ -128,6 +129,11 @@ type RDBOperationer interface {
 	GetExtraPointsById(logger zerolog.Logger, ctx context.Context, extraPointsId int64) (entity.ExtraPoints, error)
 
 	GetSeasonList(logger zerolog.Logger, ctx context.Context) ([]entity.Season, error)
+
+	GetTeamById(logger zerolog.Logger, ctx context.Context, teamID int64) (entity.TeamV2, error)
+	GetLeagueListByTeamId(logger zerolog.Logger, ctx context.Context, teamID int64) ([]entity.LeagueShort, error)
+	GetCaptainByTeamId(logger zerolog.Logger, ctx context.Context, teamID int64) (entity.User, error)
+	GetTeamGamesInLeague(logger zerolog.Logger, ctx context.Context, teamId, leagueId int64) ([]entity.Game, error)
 }
 
 type dbp struct {

@@ -3,9 +3,9 @@ package entity
 type User struct {
 	ID       int64  `json:"id" db:"id"`
 	Email    string `json:"email" db:"email"`
-	Password []byte `json:"password" db:"password"`
-	Role     *Role
-	Team     *Team
+	Password []byte `json:"password,omitempty" db:"password"`
+	Role     *Role  `json:"role,omitempty"`
+	Team     *Team  `json:"team,omitempty"`
 }
 
 type CreateUserRequest struct {

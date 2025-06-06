@@ -305,7 +305,7 @@ func initEndpoints(
 	matchSrv := srvMatch.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
 	roleSrv := srvRole.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
 	playerSrv := srvPlayer.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
-	teamSrv := srvTeam.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
+	teamSrv := srvTeam.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer, playerSrv)
 	leagueSrv := srvLeague.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
 	gameSrv := srvGame.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
 	tableSrv := srvTable.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)

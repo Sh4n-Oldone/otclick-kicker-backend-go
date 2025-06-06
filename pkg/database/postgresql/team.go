@@ -3,6 +3,7 @@ package postgresql
 import (
 	"context"
 	stderr "errors"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/constant"
 
 	"github.com/rs/zerolog"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
@@ -707,3 +708,131 @@ func (db *RDBOperation) GetExtraPointsById(logger zerolog.Logger, ctx context.Co
 
 /////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////
+
+func (db *RDBOperation) GetTeamById(logger zerolog.Logger, ctx context.Context, teamID int64) (entity.TeamV2, error) {
+	team := entity.TeamV2{}
+
+	const queryGetTeam = `
+	SELECT 
+		t.id, 
+		t.name, 
+		t.short_name, 
+		t.city_id,
+		t.avatar, 
+		COALESCE(ARRAY_AGG(DISTINCT ptl.player_id ORDER BY ptl.player_id) FILTER (WHERE ptl.player_id IS NOT NULL), ARRAY[]::BIGINT[]) AS players_ids
+	FROM teams t
+		LEFT JOIN players_teams_links ptl ON t.id = ptl.team_id
+	WHERE t.id = $1
+	GROUP BY t.id`
+
+	err := db.db.QueryRow(ctx, queryGetTeam, teamID).Scan(&team.Id, &team.Name, &team.ShortName, &team.CityId, &team.Avatar, &team.PlayersIds)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to postgresql.GetTeamById")
+		return entity.TeamV2{}, DecodeDatabaseError(err)
+	}
+
+	return team, nil
+}
+
+func (db *RDBOperation) GetLeagueListByTeamId(logger zerolog.Logger, ctx context.Context, teamID int64) ([]entity.LeagueShort, error) {
+	const query = `
+		SELECT 
+			l.id,
+			l.name
+		FROM leagues l
+			LEFT JOIN teams_leagues_links tll ON l.id = tll.league_id
+		WHERE tll.team_id = $1;`
+
+	var leagues []entity.LeagueShort
+
+	rows, err := db.db.Query(ctx, query, teamID)
+	if err != nil {
+		logger.Error().Stack().Err(err).Msg("failed to postgresql.GetLeagueListByTeamId")
+		return nil, DecodeDatabaseError(stderr.New(errors.ErrGetPlayer))
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		league := entity.LeagueShort{}
+		if err = rows.Scan(&league.ID, &league.Name); err != nil {
+			logger.Error().Stack().Err(err).Msg("failed to postgresql.GetLeagueListByTeamId")
+			return nil, DecodeDatabaseError(err)
+		}
+		leagues = append(leagues, league)
+	}
+
+	return leagues, nil
+}
+
+func (db *RDBOperation) GetCaptainByTeamId(logger zerolog.Logger, ctx context.Context, teamID int64) (entity.User, error) {
+	const query = `
+		SELECT
+			u.id,
+			u.email,
+			u.role_id,
+			r.name,
+			r.description
+		FROM users u
+			JOIN teams t ON t.id = u.team_id
+			JOIN user_roles r ON r.id = u.role_id
+		WHERE t.id = $1 AND u.role_id = $2;`
+
+	var captain entity.User
+	captain.Role = &entity.Role{}
+
+	err := db.db.QueryRow(ctx, query, teamID, constant.CaptainRoleId).
+		Scan(&captain.ID, &captain.Email, &captain.Role.ID, &captain.Role.Name, &captain.Role.Description)
+	if err != nil {
+		logger.Error().Stack().Err(err).Msg("failed to postgresql.GetCaptainByTeamId")
+		return entity.User{}, DecodeDatabaseError(err)
+	}
+
+	return captain, nil
+}
+
+func (db *RDBOperation) GetTeamGamesInLeague(logger zerolog.Logger, ctx context.Context, teamId, leagueId int64) ([]entity.Game, error) {
+	const query = `
+		SELECT 
+			g.id,
+			g.city_id,
+			g.place_id,
+			g.date,
+			g.team1_id,
+			g.team2_id,
+			g.league_id,
+			g.tech_loose_team_id,
+			g.team1_id = $1 AS is_home_game
+		FROM games g
+		WHERE (g.team1_id = $1 OR g.team2_id = $1) AND g.league_id = $2;`
+
+	rows, err := db.db.Query(ctx, query, teamId, leagueId)
+	if err != nil {
+		logger.Error().Stack().Err(err).Msg("failed to postgresql.GetTeamGamesInLeague")
+		return nil, DecodeDatabaseError(err)
+	}
+	defer rows.Close()
+
+	var games []entity.Game
+
+	for rows.Next() {
+		game := entity.Game{}
+		err = rows.Scan(
+			&game.Id,
+			&game.CityId,
+			&game.PlaceId,
+			&game.Date,
+			&game.Team1Id,
+			&game.Team2Id,
+			&game.LeagueId,
+			&game.TechLooseTeamId,
+			&game.IsHomeGame)
+		if err != nil {
+			logger.Error().Stack().Err(err).Msg("failed to postgresql.GetTeamGamesInLeague")
+			return nil, DecodeDatabaseError(err)
+		}
+
+		games = append(games, game)
+	}
+
+	return games, nil
+}

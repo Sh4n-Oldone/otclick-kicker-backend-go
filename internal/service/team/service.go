@@ -2,6 +2,7 @@ package team
 
 import (
 	"context"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/player"
 
 	"github.com/rs/zerolog"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql"
@@ -11,7 +12,7 @@ import (
 )
 
 type IService interface {
-	GetTeam(ctx context.Context, teamID int64) (entity.GetTeamResponse, error)
+	GetTeam(ctx context.Context, teamID int64) (entity.GetTeamResponseV2, error)
 	GetTeams(ctx context.Context, cityId int64, onlyFree bool) ([]entity.TeamShort, error)
 	GetTeamsByCity(ctx context.Context, onlyFree bool, cityID int64) ([]entity.TeamShort, error)
 	GetTeamsByLeague(ctx context.Context, leagueID int64) ([]entity.TeamByLeague, error)
@@ -32,9 +33,10 @@ type Service struct {
 	config         *config.Configuration
 	rdbOperations  postgresql.RDBOperationer
 	rwdbOperations postgresql.RWDBOperationer
+	playerSrv      player.IService
 }
 
-// GetLogger is a method of business logic layer that gets a logger for logging events in a upper layer.
+// GetLogger is a method of business logic layer that gets a logger for logging events in an upper layer.
 func (s *Service) GetLogger() *zerolog.Logger {
 	return s.logger
 }
@@ -44,11 +46,13 @@ func NewService(
 	logger *zerolog.Logger,
 	rwdbOperationer postgresql.RWDBOperationer,
 	rdbOperationer postgresql.RDBOperationer,
+	playerSrv player.IService,
 ) IService {
 	return &Service{
 		config:         config,
 		logger:         logger,
 		rwdbOperations: rwdbOperationer,
 		rdbOperations:  rdbOperationer,
+		playerSrv:      playerSrv,
 	}
 }

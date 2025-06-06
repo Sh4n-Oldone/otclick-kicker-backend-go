@@ -3,15 +3,15 @@ package team
 import (
 	"context"
 	"encoding/json"
+	stderr "errors"
 	"io"
 	"net/http"
 	"strconv"
 
-	stderr "errors"
-
 	"github.com/go-chi/chi/v5"
 	"github.com/valyala/bytebufferpool"
 	"google.golang.org/grpc/codes"
+
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"

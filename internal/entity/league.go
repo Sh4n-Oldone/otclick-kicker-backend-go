@@ -76,3 +76,27 @@ type TeamLeagueIdRequest struct {
 	TeamId   int64 `json:"teamId"`
 	LeagueId int64 `json:"leagueId"`
 }
+
+type LeagueItem struct {
+	ID     int    `json:"id"`
+	Name   string `json:"name"`
+	Rating int    `json:"rating"`
+
+	// league stats
+	MatchesPlayed             int     `json:"matchesPlayed"`
+	GoalsScoredNumber         int     `json:"goalsScoredNumber"`
+	GoalsConcededNumber       int     `json:"goalsConcededNumber"`
+	GamesPlayedNumber         int     `json:"gamesPlayedNumber"`
+	PercentageOfParticipation float32 `json:"percentageOfParticipation"`
+
+	Teams []TeamItem `json:"teams,omitempty"`
+}
+
+type TeamItem struct {
+	ID        int    `json:"id"`
+	Name      string `json:"name,omitempty"`
+	ShortName string `json:"shortName,omitempty"`
+	Avatar    []byte `json:"avatar,omitempty"`
+	CityID    int    `json:"cityId"`
+	Leagues   []int  `json:"leagues"`
+}
