@@ -155,9 +155,10 @@ type GetTeamVsTeamTableResponse struct {
 }
 
 type Data struct {
-	LeagueID   int64       `json:"id"`
-	LeagueName string      `json:"name"`
-	Table      TableLeague `json:"table"`
+	LeagueID      int64          `json:"id"`
+	LeagueName    string         `json:"name"`
+	Table         TableLeague    `json:"table"`
+	GamesTiebreak []GameTiebreak `json:"gamesTiebreak"`
 }
 
 type TableLeague struct {

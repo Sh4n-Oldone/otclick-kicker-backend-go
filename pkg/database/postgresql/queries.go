@@ -527,8 +527,8 @@ const (
     ORDER BY year ASC;`
 
 	queryInsertGame string = `
-		INSERT INTO public.games (city_id, place_id, league_id, date, team1_id, team2_id, tech_loose_team_id)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO public.games (city_id, place_id, league_id, date, team1_id, team2_id, tech_loose_team_id, is_tiebreak)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING id;`
 
 	queryUpdateGame string = `

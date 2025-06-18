@@ -653,17 +653,17 @@ func (db *RDBOperation) GetFutureGames(logger zerolog.Logger, ctx context.Contex
 
 func (db *RWDBOperation) CreateFutureGame(logger zerolog.Logger, ctx context.Context, request entity.CreateFutureGameRequest) (int, error) {
 	const query string = `
-		INSERT INTO games (city_id, league_id, date, place_id, team1_id, team2_id)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO games (city_id, league_id, date, place_id, team1_id, team2_id, is_tiebreak)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING id;
 	`
 
 	var id int
 
-	err := db.db.QueryRow(ctx, query, request.CityID, request.LeagueID, request.Date, request.PlaceID, request.Team1ID, request.Team2ID).Scan(&id)
+	err := db.db.QueryRow(ctx, query, request.CityID, request.LeagueID, request.Date, request.PlaceID, request.Team1ID, request.Team2ID, request.IsTiebreak).Scan(&id)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to postgresql.CreateFutureGame")
-		return 0, stderr.New(errors.ErrCreateGame)
+		return 0, err
 	}
 
 	return id, nil
@@ -766,13 +766,13 @@ func (db *RWDBOperation) CreateGameWithRating(
 		return entities.CreateGameResponse{}, stderr.New(errors.ErrCreateGame)
 	}
 
-	err = tx.QueryRow(ctx, queryInsertGame, request.CityID, request.PlaceID, request.LeagueID, request.Date, request.Team1ID, request.Team2ID, request.TechLooseTeamID).
+	err = tx.QueryRow(ctx, queryInsertGame, request.CityID, request.PlaceID, request.LeagueID, request.Date, request.Team1ID, request.Team2ID, request.TechLooseTeamID, request.IsTiebreak).
 		Scan(&gameId)
 
 	if err != nil {
 		_ = tx.Rollback(ctx)
 		logger.Error().Err(err).Msg("failed to postgresql.CreateGameWithRating")
-		return entities.CreateGameResponse{}, stderr.New(errors.ErrCreateGame)
+		return entities.CreateGameResponse{}, err
 	}
 
 	if len(request.Matches) > 0 {

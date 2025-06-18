@@ -256,10 +256,15 @@ func (db *RDBOperation) FetchTeams(logger zerolog.Logger, ctx context.Context, l
 	return teams, nil
 }
 
-func (db *RDBOperation) FetchPastGames(logger zerolog.Logger, ctx context.Context, teamID1, teamID2, cityID, leagueID int64) ([]entity.GameFetch, error) {
-	const query = `SELECT id, tech_loose_team_id FROM games WHERE team1_id = $1 AND team2_id = $2 AND city_id = $3 AND league_id = $4 AND date < now()`
+func (db *RDBOperation) FetchPastGames(logger zerolog.Logger, ctx context.Context, teamID1, teamID2, cityID, leagueID int64, tiebreak *bool) ([]entity.GameFetch, error) {
+	const query = `SELECT id, tech_loose_team_id FROM games WHERE team1_id = $1 AND team2_id = $2 AND city_id = $3 AND league_id = $4 AND date < now()
+		AND CASE
+		WHEN $5 = true THEN is_tiebreak = true
+		WHEN $5 = false THEN is_tiebreak = false
+		WHEN $5 IS NULL THEN true
+		END`
 
-	rows, err := db.db.Query(ctx, query, teamID1, teamID2, cityID, leagueID)
+	rows, err := db.db.Query(ctx, query, teamID1, teamID2, cityID, leagueID, tiebreak)
 
 	if err != nil {
 		return nil, err
@@ -279,8 +284,61 @@ func (db *RDBOperation) FetchPastGames(logger zerolog.Logger, ctx context.Contex
 	return games, nil
 }
 
-func (db *RDBOperation) FetchMatches(logger zerolog.Logger, ctx context.Context, gameID int64) ([]entities.Match, error) {
-	const query = `SELECT team1_id, team2_id, score_team1, score_team2 FROM matches
+func (db *RDBOperation) FetchPastGamesTiebreak(logger zerolog.Logger, ctx context.Context, leagueId int64) ([]entity.GameTiebreak, error) {
+	const query = `
+	SELECT 
+		g.id,
+		g.city_id,
+		g.place_id,
+		g.date,
+		g.team1_id,
+		g.team2_id,
+		sum(score_team1) as score_team1,
+		sum(score_team2) as score_team2,
+		g.league_id,
+		g.tech_loose_team_id
+	FROM games g
+	LEFT JOIN matches m ON g.id = m.game_id
+	WHERE g.league_id = $1 AND g.date < now() AND is_tiebreak = true
+	GROUP BY g.id, g.city_id, g.place_id, g.date, g.team1_id, g.team2_id, g.league_id, g.tech_loose_team_id
+	ORDER BY g.id DESC;`
+
+	rows, err := db.db.Query(ctx, query, leagueId)
+	if err != nil {
+		logger.Error().Stack().Err(err).Msg("failed to postgresql.FetchPastGamesTiebreak")
+		return nil, DecodeDatabaseError(err)
+	}
+	defer rows.Close()
+
+	var games []entity.GameTiebreak
+
+	for rows.Next() {
+		game := entity.GameTiebreak{}
+		err = rows.Scan(
+			&game.Id,
+			&game.CityId,
+			&game.PlaceId,
+			&game.Date,
+			&game.Team1Id,
+			&game.Team2Id,
+			&game.ScoreTeam1,
+			&game.ScoreTeam2,
+			&game.LeagueId,
+			&game.TechLooseTeamId,
+		)
+		if err != nil {
+			logger.Error().Stack().Err(err).Msg("failed to postgresql.FetchPastGamesTiebreak")
+			return nil, DecodeDatabaseError(err)
+		}
+
+		games = append(games, game)
+	}
+
+	return games, nil
+}
+
+func (db *RDBOperation) FetchMatches(logger zerolog.Logger, ctx context.Context, gameID int64) ([]entity.ShortMatch, error) {
+	const query = `SELECT id, team1_id, team2_id, score_team1, score_team2 FROM matches
 					WHERE game_id = $1
 					ORDER BY id`
 
@@ -291,10 +349,11 @@ func (db *RDBOperation) FetchMatches(logger zerolog.Logger, ctx context.Context,
 	}
 	defer rows.Close()
 
-	var matches []entities.Match
+	var matches []entity.ShortMatch
 	for rows.Next() {
-		var match entities.Match
+		var match entity.ShortMatch
 		err = rows.Scan(
+			&match.ID,
 			&match.Team1ID,
 			&match.Team2ID,
 			&match.ScoreTeam1,
@@ -790,7 +849,7 @@ func (db *RDBOperation) GetCaptainByTeamId(logger zerolog.Logger, ctx context.Co
 	return captain, nil
 }
 
-func (db *RDBOperation) GetTeamGamesInLeague(logger zerolog.Logger, ctx context.Context, teamId, leagueId int64) ([]entity.Game, error) {
+func (db *RDBOperation) GetTeamGamesInLeague(logger zerolog.Logger, ctx context.Context, teamId, leagueId int64, tiebreak *bool) ([]entity.Game, error) {
 	const query = `
 		SELECT 
 			g.id,
@@ -803,9 +862,14 @@ func (db *RDBOperation) GetTeamGamesInLeague(logger zerolog.Logger, ctx context.
 			g.tech_loose_team_id,
 			g.team1_id = $1 AS is_home_game
 		FROM games g
-		WHERE (g.team1_id = $1 OR g.team2_id = $1) AND g.league_id = $2;`
+		WHERE (g.team1_id = $1 OR g.team2_id = $1) AND g.league_id = $2
+		AND CASE
+		WHEN $3 = true THEN is_tiebreak = true
+		WHEN $3 = false THEN is_tiebreak = false
+		WHEN $3 IS NULL THEN true
+		END;`
 
-	rows, err := db.db.Query(ctx, query, teamId, leagueId)
+	rows, err := db.db.Query(ctx, query, teamId, leagueId, tiebreak)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.GetTeamGamesInLeague")
 		return nil, DecodeDatabaseError(err)
