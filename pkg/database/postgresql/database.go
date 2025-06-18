@@ -113,8 +113,9 @@ type RDBOperationer interface {
 
 	FetchLeagues(logger zerolog.Logger, ctx context.Context, cityID int64, seasonID int64) ([]entity.League, error)
 	FetchTeams(logger zerolog.Logger, ctx context.Context, leagueID int64) ([]entity.Team, error)
-	FetchPastGames(logger zerolog.Logger, ctx context.Context, teamID1, teamID2, cityID, leagueID int64) ([]entity.GameFetch, error)
-	FetchMatches(logger zerolog.Logger, ctx context.Context, gameID int64) ([]entities.Match, error)
+	FetchPastGames(logger zerolog.Logger, ctx context.Context, teamID1, teamID2, cityID, leagueID int64, tiebreak *bool) ([]entity.GameFetch, error)
+	FetchPastGamesTiebreak(logger zerolog.Logger, ctx context.Context, leagueId int64) ([]entity.GameTiebreak, error)
+	FetchMatches(logger zerolog.Logger, ctx context.Context, gameID int64) ([]entity.ShortMatch, error)
 	TeamsHaveNoGames(logger zerolog.Logger, ctx context.Context, teams []entity.Team, seasonID int64) (bool, error)
 
 	GetRatingByPlayerIDAndByLeagueID(logger zerolog.Logger, ctx context.Context, playerID, leagueID int64) (int64, error)
@@ -133,7 +134,7 @@ type RDBOperationer interface {
 	GetTeamById(logger zerolog.Logger, ctx context.Context, teamID int64) (entity.TeamV2, error)
 	GetLeagueListByTeamId(logger zerolog.Logger, ctx context.Context, teamID int64) ([]entity.LeagueShort, error)
 	GetCaptainByTeamId(logger zerolog.Logger, ctx context.Context, teamID int64) (entity.User, error)
-	GetTeamGamesInLeague(logger zerolog.Logger, ctx context.Context, teamId, leagueId int64) ([]entity.Game, error)
+	GetTeamGamesInLeague(logger zerolog.Logger, ctx context.Context, teamId, leagueId int64, tiebreak *bool) ([]entity.Game, error)
 }
 
 type dbp struct {

@@ -25,12 +25,13 @@ type ShortGame struct {
 }
 
 type CreateFutureGameRequest struct {
-	CityID   int        `json:"cityId" validate:"required,gt=0"`
-	LeagueID int        `json:"leagueId" validate:"required,gt=0"`
-	Date     *time.Time `json:"date"`
-	PlaceID  *int       `json:"placeId"`
-	Team1ID  int        `json:"team1Id" validate:"required,gt=0"`
-	Team2ID  int        `json:"team2Id" validate:"required,gt=0"`
+	CityID     int        `json:"cityId" validate:"required,gt=0"`
+	LeagueID   int        `json:"leagueId" validate:"required,gt=0"`
+	Date       *time.Time `json:"date"`
+	PlaceID    *int       `json:"placeId"`
+	Team1ID    int        `json:"team1Id" validate:"required,gt=0"`
+	Team2ID    int        `json:"team2Id" validate:"required,gt=0"`
+	IsTiebreak bool       `json:"isTiebreak"`
 }
 
 type CreateFutureGameResponse struct {
@@ -74,4 +75,17 @@ type Game struct {
 	LeagueId        int        `json:"leagueId"`
 	TechLooseTeamId *int       `json:"techLooseTeamId,omitempty"`
 	IsHomeGame      bool       `json:"isHomeGame"`
+}
+
+type GameTiebreak struct {
+	Id              int        `json:"id"`
+	CityId          int        `json:"cityId"`
+	PlaceId         int        `json:"placeId"`
+	Date            *time.Time `json:"date,omitempty"`
+	Team1Id         int        `json:"team1Id"`
+	Team2Id         int        `json:"team2Id"`
+	ScoreTeam1      *int       `json:"scoreTeam1"`
+	ScoreTeam2      *int       `json:"scoreTeam2"`
+	LeagueId        int        `json:"leagueId"`
+	TechLooseTeamId *int       `json:"techLooseTeamId,omitempty"`
 }

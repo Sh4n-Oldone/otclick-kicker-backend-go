@@ -37,6 +37,15 @@ func decodeCreateRequest(_ context.Context, r *http.Request) (interface{}, error
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
+	isTiebreakParam := r.URL.Query().Get("isTiebreak")
+	if isTiebreakParam != "" {
+		isTiebreak, err := strconv.ParseBool(isTiebreakParam)
+		if err != nil {
+			err = stderr.New(errors.WrongParameterError)
+			return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+		request.IsTiebreak = isTiebreak
+	}
 	_, err = io.Copy(buf, r.Body)
 	if err != nil {
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
@@ -243,6 +252,16 @@ func decodeCreateFutureGameRequest(_ context.Context, r *http.Request) (interfac
 	}
 
 	request.CityID = cityId
+
+	isTiebreakParam := r.URL.Query().Get("isTiebreak")
+	if isTiebreakParam != "" {
+		isTiebreak, err := strconv.ParseBool(isTiebreakParam)
+		if err != nil {
+			err = stderr.New(errors.WrongParameterError)
+			return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+		request.IsTiebreak = isTiebreak
+	}
 
 	err = validate.Struct(request)
 	if err != nil {

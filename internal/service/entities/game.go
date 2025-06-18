@@ -6,11 +6,11 @@ import (
 )
 
 type Game struct {
-	ID      int
-	CityID  int
-	Date    *time.Time
-	Team1ID int
-	Team2ID int
+	ID       int
+	CityID   int
+	Date     *time.Time
+	Team1ID  int
+	Team2ID  int
 	LeagueID *int
 }
 
@@ -23,6 +23,7 @@ type CreateGameRequest struct {
 	Team2ID         int          `json:"team2Id" validate:"required,gt=0"`
 	TechLooseTeamID *int         `json:"techLooseTeamId" validate:"omitempty,gt=0"`
 	Matches         []GamesMatch `json:"matches" validate:"omitempty,dive"`
+	IsTiebreak      bool         `json:"isTiebreak"`
 }
 
 type CreateGameResponse struct {
