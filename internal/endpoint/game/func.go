@@ -222,6 +222,33 @@ func makeGetYears(s game.IService) endpoint.Endpoint {
 	}
 }
 
+func makeGetGameList(s game.IService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "game.makeGetGameList").Logger()
+
+		req, err := helpers.CastRequest[entity.GetGameListRequest](request)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed to cast request")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		err = helpers.ValidateGetGameList(req)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg(errors.FailedValidateRequest)
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		resp, err := s.GetGameList(ctx, req)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed to game.GetGameList")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		return resp, nil
+	}
+}
+
 func makeGetComingGames(s game.IService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		reqID, ctx := middleware.GetRequestID(ctx)
@@ -229,7 +256,7 @@ func makeGetComingGames(s game.IService) endpoint.Endpoint {
 
 		resp, err := s.GetComingGames(ctx)
 		if err != nil {
-			serviceLogger.Error().Err(err).Msg("Failed to game.UpdateFutureGame")
+			serviceLogger.Error().Err(err).Msg("Failed to game.GetComingGames")
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 

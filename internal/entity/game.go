@@ -14,6 +14,41 @@ type GetFutureGamesResponse struct {
 	Games []ShortGame `json:"games"`
 }
 
+type GetGameListRequest struct {
+	CityId     *int       `json:"cityId" validate:"omitempty,gt=0"`
+	LeagueId   *int       `json:"leagueId" validate:"omitempty,gt=0"`
+	SeasonId   *int       `json:"seasonId" validate:"omitempty,gt=0"`
+	DateFrom   *time.Time `json:"dateFrom"`
+	DateTo     *time.Time `json:"dateTo"`
+	PlaceId    *int       `json:"placeId" validate:"omitempty,gt=0"`
+	Team1Id    *int       `json:"team1Id" validate:"omitempty,gt=0"`
+	Team2Id    *int       `json:"team2Id" validate:"omitempty,gt=0"`
+	IsTiebreak *bool      `json:"isTiebreak,omitempty"`
+	SortField  *int       `json:"sortField,omitempty"`
+	SortType   *int       `json:"sortType,omitempty"`
+	Limit      *int       `json:"limit,omitempty"`
+	Offset     *int       `json:"offset,omitempty"`
+}
+
+type GameV2 struct {
+	Id              int        `json:"id"`
+	Date            *time.Time `json:"date"`
+	CityId          *int       `json:"cityId"`
+	LeagueId        *int       `json:"leagueId"`
+	Season          Season     `json:"season"`
+	Place           PlaceShort `json:"place"`
+	Team1           TeamShort  `json:"team1"`
+	Team2           TeamShort  `json:"team2"`
+	ScoreTeam1      *int       `json:"scoreTeam1"`
+	ScoreTeam2      *int       `json:"scoreTeam2"`
+	TechLooseTeamId *int       `json:"techLooseTeamId"`
+	IsTiebreak      *bool      `json:"isTiebreak"`
+}
+
+type GetGameListResponse struct {
+	Games []GameV2 `json:"games"`
+}
+
 type ShortGame struct {
 	ID         int         `json:"id"`
 	Date       time.Time   `json:"date"`

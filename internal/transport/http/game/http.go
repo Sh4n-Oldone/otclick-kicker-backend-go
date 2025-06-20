@@ -34,6 +34,8 @@ func NewServer(endpoints game.Endpoints, options []kithttp.ServerOption, cfg *co
 	r.Get("/games/years", kithttp.NewServer(endpoints.GetYears, decodeGamesYearsRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 	// /games/coming возвращает список ближайших игр
 	r.Get("/games/coming", kithttp.NewServer(endpoints.GetComingGames, decodeGetComingGamesRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	// /games возвращает список игр (есть фильтр)
+	r.Get("/games", kithttp.NewServer(endpoints.GetGameList, decodeGetGameListRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 
 	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdminCapitan()).
 		Post("/games/played", kithttp.NewServer(endpoints.Create, decodeCreateRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)

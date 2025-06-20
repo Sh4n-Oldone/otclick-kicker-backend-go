@@ -411,3 +411,12 @@ func ValidateDeleteFutureGame(request entity.DeleteFutureGameRequest) error {
 	}
 	return nil
 }
+
+func ValidateGetGameList(request entity.GetGameListRequest) error {
+	validate := validator.New(validator.WithRequiredStructEnabled())
+	err := validate.Struct(request)
+	if err != nil {
+		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	return nil
+}
