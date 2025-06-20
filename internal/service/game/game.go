@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"google.golang.org/grpc/codes"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/calculator"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
@@ -14,7 +13,7 @@ import (
 )
 
 // содержится ли leagueID в массиве.
-func contains(arr []entity.LeagueShort, leagueID int64) bool {
+func contains(arr []entities.LeagueShort, leagueID int64) bool {
 	for _, v := range arr {
 		if v.ID == leagueID {
 			return true
@@ -24,7 +23,7 @@ func contains(arr []entity.LeagueShort, leagueID int64) bool {
 }
 
 // содержится ли leagueID в обоих массивах.
-func bothContain(leagueID int64, leaguesTeam1, leaguesTeam2 []entity.LeagueShort) bool {
+func bothContain(leagueID int64, leaguesTeam1, leaguesTeam2 []entities.LeagueShort) bool {
 	return contains(leaguesTeam1, leagueID) && contains(leaguesTeam2, leagueID)
 }
 
@@ -282,7 +281,7 @@ func (s *Service) Delete(ctx context.Context, gameID int) error {
 				return err
 			}
 
-			rate := &entity.Rating{
+			rate := &entities.Rating{
 				PlayerID: int64(playerID),
 				LeagueID: leagueID,
 				Value:    rateValue - int64(value),
@@ -531,9 +530,9 @@ func (s *Service) Update(ctx context.Context, request entities.UpdateGameRequest
 
 	request.Matches = matches
 
-	newRates := make([]entity.Rating, 0, len(rates))
+	newRates := make([]entities.Rating, 0, len(rates))
 	for playerID, value := range rates {
-		rate := &entity.Rating{
+		rate := &entities.Rating{
 			PlayerID: int64(playerID),
 			LeagueID: leagueID,
 			Value:    int64(value),
@@ -565,7 +564,7 @@ func (s *Service) Find(ctx context.Context, request entities.FindGameRequest) (e
 	}, nil
 }
 
-func (s *Service) UpdateFutureGame(ctx context.Context, request entity.UpdateFutureGameRequest) error {
+func (s *Service) UpdateFutureGame(ctx context.Context, request entities.UpdateFutureGameRequest) error {
 	logger := s.logger.With().Interface("service", "game.UpdateFutureGame").Logger()
 	timeout, cancel := context.WithTimeout(ctx, s.config.RWDB.MaxIdleConnectionTimeout)
 	defer cancel()
@@ -578,29 +577,29 @@ func (s *Service) UpdateFutureGame(ctx context.Context, request entity.UpdateFut
 	return nil
 }
 
-func (s *Service) GetGamesYears(ctx context.Context) (entity.GetGamesYearsResponse, error) {
+func (s *Service) GetGamesYears(ctx context.Context) (entities.GetGamesYearsResponse, error) {
 	logger := s.logger.With().Interface("service", "game.GetGamesYears").Logger()
 	timeout, cancel := context.WithTimeout(ctx, s.config.RDB.MaxIdleConnectionTimeout)
 	defer cancel()
 
 	resp, err := s.rdbOperations.GetGamesYears(logger, timeout)
 	if err != nil {
-		return entity.GetGamesYearsResponse{}, err
+		return entities.GetGamesYearsResponse{}, err
 	}
 	return resp, nil
 }
 
-func (s *Service) GetGameList(ctx context.Context, request entity.GetGameListRequest) (entity.GetGameListResponse, error) {
+func (s *Service) GetGameList(ctx context.Context, request entities.GetGameListRequest) (entities.GetGameListResponse, error) {
 	logger := s.logger.With().Str("service", "game.GetGameList").Logger()
 	timeout, cancel := context.WithTimeout(ctx, s.config.RDB.MaxIdleConnectionTimeout)
 	defer cancel()
 
 	games, err := s.rdbOperations.GetGameList(logger, timeout, request)
 	if err != nil {
-		return entity.GetGameListResponse{}, err
+		return entities.GetGameListResponse{}, err
 	}
 
-	return entity.GetGameListResponse{Games: games}, nil
+	return entities.GetGameListResponse{Games: games}, nil
 }
 
 func (s *Service) GetComingGames(ctx context.Context) (entities.GetComingGamesResponse, error) {
@@ -616,43 +615,43 @@ func (s *Service) GetComingGames(ctx context.Context) (entities.GetComingGamesRe
 	return entities.GetComingGamesResponse{ComingGames: games}, nil
 }
 
-func (s *Service) GetFutureGames(ctx context.Context, cityID int) (entity.GetFutureGamesResponse, error) {
+func (s *Service) GetFutureGames(ctx context.Context, cityID int) (entities.GetFutureGamesResponse, error) {
 	logger := s.logger.With().Interface("service", "game.GetFutureGames").Logger()
 	timeout, cancel := context.WithTimeout(ctx, s.config.RDB.MaxIdleConnectionTimeout)
 	defer cancel()
 
 	games, err := s.rdbOperations.GetFutureGames(logger, timeout, cityID)
 	if err != nil {
-		return entity.GetFutureGamesResponse{}, err
+		return entities.GetFutureGamesResponse{}, err
 	}
 
-	return entity.GetFutureGamesResponse{Games: games}, nil
+	return entities.GetFutureGamesResponse{Games: games}, nil
 }
 
-func (s *Service) CreateFutureGame(ctx context.Context, request entity.CreateFutureGameRequest) (entity.CreateFutureGameResponse, error) {
+func (s *Service) CreateFutureGame(ctx context.Context, request entities.CreateFutureGameRequest) (entities.CreateFutureGameResponse, error) {
 	logger := s.logger.With().Interface("service", "game.CreateFutureGame").Logger()
 	timeout, cancel := context.WithTimeout(ctx, s.config.RWDB.MaxIdleConnectionTimeout)
 	defer cancel()
 
 	id, err := s.rwdbOperations.CreateFutureGame(logger, timeout, request)
 	if err != nil {
-		return entity.CreateFutureGameResponse{}, err
+		return entities.CreateFutureGameResponse{}, err
 	}
 
-	return entity.CreateFutureGameResponse{ID: id}, nil
+	return entities.CreateFutureGameResponse{ID: id}, nil
 }
 
-func (s *Service) GetTeamGames(ctx context.Context, teamID int) (entity.GetTeamGamesResponse, error) {
+func (s *Service) GetTeamGames(ctx context.Context, teamID int) (entities.GetTeamGamesResponse, error) {
 	logger := s.logger.With().Interface("service", "game.GetTeamGames").Logger()
 	timeout, cancel := context.WithTimeout(ctx, s.config.RDB.MaxIdleConnectionTimeout)
 	defer cancel()
 
 	games, err := s.rdbOperations.GetTeamGames(logger, timeout, teamID)
 	if err != nil {
-		return entity.GetTeamGamesResponse{}, nil
+		return entities.GetTeamGamesResponse{}, nil
 	}
 
-	return entity.GetTeamGamesResponse{Games: games}, nil
+	return entities.GetTeamGamesResponse{Games: games}, nil
 }
 
 func (s *Service) DeleteFutureGame(ctx context.Context, gameID int64) error {

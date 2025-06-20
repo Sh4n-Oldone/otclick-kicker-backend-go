@@ -5,13 +5,13 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 )
 
-func (db *RDBOperation) GetRatingList(logger zerolog.Logger, ctx context.Context, leagueID *int64, playerID *int64) ([]entity.Rating, error) {
+func (db *RDBOperation) GetRatingList(logger zerolog.Logger, ctx context.Context, leagueID *int64, playerID *int64) ([]entities.Rating, error) {
 
-	queries := map[string]string {
-		"queryGetRatingList": queryGetRatingList,
+	queries := map[string]string{
+		"queryGetRatingList":           queryGetRatingList,
 		"queryGetRatingListByPlayerID": queryGetRatingListByPlayerID,
 		"queryGetRatingListByLeagueID": queryGetRatingListByLeagueID,
 	}
@@ -31,9 +31,9 @@ func (db *RDBOperation) GetRatingList(logger zerolog.Logger, ctx context.Context
 	var rows pgx.Rows
 
 	if queryAttr > 0 {
-		rows, err = db.db.Query(ctx, queries[queryName], queryAttr)	
+		rows, err = db.db.Query(ctx, queries[queryName], queryAttr)
 	} else {
-		rows, err = db.db.Query(ctx, queries[queryName])	
+		rows, err = db.db.Query(ctx, queries[queryName])
 	}
 
 	if err != nil {
@@ -42,26 +42,26 @@ func (db *RDBOperation) GetRatingList(logger zerolog.Logger, ctx context.Context
 	}
 	defer rows.Close()
 
-	var entities []entity.Rating
+	var ratings []entities.Rating
 
 	for rows.Next() {
-		var entity entity.Rating
+		var rating entities.Rating
 
-		err = rows.Scan(&entity.PlayerID, &entity.LeagueID, &entity.Value)
+		err = rows.Scan(&rating.PlayerID, &rating.LeagueID, &rating.Value)
 		if err != nil {
 			logger.Error().Stack().Err(err).Msg("failed scan to postgresql.GetRatingList")
 			return nil, DecodeDatabaseError(err)
 		}
 
-		entities = append(entities, entity)
+		ratings = append(ratings, rating)
 	}
 
-	return entities, nil
+	return ratings, nil
 }
 
 func (db *RDBOperation) GetRatingByPlayerIDAndByLeagueID(logger zerolog.Logger, ctx context.Context, playerID, leagueID int64) (int64, error) {
 	var rate int64
-	
+
 	err := db.db.QueryRow(ctx, queryGetRatingByPlayerIDAndByLeagueID, playerID, leagueID).Scan(&rate)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.GetRatingByPlayerIDAndByLeagueID")
@@ -71,12 +71,12 @@ func (db *RDBOperation) GetRatingByPlayerIDAndByLeagueID(logger zerolog.Logger, 
 	return rate, nil
 }
 
-func (db *RWDBOperation) CreateRating(logger zerolog.Logger, ctx context.Context, entity entity.Rating, operator *string) error {
+func (db *RWDBOperation) CreateRating(logger zerolog.Logger, ctx context.Context, rating entities.Rating, operator *string) error {
 	query := queryCreateRating
 	if operator != nil && *operator == "insertIgnore" {
 		query = queryCreateRatingInsertIgnore
 	}
-	_, err := db.db.Exec(ctx, query, entity.PlayerID, entity.LeagueID, entity.Value)
+	_, err := db.db.Exec(ctx, query, rating.PlayerID, rating.LeagueID, rating.Value)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.CreateRating")
 		return DecodeDatabaseError(err)
@@ -85,8 +85,8 @@ func (db *RWDBOperation) CreateRating(logger zerolog.Logger, ctx context.Context
 	return nil
 }
 
-func (db *RWDBOperation) UpdateRating(logger zerolog.Logger, ctx context.Context, entity entity.Rating) error {
-	res, err := db.db.Exec(ctx, queryUpdateRating, entity.PlayerID, entity.LeagueID, entity.Value)
+func (db *RWDBOperation) UpdateRating(logger zerolog.Logger, ctx context.Context, rating entities.Rating) error {
+	res, err := db.db.Exec(ctx, queryUpdateRating, rating.PlayerID, rating.LeagueID, rating.Value)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.UpdateRating")
 		return DecodeDatabaseError(err)

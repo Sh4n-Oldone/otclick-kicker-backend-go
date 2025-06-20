@@ -12,13 +12,13 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/valyala/bytebufferpool"
 	"google.golang.org/grpc/codes"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 )
 
 func decodeGetListRequest(ctx context.Context, r *http.Request) (interface{}, error) {
-	request := &entity.GetLeagueListRequest{}
+	request := &entities.GetLeagueListRequest{}
 
 	cityIDParam := r.URL.Query().Get("cityId")
 	if cityIDParam == "" {
@@ -38,7 +38,7 @@ func decodeGetListRequest(ctx context.Context, r *http.Request) (interface{}, er
 }
 
 func decodeCreateRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := &entity.CreateLeagueRequest{}
+	request := &entities.CreateLeagueRequest{}
 
 	buf := bytebufferpool.Get()
 	defer bytebufferpool.Put(buf)
@@ -71,7 +71,7 @@ func decodeCreateRequest(_ context.Context, r *http.Request) (interface{}, error
 }
 
 func decodeUpdateRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := &entity.UpdateLeagueRequest{}
+	request := &entities.UpdateLeagueRequest{}
 
 	buf := bytebufferpool.Get()
 	defer bytebufferpool.Put(buf)
@@ -104,7 +104,7 @@ func decodeUpdateRequest(_ context.Context, r *http.Request) (interface{}, error
 }
 
 func decodeDeleteRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := &entity.DeleteLeagueRequest{}
+	request := &entities.DeleteLeagueRequest{}
 
 	idParam := chi.URLParam(r, "id")
 	if idParam == "" {
@@ -124,7 +124,7 @@ func decodeDeleteRequest(_ context.Context, r *http.Request) (interface{}, error
 }
 
 func decodeRecalcRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := &entity.RecalcLeagueRequest{}
+	request := &entities.RecalcLeagueRequest{}
 
 	idParam := chi.URLParam(r, "id")
 	if idParam == "" {
@@ -148,7 +148,7 @@ func decodeRecalcRequest(_ context.Context, r *http.Request) (interface{}, error
 
 // Create ExtraPoints
 func decodeCreateExtraPointsRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := &entity.CreateExtraPointsRequest{}
+	request := &entities.CreateExtraPointsRequest{}
 
 	buf := bytebufferpool.Get()
 	defer bytebufferpool.Put(buf)
@@ -168,7 +168,7 @@ func decodeCreateExtraPointsRequest(_ context.Context, r *http.Request) (interfa
 
 // Update ExtraPoints
 func decodeUpdateExtraPointsRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := &entity.UpdateExtraPointsRequest{}
+	request := &entities.UpdateExtraPointsRequest{}
 
 	buf := bytebufferpool.Get()
 	defer bytebufferpool.Put(buf)
@@ -188,7 +188,7 @@ func decodeUpdateExtraPointsRequest(_ context.Context, r *http.Request) (interfa
 
 // Delete ExtraPoints
 func decodeDeleteExtraPointsRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := &entity.IdRequest{}
+	request := &entities.IdRequest{}
 
 	idParam := chi.URLParam(r, "id")
 	if idParam == "" {
@@ -208,7 +208,7 @@ func decodeDeleteExtraPointsRequest(_ context.Context, r *http.Request) (interfa
 
 // Get ExtraPointsListByTeamAndLeagueId
 func decodeGetExtraPointsListByTeamAndLeagueIdRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := &entity.TeamLeagueIdRequest{}
+	request := &entities.TeamLeagueIdRequest{}
 
 	teamIdParam := chi.URLParam(r, "team_id")
 	if teamIdParam == "" {
@@ -240,7 +240,7 @@ func decodeGetExtraPointsListByTeamAndLeagueIdRequest(_ context.Context, r *http
 
 // Get ExtraPointsById
 func decodeGetExtraPointsByIdRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := &entity.IdRequest{}
+	request := &entities.IdRequest{}
 
 	idParam := chi.URLParam(r, "id")
 	if idParam == "" {

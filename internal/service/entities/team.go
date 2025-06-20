@@ -1,4 +1,4 @@
-package entity
+package entities
 
 type PlayerTeam struct {
 	PlayerID int64 `db:"player_id" json:"playerId"`

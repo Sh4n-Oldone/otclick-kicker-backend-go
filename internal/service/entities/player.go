@@ -2,6 +2,31 @@ package entities
 
 import "time"
 
+type FullPlayer struct {
+	ID           int     `json:"id"`
+	Name         *string `json:"name,omitempty"`
+	SecondName   *string `json:"secondName,omitempty"`
+	LastName     string  `json:"lastName"`
+	Avatar       []byte  `json:"avatar,omitempty"`
+	ActivePlayer *bool   `json:"activePlayer,omitempty"`
+	Deleted      bool    `json:"deleted"`
+	CityID       *int    `json:"cityId,omitempty"`
+	CityName     *string `json:"cityName,omitempty"`
+
+	Leagues []LeagueItem `json:"leagues,omitempty"`
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+type PlayersLeague struct {
+	ID     int
+	Name   string
+	CityID int
+	Rating *int
+}
+
 type CreatePlayerRequest struct {
 	Name         *string `json:"name,omitempty"`
 	SecondName   *string `json:"secondName,omitempty"`
@@ -53,8 +78,8 @@ type FindPlayersRequest struct {
 }
 
 type FindPlayersResponse struct {
-	Players     []Player     `json:"players,omitempty"`
-	FullPlayers []FullPlayer `json:"fullPlayers,omitempty"`
+	Players     []Player       `json:"players,omitempty"`
+	FullPlayers []FullPlayerV2 `json:"fullPlayers,omitempty"`
 }
 
 type Player struct {
@@ -73,7 +98,7 @@ type Player struct {
 	Rating        *int       `json:"rating,omitempty"`
 }
 
-type FullPlayer struct {
+type FullPlayerV2 struct {
 	ID           int     `json:"id"`
 	Name         *string `json:"name,omitempty"`
 	SecondName   *string `json:"secondName,omitempty"`
@@ -99,7 +124,7 @@ type FullPlayer struct {
 	// Rating                    *int         `json:"rating,omitempty"`
 }
 
-type LeagueItem struct {
+type LeagueItemV2 struct {
 	ID     int    `json:"id"`
 	Name   string `json:"name"`
 	Rating int    `json:"rating"`
@@ -118,7 +143,7 @@ type OkResponse struct {
 	Message string `json:"message"`
 }
 
-type TeamItem struct {
+type TeamItemV2 struct {
 	ID        int    `json:"id"`
 	Name      string `json:"name,omitempty"`
 	ShortName string `json:"shortName,omitempty"`

@@ -8,19 +8,18 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog"
 
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 )
 
-func (db *RDBOperation) GetPastGamesByPlayersTeam(logger zerolog.Logger, ctx context.Context, teamID int) ([]entities.Game, error) {
+func (db *RDBOperation) GetPastGamesByPlayersTeam(logger zerolog.Logger, ctx context.Context, teamID int) ([]entities.GameShort, error) {
 	const query string = `
 		SELECT id, city_id, date, team1_id, team2_id
 		FROM public.games
 		WHERE (team1_id = $1 OR team2_id = $1) AND date < NOW()
 	`
 
-	var games []entities.Game
+	var games []entities.GameShort
 
 	rows, err := db.db.Query(ctx, query, teamID)
 	if err != nil {
@@ -30,7 +29,7 @@ func (db *RDBOperation) GetPastGamesByPlayersTeam(logger zerolog.Logger, ctx con
 	defer rows.Close()
 
 	for rows.Next() {
-		var game entities.Game
+		var game entities.GameShort
 
 		err = rows.Scan(&game.ID, &game.CityID, &game.Date, &game.Team1ID, &game.Team2ID)
 		if err != nil {
@@ -44,14 +43,14 @@ func (db *RDBOperation) GetPastGamesByPlayersTeam(logger zerolog.Logger, ctx con
 	return games, nil
 }
 
-func (db *RDBOperation) GetPastGamesByPlayersTeams(logger zerolog.Logger, ctx context.Context, teamIDs []int) ([]entities.Game, error) {
+func (db *RDBOperation) GetPastGamesByPlayersTeams(logger zerolog.Logger, ctx context.Context, teamIDs []int) ([]entities.GameShort, error) {
 	const query string = `
 		SELECT id, league_id, city_id, date, team1_id, team2_id
 		FROM public.games
 		WHERE (team1_id = ANY ($1::int[])) OR (team2_id = ANY ($1::int[])) AND date < NOW();
 	`
 
-	var games []entities.Game
+	var games []entities.GameShort
 
 	rows, err := db.db.Query(ctx, query, teamIDs)
 	if err != nil {
@@ -61,7 +60,7 @@ func (db *RDBOperation) GetPastGamesByPlayersTeams(logger zerolog.Logger, ctx co
 	defer rows.Close()
 
 	for rows.Next() {
-		var game entities.Game
+		var game entities.GameShort
 
 		err = rows.Scan(&game.ID, &game.LeagueID, &game.CityID, &game.Date, &game.Team1ID, &game.Team2ID)
 		if err != nil {
@@ -290,7 +289,7 @@ func (db *RDBOperation) GetGame(logger zerolog.Logger, ctx context.Context, game
 	}, nil
 }
 
-func (db *RWDBOperation) UpdateGame(logger zerolog.Logger, ctx context.Context, game entities.UpdateGameRequest, rates []entity.Rating) error {
+func (db *RWDBOperation) UpdateGame(logger zerolog.Logger, ctx context.Context, game entities.UpdateGameRequest, rates []entities.Rating) error {
 	tx, err := db.db.Begin(ctx)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to postgresql.UpdateGame")
@@ -471,7 +470,7 @@ func (db *RDBOperation) FindGames(logger zerolog.Logger, ctx context.Context, re
 	return games, nil
 }
 
-func (db *RWDBOperation) UpdateFutureGame(logger zerolog.Logger, ctx context.Context, request entity.UpdateFutureGameRequest) error {
+func (db *RWDBOperation) UpdateFutureGame(logger zerolog.Logger, ctx context.Context, request entities.UpdateFutureGameRequest) error {
 	const query string = `
 		UPDATE public.games
 		SET 
@@ -498,32 +497,32 @@ func (db *RWDBOperation) UpdateFutureGame(logger zerolog.Logger, ctx context.Con
 	return nil
 }
 
-func (db *RDBOperation) GetGamesYears(logger zerolog.Logger, ctx context.Context) (entity.GetGamesYearsResponse, error) {
+func (db *RDBOperation) GetGamesYears(logger zerolog.Logger, ctx context.Context) (entities.GetGamesYearsResponse, error) {
 	rows, err := db.db.Query(ctx, queryGetGamesYears)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to get years list")
-		return entity.GetGamesYearsResponse{}, DecodeDatabaseError(err)
+		return entities.GetGamesYearsResponse{}, DecodeDatabaseError(err)
 	}
 	defer rows.Close()
 
-	var years []entity.Year
+	var years []entities.Year
 
 	for rows.Next() {
-		var year entity.Year
+		var year entities.Year
 
 		err = rows.Scan(&year.Year)
 		if err != nil {
 			logger.Error().Err(err).Msg("failed to scan year record")
-			return entity.GetGamesYearsResponse{}, DecodeDatabaseError(err)
+			return entities.GetGamesYearsResponse{}, DecodeDatabaseError(err)
 		}
 
 		years = append(years, year)
 	}
 
-	return entity.GetGamesYearsResponse{Years: years}, nil
+	return entities.GetGamesYearsResponse{Years: years}, nil
 }
 
-func (db *RDBOperation) GetGameList(logger zerolog.Logger, ctx context.Context, r entity.GetGameListRequest) ([]entity.GameV2, error) {
+func (db *RDBOperation) GetGameList(logger zerolog.Logger, ctx context.Context, r entities.GetGameListRequest) ([]entities.GameV2, error) {
 	const query string = `
 		SELECT 
 			g.id,
@@ -574,7 +573,7 @@ func (db *RDBOperation) GetGameList(logger zerolog.Logger, ctx context.Context, 
 			LIMIT $11
 			OFFSET $12;
 	`
-	games := make([]entity.GameV2, 0)
+	games := make([]entities.GameV2, 0)
 
 	rows, err := db.db.Query(ctx, query,
 		r.CityId, r.LeagueId, r.SeasonId, r.DateFrom, r.DateTo, r.PlaceId,
@@ -585,11 +584,11 @@ func (db *RDBOperation) GetGameList(logger zerolog.Logger, ctx context.Context, 
 	}
 
 	for rows.Next() {
-		var game entity.GameV2
-		game.Place = entity.PlaceShort{}
-		game.Place.Bar = entity.BarShort{}
-		game.Place.Table = entity.TableShort{}
-		game.Season = entity.Season{}
+		var game entities.GameV2
+		game.Place = entities.PlaceShort{}
+		game.Place.Bar = entities.BarShort{}
+		game.Place.Table = entities.TableShort{}
+		game.Season = entities.Season{}
 		var seasonId *int64
 		var seasonName *string
 		var seasonDescription *string
@@ -694,7 +693,7 @@ func (db *RDBOperation) GetComingGames(logger zerolog.Logger, ctx context.Contex
 	return games, nil
 }
 
-func (db *RDBOperation) GetFutureGames(logger zerolog.Logger, ctx context.Context, cityID int) ([]entity.ShortGame, error) {
+func (db *RDBOperation) GetFutureGames(logger zerolog.Logger, ctx context.Context, cityID int) ([]entities.ShortGame, error) {
 	const query string = `
 		SELECT g.id, 
 		       g.date,
@@ -732,12 +731,12 @@ func (db *RDBOperation) GetFutureGames(logger zerolog.Logger, ctx context.Contex
 	}
 	defer rows.Close()
 
-	games := make([]entity.ShortGame, 0)
+	games := make([]entities.ShortGame, 0)
 
 	for rows.Next() {
-		var g entity.ShortGame
-		var t1 entity.TeamShort
-		var t2 entity.TeamShort
+		var g entities.ShortGame
+		var t1 entities.TeamShort
+		var t2 entities.TeamShort
 
 		err = rows.Scan(
 			&g.ID,
@@ -758,7 +757,7 @@ func (db *RDBOperation) GetFutureGames(logger zerolog.Logger, ctx context.Contex
 			&t2.Name,
 		)
 
-		g.Teams = []entity.TeamShort{t1, t2}
+		g.Teams = []entities.TeamShort{t1, t2}
 
 		games = append(games, g)
 	}
@@ -766,7 +765,7 @@ func (db *RDBOperation) GetFutureGames(logger zerolog.Logger, ctx context.Contex
 	return games, nil
 }
 
-func (db *RWDBOperation) CreateFutureGame(logger zerolog.Logger, ctx context.Context, request entity.CreateFutureGameRequest) (int, error) {
+func (db *RWDBOperation) CreateFutureGame(logger zerolog.Logger, ctx context.Context, request entities.CreateFutureGameRequest) (int, error) {
 	const query string = `
 		INSERT INTO games (city_id, league_id, date, place_id, team1_id, team2_id, is_tiebreak)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -784,7 +783,7 @@ func (db *RWDBOperation) CreateFutureGame(logger zerolog.Logger, ctx context.Con
 	return id, nil
 }
 
-func (db *RDBOperation) GetTeamGames(logger zerolog.Logger, ctx context.Context, teamID int) ([]entity.TeamGame, error) {
+func (db *RDBOperation) GetTeamGames(logger zerolog.Logger, ctx context.Context, teamID int) ([]entities.TeamGame, error) {
 	const query string = `
 		WITH
 			league_teams AS (
@@ -845,7 +844,7 @@ func (db *RDBOperation) GetTeamGames(logger zerolog.Logger, ctx context.Context,
 		ORDER BY team_id;
 	`
 
-	games := make([]entity.TeamGame, 0)
+	games := make([]entities.TeamGame, 0)
 
 	rows, err := db.db.Query(ctx, query, teamID)
 	if err != nil {
@@ -854,7 +853,7 @@ func (db *RDBOperation) GetTeamGames(logger zerolog.Logger, ctx context.Context,
 	}
 
 	for rows.Next() {
-		var game entity.TeamGame
+		var game entities.TeamGame
 
 		err = rows.Scan(&game.ID, &game.Team.ID, &game.Team.Name, &game.Team.ShortName, &game.Place.ID,
 			&game.Place.Bar.ID, &game.Place.Bar.Name, &game.Place.Table.ID, &game.Place.Table.Name, &game.Date, &game.IsHomeGame)
@@ -936,7 +935,7 @@ func (db *RWDBOperation) CreateGameWithRating(
 			if playerID == 0 {
 				continue
 			}
-			rate := &entity.Rating{
+			rate := &entities.Rating{
 				PlayerID: int64(playerID),
 				LeagueID: leagueID,
 				Value:    int64(value),

@@ -7,15 +7,15 @@ import (
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql"
 
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 )
 
 type IService interface {
-	Create(ctx context.Context, request entity.CreateUserRequest) (*int64, error)
-	Login(ctx context.Context, user entity.User) (*int64, *string, *int64, *string, error)
-	ChangePassword(ctx context.Context, userOld, userNew entity.User) error
+	Create(ctx context.Context, request entities.CreateUserRequest) (*int64, error)
+	Login(ctx context.Context, user entities.User) (*int64, *string, *int64, *string, error)
+	ChangePassword(ctx context.Context, userOld, userNew entities.User) error
 	CheckAuth(ctx context.Context, userID int64, token string) (*bool, *string, *int64, error)
-	GetUser(ctx context.Context, userID int64) (*entity.User, error)
+	GetUser(ctx context.Context, userID int64) (*entities.User, error)
 
 	GetLogger() *zerolog.Logger
 }

@@ -1,39 +1,39 @@
 package helpers
 
-import "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
+import "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 
-func ConvertCreateCityRequestToCity(request *entity.CreateCityRequest) *entity.City {
-	return &entity.City{
+func ConvertCreateCityRequestToCity(request *entities.CreateCityRequest) *entities.City {
+	return &entities.City{
 		Name:      request.Name,
 		Ru:        request.Ru,
 		DeletedAt: request.DeletedAt,
 	}
 }
 
-func ConvertUpdateCityRequestToCity(request *entity.UpdateCityRequest) *entity.City {
-	return &entity.City{
+func ConvertUpdateCityRequestToCity(request *entities.UpdateCityRequest) *entities.City {
+	return &entities.City{
 		ID:   request.ID,
 		Name: request.Name,
 		Ru:   request.Ru,
 	}
 }
 
-func ConvertCreateUserRequestToUser(request *entity.CreateUserRequest) *entity.User {
-	return &entity.User{
+func ConvertCreateUserRequestToUser(request *entities.CreateUserRequest) *entities.User {
+	return &entities.User{
 		Email:    request.Email,
 		Password: []byte(request.Password),
 	}
 }
 
-func ConvertLoginUserRequestToUser(request *entity.LoginUserRequest) *entity.User {
-	return &entity.User{
+func ConvertLoginUserRequestToUser(request *entities.LoginUserRequest) *entities.User {
+	return &entities.User{
 		Email:    request.Email,
 		Password: []byte(request.Password),
 	}
 }
 
-func ConvertCreateMatchRequestToMatch(request *entity.CreateMatchRequest) *entity.Match {
-	return &entity.Match{
+func ConvertCreateMatchRequestToMatch(request *entities.CreateMatchRequest) *entities.Match {
+	return &entities.Match{
 		Date:           request.Date,
 		GameID:         request.GameID,
 		Team1ID:        request.Team1ID,
@@ -47,8 +47,8 @@ func ConvertCreateMatchRequestToMatch(request *entity.CreateMatchRequest) *entit
 	}
 }
 
-func ConvertUpdateMatchRequestToMatch(request *entity.UpdateMatchRequest) *entity.Match {
-	return &entity.Match{
+func ConvertUpdateMatchRequestToMatch(request *entities.UpdateMatchRequest) *entities.Match {
+	return &entities.Match{
 		ID:             request.ID,
 		Date:           request.Date,
 		GameID:         request.GameID,
@@ -63,16 +63,16 @@ func ConvertUpdateMatchRequestToMatch(request *entity.UpdateMatchRequest) *entit
 	}
 }
 
-func ConvertCreateLeagueRequestToLeague(request *entity.CreateLeagueRequest) *entity.League {
-	return &entity.League{
+func ConvertCreateLeagueRequestToLeague(request *entities.CreateLeagueRequest) *entities.League {
+	return &entities.League{
 		CityID:   request.CityID,
 		Name:     request.Name,
 		SeasonID: request.SeasonID,
 	}
 }
 
-func ConvertUpdateLeagueRequestToLeague(request *entity.UpdateLeagueRequest) *entity.League {
-	return &entity.League{
+func ConvertUpdateLeagueRequestToLeague(request *entities.UpdateLeagueRequest) *entities.League {
+	return &entities.League{
 		ID:       request.ID,
 		Name:     request.Name,
 		SeasonID: request.SeasonID,

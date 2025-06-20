@@ -12,7 +12,7 @@ import (
 	"github.com/valyala/bytebufferpool"
 	"google.golang.org/grpc/codes"
 
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 )
@@ -34,7 +34,7 @@ import (
 
 // GetTeam{id}
 func decodeGetTeamRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := &entity.GetTeamRequest{}
+	request := &entities.GetTeamRequest{}
 
 	idParam := chi.URLParam(r, "id")
 	if idParam == "" {
@@ -55,7 +55,7 @@ func decodeGetTeamRequest(_ context.Context, r *http.Request) (interface{}, erro
 
 // // GetTeams
 func decodeGetTeamsRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := &entity.GetTeamsRequest{}
+	request := &entities.GetTeamsRequest{}
 
 	var onlyFree bool = false
 	onlyFreeParam := r.URL.Query().Get("onlyFree")
@@ -79,7 +79,7 @@ func decodeGetTeamsRequest(_ context.Context, r *http.Request) (interface{}, err
 
 // // GetTeamsByCity{city_id}
 func decodeGetTeamsByCityRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := &entity.GetTeamsByCityRequest{}
+	request := &entities.GetTeamsByCityRequest{}
 
 	idParam := chi.URLParam(r, "city_id")
 	if idParam == "" {
@@ -107,7 +107,7 @@ func decodeGetTeamsByCityRequest(_ context.Context, r *http.Request) (interface{
 
 // // GetTeamsByLeague{league_id}
 func decodeGetTeamsByLeagueRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := &entity.GetTeamsByLeagueRequest{}
+	request := &entities.GetTeamsByLeagueRequest{}
 
 	idParam := chi.URLParam(r, "league_id")
 	if idParam == "" {
@@ -134,7 +134,7 @@ func decodeGetTeamsByLeagueRequest(_ context.Context, r *http.Request) (interfac
 }
 
 func decodeGetTeamVsTeamTableRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := &entity.GetTeamVsTeamTableRequest{}
+	request := &entities.GetTeamVsTeamTableRequest{}
 
 	cityIdParam := r.URL.Query().Get("cityId")
 	if cityIdParam == "" {
@@ -168,7 +168,7 @@ func decodeGetTeamVsTeamTableRequest(_ context.Context, r *http.Request) (interf
 
 // Create
 func decodeCreateRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := &entity.CreateTeamRequest{}
+	request := &entities.CreateTeamRequest{}
 	buf := bytebufferpool.Get()
 	defer bytebufferpool.Put(buf)
 
@@ -200,7 +200,7 @@ func decodeCreateRequest(_ context.Context, r *http.Request) (interface{}, error
 
 // Update
 func decodeUpdateRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := &entity.UpdateTeamRequest{}
+	request := &entities.UpdateTeamRequest{}
 
 	buf := bytebufferpool.Get()
 	defer bytebufferpool.Put(buf)
@@ -220,7 +220,7 @@ func decodeUpdateRequest(_ context.Context, r *http.Request) (interface{}, error
 
 // Delete {id}
 func decodeDeleteRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := &entity.DeleteTeamRequest{}
+	request := &entities.DeleteTeamRequest{}
 
 	idParam := chi.URLParam(r, "id")
 	if idParam == "" {
@@ -243,7 +243,7 @@ func decodeDeleteRequest(_ context.Context, r *http.Request) (interface{}, error
 
 // AddPlayerIntoTeam
 func decodeAddPlayerIntoTeamRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := &entity.PlayerTeam{}
+	request := &entities.PlayerTeam{}
 
 	buf := bytebufferpool.Get()
 	defer bytebufferpool.Put(buf)
@@ -263,7 +263,7 @@ func decodeAddPlayerIntoTeamRequest(_ context.Context, r *http.Request) (interfa
 
 // // RemovePlayerFromTeam
 func decodeRemovePlayerFromTeamRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := &entity.PlayerTeam{}
+	request := &entities.PlayerTeam{}
 
 	buf := bytebufferpool.Get()
 	defer bytebufferpool.Put(buf)

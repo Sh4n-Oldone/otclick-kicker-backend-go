@@ -6,14 +6,14 @@ import (
 	"github.com/rs/zerolog"
 
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql"
 )
 
 type IService interface {
-	GetList(ctx context.Context) ([]entity.Season, error)
-	Create(ctx context.Context, entity entity.Season) (*int64, error)
-	Update(ctx context.Context, entity entity.UpdateSeasonRequest) error
+	GetList(ctx context.Context) ([]entities.Season, error)
+	Create(ctx context.Context, entity entities.Season) (*int64, error)
+	Update(ctx context.Context, entity entities.UpdateSeasonRequest) error
 	Delete(ctx context.Context, id int64) (bool, error)
 
 	GetLogger() *zerolog.Logger

@@ -12,13 +12,13 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/valyala/bytebufferpool"
 	"google.golang.org/grpc/codes"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 )
 
 func decodeGetListRequest(ctx context.Context, r *http.Request) (interface{}, error) {
-	request := &entity.GetTableListRequest{}
+	request := &entities.GetTableListRequest{}
 
 	withDeleted := r.URL.Query().Get("withDeleted")
 	if withDeleted == "true" {
@@ -29,7 +29,7 @@ func decodeGetListRequest(ctx context.Context, r *http.Request) (interface{}, er
 }
 
 func decodeCreateRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := &entity.CreateTableRequest{}
+	request := &entities.CreateTableRequest{}
 
 	buf := bytebufferpool.Get()
 	defer bytebufferpool.Put(buf)
@@ -48,7 +48,7 @@ func decodeCreateRequest(_ context.Context, r *http.Request) (interface{}, error
 }
 
 func decodeUpdateRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := &entity.UpdateTableRequest{}
+	request := &entities.UpdateTableRequest{}
 
 	buf := bytebufferpool.Get()
 	defer bytebufferpool.Put(buf)
@@ -79,5 +79,5 @@ func decodeDeleteRequest(_ context.Context, r *http.Request) (interface{}, error
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
-	return &entity.DeleteTableRequest{ ID: id, }, nil
+	return &entities.DeleteTableRequest{ID: id}, nil
 }

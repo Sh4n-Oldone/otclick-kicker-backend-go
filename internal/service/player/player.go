@@ -81,16 +81,16 @@ func (s *Service) Find(ctx context.Context, player entities.FindPlayersRequest) 
 	}
 
 	// если нужно полное описание игрока(KeepSimple != true) то метод продолжает выполнение
-	// и возвращается []entities.FullPlayer
+	// и возвращается []entities.FullPlayerV2
 
-	fullPlayers := make([]entities.FullPlayer, len(players))
+	fullPlayers := make([]entities.FullPlayerV2, len(players))
 
 	for i, p := range players {
 
 		var (
-			pastMatches []entities.Match
+			pastMatches []entities.MatchV2
 			leagues     []entities.PlayersLeague
-			pastGames   []entities.Game
+			pastGames   []entities.GameShort
 			teams       []entities.TeamItem
 		)
 
@@ -139,14 +139,14 @@ func (s *Service) Find(ctx context.Context, player entities.FindPlayersRequest) 
 	}, nil
 }
 
-func (s *Service) Get(ctx context.Context, id int) (entities.FullPlayer, error) {
+func (s *Service) Get(ctx context.Context, id int) (entities.FullPlayerV2, error) {
 	logger := s.logger.With().Interface("service", "player.Get").Logger()
 	timeout, cancel := context.WithTimeout(ctx, s.config.RDB.MaxIdleConnectionTimeout)
 	defer cancel()
 
 	var (
 		player      entities.Player
-		pastMatches []entities.Match
+		pastMatches []entities.MatchV2
 		leagues     []entities.PlayersLeague
 		teams       []entities.TeamItem
 	)
@@ -178,7 +178,7 @@ func (s *Service) Get(ctx context.Context, id int) (entities.FullPlayer, error) 
 	})
 
 	if err := g.Wait(); err != nil {
-		return entities.FullPlayer{}, err
+		return entities.FullPlayerV2{}, err
 	}
 
 	var teamIds []int
@@ -189,7 +189,7 @@ func (s *Service) Get(ctx context.Context, id int) (entities.FullPlayer, error) 
 	// игры с участием команд игрока
 	pastGamesOfPlayersTeam, err := s.rdbOperations.GetPastGamesByPlayersTeams(logger, timeout, teamIds)
 	if err != nil {
-		return entities.FullPlayer{}, err
+		return entities.FullPlayerV2{}, err
 	}
 
 	fullPlayer := buildFullPlayer(player, pastMatches, leagues, teams, pastGamesOfPlayersTeam)
@@ -210,7 +210,7 @@ func (s *Service) GetByTeamID(ctx context.Context, teamID int) ([]entities.Playe
 	return players, nil
 }
 
-func buildFullPlayer(player entities.Player, pastMatches []entities.Match, leagues []entities.PlayersLeague, teams []entities.TeamItem, pastGames []entities.Game) entities.FullPlayer {
+func buildFullPlayer(player entities.Player, pastMatches []entities.MatchV2, leagues []entities.PlayersLeague, teams []entities.TeamItem, pastGames []entities.GameShort) entities.FullPlayerV2 {
 	type leagueStat struct {
 		goalsScoredNumber   int
 		goalsConcededNumber int
@@ -288,7 +288,7 @@ func buildFullPlayer(player entities.Player, pastMatches []entities.Match, leagu
 		}
 	}
 
-	return entities.FullPlayer{
+	return entities.FullPlayerV2{
 		ID:           player.ID,
 		Name:         player.Name,
 		SecondName:   player.SecondName,

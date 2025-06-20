@@ -8,18 +8,18 @@ import (
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql"
 
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 )
 
 type IService interface {
-	GetTeam(ctx context.Context, teamID int64) (entity.GetTeamResponseV2, error)
-	GetTeams(ctx context.Context, cityId int64, onlyFree bool) ([]entity.TeamShort, error)
-	GetTeamsByCity(ctx context.Context, onlyFree bool, cityID int64) ([]entity.TeamShort, error)
-	GetTeamsByLeague(ctx context.Context, leagueID int64) ([]entity.TeamByLeague, error)
-	GetTeamVsTeamTable(ctx context.Context, cityID, seasonID int64) (entity.GetTeamVsTeamTableResponse, error)
+	GetTeam(ctx context.Context, teamID int64) (entities.GetTeamResponseV2, error)
+	GetTeams(ctx context.Context, cityId int64, onlyFree bool) ([]entities.TeamShort, error)
+	GetTeamsByCity(ctx context.Context, onlyFree bool, cityID int64) ([]entities.TeamShort, error)
+	GetTeamsByLeague(ctx context.Context, leagueID int64) ([]entities.TeamByLeague, error)
+	GetTeamVsTeamTable(ctx context.Context, cityID, seasonID int64) (entities.GetTeamVsTeamTableResponse, error)
 
-	Create(ctx context.Context, team entity.CreateTeamRequest) (int64, error)
-	Update(ctx context.Context, team entity.UpdateTeamRequest) (bool, error)
+	Create(ctx context.Context, team entities.CreateTeamRequest) (int64, error)
+	Update(ctx context.Context, team entities.UpdateTeamRequest) (bool, error)
 	Delete(ctx context.Context, id int64) (bool, error)
 
 	AddPlayerIntoTeam(ctx context.Context, playerID, teamID int64) (bool, error)

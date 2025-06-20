@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/rs/zerolog"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql"
 )
@@ -15,13 +14,13 @@ type IService interface {
 	Get(ctx context.Context, gameID int) (entities.GetGameResponse, error)
 	Update(ctx context.Context, request entities.UpdateGameRequest) error
 	Find(ctx context.Context, request entities.FindGameRequest) (entities.FindGameResponse, error)
-	UpdateFutureGame(ctx context.Context, request entity.UpdateFutureGameRequest) error
-	GetGamesYears(ctx context.Context) (entity.GetGamesYearsResponse, error)
-	GetGameList(ctx context.Context, request entity.GetGameListRequest) (entity.GetGameListResponse, error)
+	UpdateFutureGame(ctx context.Context, request entities.UpdateFutureGameRequest) error
+	GetGamesYears(ctx context.Context) (entities.GetGamesYearsResponse, error)
+	GetGameList(ctx context.Context, request entities.GetGameListRequest) (entities.GetGameListResponse, error)
 	GetComingGames(ctx context.Context) (entities.GetComingGamesResponse, error)
-	GetFutureGames(ctx context.Context, cityID int) (entity.GetFutureGamesResponse, error)
-	CreateFutureGame(ctx context.Context, request entity.CreateFutureGameRequest) (entity.CreateFutureGameResponse, error)
-	GetTeamGames(ctx context.Context, teamID int) (entity.GetTeamGamesResponse, error)
+	GetFutureGames(ctx context.Context, cityID int) (entities.GetFutureGamesResponse, error)
+	CreateFutureGame(ctx context.Context, request entities.CreateFutureGameRequest) (entities.CreateFutureGameResponse, error)
+	GetTeamGames(ctx context.Context, teamID int) (entities.GetTeamGamesResponse, error)
 	DeleteFutureGame(ctx context.Context, gameID int64) error
 
 	GetLogger() *zerolog.Logger

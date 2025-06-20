@@ -12,7 +12,7 @@ import (
 	"github.com/valyala/bytebufferpool"
 	"google.golang.org/grpc/codes"
 
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 )
@@ -22,7 +22,7 @@ func decodeGetRoleListRequest(ctx context.Context, r *http.Request) (interface{}
 }
 
 func decodeCreateRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := &entity.CreateSeasonRequest{}
+	request := &entities.CreateSeasonRequest{}
 
 	buf := bytebufferpool.Get()
 	defer bytebufferpool.Put(buf)
@@ -41,7 +41,7 @@ func decodeCreateRequest(_ context.Context, r *http.Request) (interface{}, error
 }
 
 func decodeUpdateRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := &entity.UpdateSeasonRequest{}
+	request := &entities.UpdateSeasonRequest{}
 
 	buf := bytebufferpool.Get()
 	defer bytebufferpool.Put(buf)
@@ -60,7 +60,7 @@ func decodeUpdateRequest(_ context.Context, r *http.Request) (interface{}, error
 }
 
 func decodeDeleteRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := &entity.DeleteSeasonRequest{}
+	request := &entities.DeleteSeasonRequest{}
 
 	idParam := chi.URLParam(r, "id")
 	if idParam == "" {

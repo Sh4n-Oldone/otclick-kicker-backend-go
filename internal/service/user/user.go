@@ -10,14 +10,14 @@ import (
 	"google.golang.org/grpc/codes"
 
 	cnst "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/constant"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/crypt"
 	errTmpl "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/jwt"
 )
 
-func (s *Service) Create(ctx context.Context, request entity.CreateUserRequest) (*int64, error) {
+func (s *Service) Create(ctx context.Context, request entities.CreateUserRequest) (*int64, error) {
 	logger := s.logger.With().Interface("service", "Create").Logger()
 
 	// check Role exist
@@ -31,14 +31,14 @@ func (s *Service) Create(ctx context.Context, request entity.CreateUserRequest) 
 		return nil, err
 	}
 
-	user := &entity.User{
+	user := &entities.User{
 		Email:    request.Email,
 		Password: passHash,
 		Role:     role,
 	}
 
 	if request.TeamID != 0 {
-		user.Team = &entity.Team{ID: request.TeamID}
+		user.Team = &entities.Team{ID: request.TeamID}
 	}
 
 	id, err := s.rwdbOperations.CreateUser(logger, ctx, *user)
@@ -49,7 +49,7 @@ func (s *Service) Create(ctx context.Context, request entity.CreateUserRequest) 
 	return id, nil
 }
 
-func (s *Service) Login(ctx context.Context, user entity.User) (*int64, *string, *int64, *string, error) {
+func (s *Service) Login(ctx context.Context, user entities.User) (*int64, *string, *int64, *string, error) {
 	logger := s.logger.With().Interface("service", "Login").Logger()
 
 	_user, err := s.rdbOperations.GetUser(logger, ctx, nil, &user.Email)
@@ -70,7 +70,7 @@ func (s *Service) Login(ctx context.Context, user entity.User) (*int64, *string,
 	return &_user.ID, &_user.Role.Name, &_user.Team.ID, &token, nil
 }
 
-func (s *Service) ChangePassword(ctx context.Context, userOld, userNew entity.User) error {
+func (s *Service) ChangePassword(ctx context.Context, userOld, userNew entities.User) error {
 	logger := s.logger.With().Interface("service", "Login").Logger()
 
 	_user, err := s.rdbOperations.GetUser(logger, ctx, nil, &userOld.Email)
@@ -165,7 +165,7 @@ func (s *Service) CheckAuth(ctx context.Context, userID int64, token string) (*b
 	return &auth, &user.Role.Name, &user.Team.ID, nil
 }
 
-func (s *Service) GetUser(ctx context.Context, userID int64) (*entity.User, error) {
+func (s *Service) GetUser(ctx context.Context, userID int64) (*entities.User, error) {
 	logger := s.logger.With().Interface("service", "GetUser").Logger()
 
 	user, err := s.rdbOperations.GetUser(logger, ctx, &userID, nil)

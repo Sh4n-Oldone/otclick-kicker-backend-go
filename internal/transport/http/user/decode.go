@@ -10,13 +10,13 @@ import (
 
 	"github.com/valyala/bytebufferpool"
 	"google.golang.org/grpc/codes"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 )
 
 func decodeLoginRequest(ctx context.Context, r *http.Request) (interface{}, error) {
-	request := &entity.LoginUserRequest{}
+	request := &entities.LoginUserRequest{}
 
 	buf := bytebufferpool.Get()
 	defer bytebufferpool.Put(buf)
@@ -35,7 +35,7 @@ func decodeLoginRequest(ctx context.Context, r *http.Request) (interface{}, erro
 }
 
 func decodeCreateRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := &entity.CreateUserRequest{}
+	request := &entities.CreateUserRequest{}
 
 	buf := bytebufferpool.Get()
 	defer bytebufferpool.Put(buf)
@@ -54,7 +54,7 @@ func decodeCreateRequest(_ context.Context, r *http.Request) (interface{}, error
 }
 
 func decodeChangePasswordRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := &entity.ChangePasswordRequest{}
+	request := &entities.ChangePasswordRequest{}
 
 	buf := bytebufferpool.Get()
 	defer bytebufferpool.Put(buf)
@@ -88,6 +88,6 @@ func decodeCheckAuthRequest(_ context.Context, r *http.Request) (interface{}, er
 		err = stderr.New(errors.WrongParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
-	
-	return &entity.CheckAuthRequest{UserID: int64(userID), Token: paramToken}, nil
+
+	return &entities.CheckAuthRequest{UserID: int64(userID), Token: paramToken}, nil
 }

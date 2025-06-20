@@ -3,10 +3,10 @@ package season
 import (
 	"context"
 
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 )
 
-func (s *Service) GetList(ctx context.Context) ([]entity.Season, error) {
+func (s *Service) GetList(ctx context.Context) ([]entities.Season, error) {
 	logger := s.logger.With().Interface("service", "GetList").Logger()
 
 	seasons, err := s.rdbOperations.GetSeasonList(logger, ctx)
@@ -17,7 +17,7 @@ func (s *Service) GetList(ctx context.Context) ([]entity.Season, error) {
 	return seasons, nil
 }
 
-func (s *Service) Create(ctx context.Context, entity entity.Season) (*int64, error) {
+func (s *Service) Create(ctx context.Context, entity entities.Season) (*int64, error) {
 	logger := s.logger.With().Interface("service", "Create").Logger()
 
 	id, err := s.rwdbOperations.CreateSeason(logger, ctx, entity)
@@ -28,7 +28,7 @@ func (s *Service) Create(ctx context.Context, entity entity.Season) (*int64, err
 	return id, nil
 }
 
-func (s *Service) Update(ctx context.Context, entity entity.UpdateSeasonRequest) error {
+func (s *Service) Update(ctx context.Context, entity entities.UpdateSeasonRequest) error {
 	logger := s.logger.With().Interface("service", "Update").Logger()
 
 	err := s.rwdbOperations.UpdateSeason(logger, ctx, entity)

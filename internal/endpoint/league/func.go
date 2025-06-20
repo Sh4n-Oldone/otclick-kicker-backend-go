@@ -11,7 +11,7 @@ import (
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/helpers"
 
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/league"
 )
 
@@ -20,12 +20,12 @@ func makeGetList(s league.IService) endpoint.Endpoint {
 		// reqID, ctx := middleware.GetRequestID(ctx)
 		// serviceLogger := s.GetLogger().With().Str("Source", "makeCreate").Logger()
 
-		leagues, err := s.GetList(ctx, request.(*entity.GetLeagueListRequest).CityID)
+		leagues, err := s.GetList(ctx, request.(*entities.GetLeagueListRequest).CityID)
 		if err != nil {
 			return nil, err
 		}
 
-		response := &entity.GetLeagueListResponse{}
+		response := &entities.GetLeagueListResponse{}
 		response.Leagues = leagues
 
 		return response, nil
@@ -37,20 +37,20 @@ func makeCreate(s league.IService) endpoint.Endpoint {
 		// reqID, ctx := middleware.GetRequestID(ctx)
 		serviceLogger := s.GetLogger().With().Str("Source", "makeCreate").Logger()
 
-		err := helpers.ValidateCreateLeagueRequest(request.(*entity.CreateLeagueRequest))
+		err := helpers.ValidateCreateLeagueRequest(request.(*entities.CreateLeagueRequest))
 		if err != nil {
 			serviceLogger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).Msg(errors.FailedValidateRequest)
 			return nil, err
 		}
 
-		league := helpers.ConvertCreateLeagueRequestToLeague(request.(*entity.CreateLeagueRequest))
+		league := helpers.ConvertCreateLeagueRequestToLeague(request.(*entities.CreateLeagueRequest))
 
-		id, err := s.Create(ctx, *league, request.(*entity.CreateLeagueRequest).Teams)
+		id, err := s.Create(ctx, *league, request.(*entities.CreateLeagueRequest).Teams)
 		if err != nil {
 			return nil, err
 		}
 
-		response := &entity.CreateLeagueResponse{}
+		response := &entities.CreateLeagueResponse{}
 		response.ID = *id
 
 		return response, nil
@@ -62,20 +62,20 @@ func makeUpdate(s league.IService) endpoint.Endpoint {
 		// reqID, ctx := middleware.GetRequestID(ctx)
 		serviceLogger := s.GetLogger().With().Str("Source", "makeUpdate").Logger()
 
-		err := helpers.ValidateUpdateLeagueRequest(request.(*entity.UpdateLeagueRequest))
+		err := helpers.ValidateUpdateLeagueRequest(request.(*entities.UpdateLeagueRequest))
 		if err != nil {
 			serviceLogger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).Msg(errors.FailedValidateRequest)
 			return nil, err
 		}
 
-		league := helpers.ConvertUpdateLeagueRequestToLeague(request.(*entity.UpdateLeagueRequest))
+		league := helpers.ConvertUpdateLeagueRequestToLeague(request.(*entities.UpdateLeagueRequest))
 
-		err = s.Update(ctx, *league, request.(*entity.UpdateLeagueRequest).Teams)
+		err = s.Update(ctx, *league, request.(*entities.UpdateLeagueRequest).Teams)
 		if err != nil {
 			return nil, err
 		}
 
-		response := &entity.UpdateLeagueResponse{}
+		response := &entities.UpdateLeagueResponse{}
 		response.ID = league.ID
 
 		return response, nil
@@ -87,7 +87,7 @@ func makeDelete(s league.IService) endpoint.Endpoint {
 		// reqID, ctx := middleware.GetRequestID(ctx)
 		// serviceLogger := s.GetLogger().With().Str("Source", "makeCreate").Logger()
 
-		err := s.Delete(ctx, request.(*entity.DeleteLeagueRequest).ID)
+		err := s.Delete(ctx, request.(*entities.DeleteLeagueRequest).ID)
 		if err != nil {
 			return nil, err
 		}
@@ -101,7 +101,7 @@ func makeRecalc(s league.IService) endpoint.Endpoint {
 		// reqID, ctx := middleware.GetRequestID(ctx)
 		// serviceLogger := s.GetLogger().With().Str("Source", "makeCreate").Logger()
 
-		err := s.Recalc(ctx, request.(*entity.RecalcLeagueRequest).ID)
+		err := s.Recalc(ctx, request.(*entities.RecalcLeagueRequest).ID)
 		if err != nil {
 			return nil, err
 		}
@@ -118,7 +118,7 @@ func makeCreateExtraPoints(s league.IService) endpoint.Endpoint {
 		reqID, ctx := middleware.GetRequestID(ctx)
 		serviceLogger := s.GetLogger().With().Str("Source", "makeCreateExtraPoints").Logger()
 
-		req, err := helpers.CastRequest[*entity.CreateExtraPointsRequest](request)
+		req, err := helpers.CastRequest[*entities.CreateExtraPointsRequest](request)
 		if err != nil {
 			serviceLogger.Error().Err(err).Msg("Failed to cast request")
 			return false, error_templates.WrapErrorEndpoint(err, reqID)
@@ -148,7 +148,7 @@ func makeUpdateExtraPoints(s league.IService) endpoint.Endpoint {
 		reqID, ctx := middleware.GetRequestID(ctx)
 		serviceLogger := s.GetLogger().With().Str("Source", "makeUpdateExtraPoints").Logger()
 
-		req, err := helpers.CastRequest[*entity.UpdateExtraPointsRequest](request)
+		req, err := helpers.CastRequest[*entities.UpdateExtraPointsRequest](request)
 		if err != nil {
 			serviceLogger.Error().Err(err).Msg("Failed to cast request")
 			return false, error_templates.WrapErrorEndpoint(err, reqID)
@@ -179,7 +179,7 @@ func makeDeleteExtraPoints(s league.IService) endpoint.Endpoint {
 		reqID, ctx := middleware.GetRequestID(ctx)
 		serviceLogger := s.GetLogger().With().Str("Source", "makeDeleteExtraPoints").Logger()
 
-		req, err := helpers.CastRequest[*entity.IdRequest](request)
+		req, err := helpers.CastRequest[*entities.IdRequest](request)
 		if err != nil {
 			serviceLogger.Error().Err(err).Msg("Failed to cast request")
 			return false, error_templates.WrapErrorEndpoint(err, reqID)
@@ -210,7 +210,7 @@ func makeGetExtraPointsListByTeamAndLeagueId(s league.IService) endpoint.Endpoin
 		reqID, ctx := middleware.GetRequestID(ctx)
 		serviceLogger := s.GetLogger().With().Str("Source", "makeGetExtraPointsListByTeamAndLeagueId").Logger()
 
-		req, err := helpers.CastRequest[*entity.TeamLeagueIdRequest](request)
+		req, err := helpers.CastRequest[*entities.TeamLeagueIdRequest](request)
 		if err != nil {
 			serviceLogger.Error().Err(err).Msg("Failed to cast request")
 			return false, error_templates.WrapErrorEndpoint(err, reqID)
@@ -236,7 +236,7 @@ func makeGetExtraPointsById(s league.IService) endpoint.Endpoint {
 		reqID, ctx := middleware.GetRequestID(ctx)
 		serviceLogger := s.GetLogger().With().Str("Source", "makeGetExtraPointsById").Logger()
 
-		req, err := helpers.CastRequest[*entity.IdRequest](request)
+		req, err := helpers.CastRequest[*entities.IdRequest](request)
 		if err != nil {
 			serviceLogger.Error().Err(err).Msg("Failed to cast request")
 			return false, error_templates.WrapErrorEndpoint(err, reqID)

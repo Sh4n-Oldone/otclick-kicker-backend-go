@@ -3,10 +3,10 @@ package match
 import (
 	"context"
 
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 )
 
-func (s *Service) Create(ctx context.Context, match entity.Match) (*int64, error) {
+func (s *Service) Create(ctx context.Context, match entities.Match) (*int64, error) {
 	logger := s.logger.With().Interface("service", "Create").Logger()
 
 	id, err := s.rwdbOperations.CreateMatch(logger, ctx, match)
@@ -17,7 +17,7 @@ func (s *Service) Create(ctx context.Context, match entity.Match) (*int64, error
 	return &id, nil
 }
 
-func (s *Service) Update(ctx context.Context, match entity.Match) error {
+func (s *Service) Update(ctx context.Context, match entities.Match) error {
 	logger := s.logger.With().Interface("service", "Update").Logger()
 
 	err := s.rwdbOperations.UpdateMatch(logger, ctx, match)

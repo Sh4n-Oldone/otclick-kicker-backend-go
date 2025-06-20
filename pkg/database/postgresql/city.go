@@ -6,10 +6,10 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog"
 
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 )
 
-func (db *RDBOperation) GetCityList(logger zerolog.Logger, ctx context.Context, withDeleted bool) ([]entity.City, error) {
+func (db *RDBOperation) GetCityList(logger zerolog.Logger, ctx context.Context, withDeleted bool) ([]entities.City, error) {
 	query := queryGetCityList
 	if withDeleted {
 		query = queryGetCityListWithDeleted
@@ -22,10 +22,10 @@ func (db *RDBOperation) GetCityList(logger zerolog.Logger, ctx context.Context, 
 	}
 	defer rows.Close()
 
-	var cities []entity.City
+	var cities []entities.City
 
 	for rows.Next() {
-		var city entity.City
+		var city entities.City
 
 		err = rows.Scan(&city.ID, &city.Name, &city.Ru, &city.DeletedAt)
 		if err != nil {
@@ -39,7 +39,7 @@ func (db *RDBOperation) GetCityList(logger zerolog.Logger, ctx context.Context, 
 	return cities, nil
 }
 
-func (db *RWDBOperation) CreateCity(logger zerolog.Logger, ctx context.Context, city entity.City) (*int64, error) {
+func (db *RWDBOperation) CreateCity(logger zerolog.Logger, ctx context.Context, city entities.City) (*int64, error) {
 	var id int64
 
 	err := db.db.QueryRow(ctx, queryCreateCity, city.Name, city.Ru).Scan(&id)
@@ -51,7 +51,7 @@ func (db *RWDBOperation) CreateCity(logger zerolog.Logger, ctx context.Context, 
 	return &id, nil
 }
 
-func (db *RWDBOperation) UpdateCity(logger zerolog.Logger, ctx context.Context, city entity.City) error {
+func (db *RWDBOperation) UpdateCity(logger zerolog.Logger, ctx context.Context, city entities.City) error {
 	res, err := db.db.Exec(ctx, queryUpdateCity, city.Name, city.Ru, city.ID)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to update City record")

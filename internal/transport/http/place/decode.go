@@ -12,13 +12,13 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/valyala/bytebufferpool"
 	"google.golang.org/grpc/codes"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 )
 
 func decodeGetListRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := &entity.GetPlaceListRequest{}
+	request := &entities.GetPlaceListRequest{}
 
 	attrBarID := r.URL.Query().Get("barId")
 	if attrBarID != "" {
@@ -62,7 +62,7 @@ func decodeGetListRequest(_ context.Context, r *http.Request) (interface{}, erro
 }
 
 func decodeCreateRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := &entity.CreatePlaceRequest{}
+	request := &entities.CreatePlaceRequest{}
 
 	buf := bytebufferpool.Get()
 	defer bytebufferpool.Put(buf)
@@ -81,7 +81,7 @@ func decodeCreateRequest(_ context.Context, r *http.Request) (interface{}, error
 }
 
 func decodeUpdateRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := &entity.UpdatePlaceRequest{}
+	request := &entities.UpdatePlaceRequest{}
 
 	buf := bytebufferpool.Get()
 	defer bytebufferpool.Put(buf)
@@ -100,7 +100,7 @@ func decodeUpdateRequest(_ context.Context, r *http.Request) (interface{}, error
 }
 
 func decodeDeleteRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := &entity.DeletePlaceRequest{}
+	request := &entities.DeletePlaceRequest{}
 
 	attrID := chi.URLParam(r, "id")
 	if attrID == "" {

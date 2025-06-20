@@ -6,7 +6,6 @@ import (
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/constant"
 
 	"github.com/rs/zerolog"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 
@@ -16,8 +15,8 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-func (db *RDBOperation) GetTeam(logger zerolog.Logger, ctx context.Context, teamID int64) (entity.GetTeamResponse, error) {
-	team := entity.GetTeamResponse{}
+func (db *RDBOperation) GetTeam(logger zerolog.Logger, ctx context.Context, teamID int64) (entities.GetTeamResponse, error) {
+	team := entities.GetTeamResponse{}
 
 	const queryGetTeam = `SELECT t.id, t.name, t.short_name, t.avatar, t.city_id,
 	COALESCE(ARRAY_AGG(DISTINCT tll.league_id ORDER BY tll.league_id) FILTER (WHERE tll.league_id IS NOT NULL), ARRAY[]::int8[]),
@@ -33,13 +32,13 @@ func (db *RDBOperation) GetTeam(logger zerolog.Logger, ctx context.Context, team
 	err := db.db.QueryRow(ctx, queryGetTeam, teamID).Scan(&team.ID, &team.Name, &team.ShortName, &team.Avatar, &team.CityId, &leagueIDs, &playerIDs)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to GetTeam")
-		return entity.GetTeamResponse{}, DecodeDatabaseError(err)
+		return entities.GetTeamResponse{}, DecodeDatabaseError(err)
 	}
 	// ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	const queryGetLeagueByID = `SELECT name FROM leagues WHERE id = $1;`
-	var leagues = []entity.LeagueShort{}
+	var leagues = []entities.LeagueShort{}
 	for _, leagueID := range leagueIDs {
-		var l entity.LeagueShort
+		var l entities.LeagueShort
 
 		l.ID = leagueID
 
@@ -47,7 +46,7 @@ func (db *RDBOperation) GetTeam(logger zerolog.Logger, ctx context.Context, team
 			Scan(&l.Name)
 		if err != nil {
 			logger.Error().Stack().Err(err).Msg("failed to postgresql.GetTeam/queryGetPlayerByID")
-			return entity.GetTeamResponse{}, DecodeDatabaseError(stderr.New(errors.ErrGetPlayer))
+			return entities.GetTeamResponse{}, DecodeDatabaseError(stderr.New(errors.ErrGetPlayer))
 		}
 
 		leagues = append(leagues, l)
@@ -81,9 +80,9 @@ func (db *RDBOperation) GetTeam(logger zerolog.Logger, ctx context.Context, team
 	// альтернативные варианты перевода массива чисел в строку
 	//strings.Trim(strings.Join(strings.Fields(fmt.Sprint(leagueIDs)), ", "), "[]")
 	//strings.Trim(strings.Join(strings.Split(fmt.Sprint(leagueIDs), " "), ", "), "[]")
-	var players = []entity.PlayerGetTeam{}
+	var players = []entities.PlayerGetTeam{}
 	for _, playerID := range playerIDs {
-		var p entity.PlayerGetTeam
+		var p entities.PlayerGetTeam
 
 		err := db.db.QueryRow(ctx, queryGetPlayerByID, playerID).
 			Scan(&p.ID,
@@ -99,7 +98,7 @@ func (db *RDBOperation) GetTeam(logger zerolog.Logger, ctx context.Context, team
 				&p.RatingNumber)
 		if err != nil {
 			logger.Error().Stack().Err(err).Msg("failed to postgresql.GetTeam/queryGetPlayerByID")
-			return entity.GetTeamResponse{}, DecodeDatabaseError(stderr.New(errors.ErrGetPlayer))
+			return entities.GetTeamResponse{}, DecodeDatabaseError(stderr.New(errors.ErrGetPlayer))
 		}
 		players = append(players, p)
 	}
@@ -110,7 +109,7 @@ func (db *RDBOperation) GetTeam(logger zerolog.Logger, ctx context.Context, team
 	return team, nil
 }
 
-func (db *RDBOperation) GetTeams(logger zerolog.Logger, ctx context.Context, cityID int64, onlyFree bool) ([]entity.TeamShort, error) {
+func (db *RDBOperation) GetTeams(logger zerolog.Logger, ctx context.Context, cityID int64, onlyFree bool) ([]entities.TeamShort, error) {
 	query := `SELECT t.id, t.name, t.short_name FROM teams t
 		LEFT JOIN teams_leagues_links tll ON t.id = tll.team_id
 		WHERE t.city_id = $1`
@@ -126,10 +125,10 @@ func (db *RDBOperation) GetTeams(logger zerolog.Logger, ctx context.Context, cit
 	}
 	defer rows.Close()
 
-	var teams []entity.TeamShort
+	var teams []entities.TeamShort
 
 	for rows.Next() {
-		var team entity.TeamShort
+		var team entities.TeamShort
 
 		err = rows.Scan(&team.ID, &team.Name, &team.ShortName)
 		if err != nil {
@@ -143,7 +142,7 @@ func (db *RDBOperation) GetTeams(logger zerolog.Logger, ctx context.Context, cit
 	return teams, nil
 }
 
-func (db *RDBOperation) GetTeamsByCity(logger zerolog.Logger, ctx context.Context, onlyFree bool, cityID int64) ([]entity.TeamShort, error) {
+func (db *RDBOperation) GetTeamsByCity(logger zerolog.Logger, ctx context.Context, onlyFree bool, cityID int64) ([]entities.TeamShort, error) {
 	const query = `SELECT t.id, t.name, t.short_name
 		FROM teams t
 		LEFT JOIN teams_leagues_links tll ON t.id = tll.team_id
@@ -158,10 +157,10 @@ func (db *RDBOperation) GetTeamsByCity(logger zerolog.Logger, ctx context.Contex
 	}
 	defer rows.Close()
 
-	var teams []entity.TeamShort
+	var teams []entities.TeamShort
 
 	for rows.Next() {
-		var team entity.TeamShort
+		var team entities.TeamShort
 
 		err = rows.Scan(&team.ID, &team.Name, &team.ShortName)
 		if err != nil {
@@ -175,7 +174,7 @@ func (db *RDBOperation) GetTeamsByCity(logger zerolog.Logger, ctx context.Contex
 	return teams, nil
 }
 
-func (db *RDBOperation) GetTeamsByLeague(logger zerolog.Logger, ctx context.Context, leagueID int64) ([]entity.TeamByLeague, error) {
+func (db *RDBOperation) GetTeamsByLeague(logger zerolog.Logger, ctx context.Context, leagueID int64) ([]entities.TeamByLeague, error) {
 	const query = `SELECT t.id, t.name, t.short_name, t.avatar, t.city_id, COALESCE(ARRAY_AGG(ptl.player_id) FILTER (WHERE ptl.player_id IS NOT NULL), ARRAY[]::int8[])
 	FROM teams t
 	LEFT JOIN players_teams_links ptl ON ptl.team_id = t.id
@@ -191,10 +190,10 @@ func (db *RDBOperation) GetTeamsByLeague(logger zerolog.Logger, ctx context.Cont
 	}
 	defer rows.Close()
 
-	var teams []entity.TeamByLeague
+	var teams []entities.TeamByLeague
 
 	for rows.Next() {
-		var team entity.TeamByLeague
+		var team entities.TeamByLeague
 
 		err = rows.Scan(&team.Id, &team.Name, &team.ShortName, &team.Avatar, &team.CityId, &team.Players)
 		if err != nil {
@@ -212,16 +211,16 @@ func (db *RDBOperation) GetTeamsByLeague(logger zerolog.Logger, ctx context.Cont
 // ///////////////////////////////////////////////////////////////////////////////////
 // ///////////////////////////////////////////////////////////////////////////////////
 
-func (db *RDBOperation) FetchLeagues(logger zerolog.Logger, ctx context.Context, cityID int64, seasonID int64) ([]entity.League, error) {
+func (db *RDBOperation) FetchLeagues(logger zerolog.Logger, ctx context.Context, cityID int64, seasonID int64) ([]entities.League, error) {
 	rows, err := db.db.Query(ctx, "SELECT id, name FROM leagues WHERE city_id = $1 AND season_id = $2", cityID, seasonID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var leagues []entity.League
+	var leagues []entities.League
 	for rows.Next() {
-		var league entity.League
+		var league entities.League
 		err = rows.Scan(&league.ID, &league.Name)
 		if err != nil {
 			return nil, err
@@ -232,7 +231,7 @@ func (db *RDBOperation) FetchLeagues(logger zerolog.Logger, ctx context.Context,
 	return leagues, nil
 }
 
-func (db *RDBOperation) FetchTeams(logger zerolog.Logger, ctx context.Context, leagueID int64) ([]entity.Team, error) {
+func (db *RDBOperation) FetchTeams(logger zerolog.Logger, ctx context.Context, leagueID int64) ([]entities.Team, error) {
 	const query = `SELECT t.id, t.short_name FROM teams t 
 		LEFT JOIN teams_leagues_links tll ON t.id = tll.team_id
 		WHERE tll.league_id = $1`
@@ -243,9 +242,9 @@ func (db *RDBOperation) FetchTeams(logger zerolog.Logger, ctx context.Context, l
 	}
 	defer rows.Close()
 
-	var teams []entity.Team
+	var teams []entities.Team
 	for rows.Next() {
-		var team entity.Team
+		var team entities.Team
 		err = rows.Scan(&team.ID, &team.ShortName)
 		if err != nil {
 			return nil, err
@@ -256,7 +255,7 @@ func (db *RDBOperation) FetchTeams(logger zerolog.Logger, ctx context.Context, l
 	return teams, nil
 }
 
-func (db *RDBOperation) FetchPastGames(logger zerolog.Logger, ctx context.Context, teamID1, teamID2, cityID, leagueID int64, tiebreak *bool) ([]entity.GameFetch, error) {
+func (db *RDBOperation) FetchPastGames(logger zerolog.Logger, ctx context.Context, teamID1, teamID2, cityID, leagueID int64, tiebreak *bool) ([]entities.GameFetch, error) {
 	const query = `SELECT id, tech_loose_team_id FROM games WHERE team1_id = $1 AND team2_id = $2 AND city_id = $3 AND league_id = $4 AND date < now()
 		AND CASE
 		WHEN $5 = true THEN is_tiebreak = true
@@ -271,9 +270,9 @@ func (db *RDBOperation) FetchPastGames(logger zerolog.Logger, ctx context.Contex
 	}
 	defer rows.Close()
 
-	var games []entity.GameFetch
+	var games []entities.GameFetch
 	for rows.Next() {
-		var game entity.GameFetch
+		var game entities.GameFetch
 		err = rows.Scan(&game.ID, &game.TechLooseTeamID)
 		if err != nil {
 			return nil, err
@@ -284,7 +283,7 @@ func (db *RDBOperation) FetchPastGames(logger zerolog.Logger, ctx context.Contex
 	return games, nil
 }
 
-func (db *RDBOperation) FetchPastGamesTiebreak(logger zerolog.Logger, ctx context.Context, leagueId int64) ([]entity.GameTiebreak, error) {
+func (db *RDBOperation) FetchPastGamesTiebreak(logger zerolog.Logger, ctx context.Context, leagueId int64) ([]entities.GameTiebreak, error) {
 	const query = `
 	SELECT 
 		g.id,
@@ -310,10 +309,10 @@ func (db *RDBOperation) FetchPastGamesTiebreak(logger zerolog.Logger, ctx contex
 	}
 	defer rows.Close()
 
-	var games []entity.GameTiebreak
+	var games []entities.GameTiebreak
 
 	for rows.Next() {
-		game := entity.GameTiebreak{}
+		game := entities.GameTiebreak{}
 		err = rows.Scan(
 			&game.Id,
 			&game.CityId,
@@ -337,7 +336,7 @@ func (db *RDBOperation) FetchPastGamesTiebreak(logger zerolog.Logger, ctx contex
 	return games, nil
 }
 
-func (db *RDBOperation) FetchMatches(logger zerolog.Logger, ctx context.Context, gameID int64) ([]entity.ShortMatch, error) {
+func (db *RDBOperation) FetchMatches(logger zerolog.Logger, ctx context.Context, gameID int64) ([]entities.ShortMatch, error) {
 	const query = `SELECT id, team1_id, team2_id, score_team1, score_team2 FROM matches
 					WHERE game_id = $1
 					ORDER BY id`
@@ -349,9 +348,9 @@ func (db *RDBOperation) FetchMatches(logger zerolog.Logger, ctx context.Context,
 	}
 	defer rows.Close()
 
-	var matches []entity.ShortMatch
+	var matches []entities.ShortMatch
 	for rows.Next() {
-		var match entity.ShortMatch
+		var match entities.ShortMatch
 		err = rows.Scan(
 			&match.ID,
 			&match.Team1ID,
@@ -368,7 +367,7 @@ func (db *RDBOperation) FetchMatches(logger zerolog.Logger, ctx context.Context,
 }
 
 // /////////////////////////
-func (db *RDBOperation) TeamsHaveNoGames(logger zerolog.Logger, ctx context.Context, teams []entity.Team, seasonID int64) (bool, error) {
+func (db *RDBOperation) TeamsHaveNoGames(logger zerolog.Logger, ctx context.Context, teams []entities.Team, seasonID int64) (bool, error) {
 	const queryGame = `SELECT g.id
 					   FROM games g
 					   JOIN leagues l ON g.league_id = l.id
@@ -403,7 +402,7 @@ func (db *RDBOperation) TeamsHaveNoGames(logger zerolog.Logger, ctx context.Cont
 // //////////////////////////////////////////////////////////////////////////////////
 // //////////////////////////////////////////////////////////////////////////////////
 // //////////////////////////////////////////////////////////////////////////////////
-func (db *RWDBOperation) CreateTeam(logger zerolog.Logger, ctx context.Context, team entity.CreateTeamRequest) (int64, error) {
+func (db *RWDBOperation) CreateTeam(logger zerolog.Logger, ctx context.Context, team entities.CreateTeamRequest) (int64, error) {
 	var teamId int64
 	const queryCreateTeam = `INSERT INTO teams (name, short_name, avatar, city_id) VALUES ($1, $2, $3, $4) RETURNING id`
 
@@ -434,7 +433,7 @@ func (db *RWDBOperation) CreateTeam(logger zerolog.Logger, ctx context.Context, 
 	return teamId, nil
 }
 
-func (db *RWDBOperation) UpdateTeam(logger zerolog.Logger, ctx context.Context, team entity.UpdateTeamRequest) (bool, error) {
+func (db *RWDBOperation) UpdateTeam(logger zerolog.Logger, ctx context.Context, team entities.UpdateTeamRequest) (bool, error) {
 	var fields []string
 	var values []interface{}
 	index := 1
@@ -655,7 +654,7 @@ func (db *RDBOperation) GetTeamExtraPointsCount(logger zerolog.Logger, ctx conte
 
 // ///////////////////////////////////////////////////////////////////////////////////////
 // ///////////////////////////////////////////////////////////////////////////////////////
-func (db *RWDBOperation) CreateExtraPoints(logger zerolog.Logger, ctx context.Context, req *entity.CreateExtraPointsRequest) (int64, error) {
+func (db *RWDBOperation) CreateExtraPoints(logger zerolog.Logger, ctx context.Context, req *entities.CreateExtraPointsRequest) (int64, error) {
 	const query = "INSERT INTO team_extra_points(team_id, league_id, reason, points) VALUES($1, $2, $3, $4) RETURNING id"
 
 	var id int64
@@ -669,7 +668,7 @@ func (db *RWDBOperation) CreateExtraPoints(logger zerolog.Logger, ctx context.Co
 	return id, nil
 }
 
-func (db *RWDBOperation) UpdateExtraPoints(logger zerolog.Logger, ctx context.Context, req *entity.UpdateExtraPointsRequest) (bool, error) {
+func (db *RWDBOperation) UpdateExtraPoints(logger zerolog.Logger, ctx context.Context, req *entities.UpdateExtraPointsRequest) (bool, error) {
 	const query = `UPDATE team_extra_points SET
 		team_id = COALESCE($2, team_id),
 		league_id = COALESCE($3, league_id),
@@ -707,7 +706,7 @@ func (db *RWDBOperation) DeleteExtraPoints(logger zerolog.Logger, ctx context.Co
 	return true, nil
 }
 
-func (db *RDBOperation) GetExtraPointsListByTeamAndLeagueId(logger zerolog.Logger, ctx context.Context, teamId, leagueId int64) ([]entity.ExtraPoints, error) {
+func (db *RDBOperation) GetExtraPointsListByTeamAndLeagueId(logger zerolog.Logger, ctx context.Context, teamId, leagueId int64) ([]entities.ExtraPoints, error) {
 	const query = `SELECT id, team_id, league_id, reason, points
 	FROM team_extra_points
 	WHERE team_id = $1 AND league_id = $2;`
@@ -719,10 +718,10 @@ func (db *RDBOperation) GetExtraPointsListByTeamAndLeagueId(logger zerolog.Logge
 		return nil, DecodeDatabaseError(err)
 	}
 
-	var extraPointsList []entity.ExtraPoints
+	var extraPointsList []entities.ExtraPoints
 
 	for rows.Next() {
-		var extraPoints entity.ExtraPoints
+		var extraPoints entities.ExtraPoints
 
 		err = rows.Scan(
 			&extraPoints.Id,
@@ -742,12 +741,12 @@ func (db *RDBOperation) GetExtraPointsListByTeamAndLeagueId(logger zerolog.Logge
 	return extraPointsList, nil
 }
 
-func (db *RDBOperation) GetExtraPointsById(logger zerolog.Logger, ctx context.Context, extraPointsId int64) (entity.ExtraPoints, error) {
+func (db *RDBOperation) GetExtraPointsById(logger zerolog.Logger, ctx context.Context, extraPointsId int64) (entities.ExtraPoints, error) {
 	const query = `SELECT id, team_id, league_id, reason, points
 	FROM team_extra_points
 	WHERE id = $1`
 
-	var extraPoints entity.ExtraPoints
+	var extraPoints entities.ExtraPoints
 
 	err := db.db.QueryRow(ctx, query, extraPointsId).Scan(
 		&extraPoints.Id,
@@ -759,7 +758,7 @@ func (db *RDBOperation) GetExtraPointsById(logger zerolog.Logger, ctx context.Co
 
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to postgresql.GetExtraPointsById")
-		return entity.ExtraPoints{}, DecodeDatabaseError(err)
+		return entities.ExtraPoints{}, DecodeDatabaseError(err)
 	}
 
 	return extraPoints, nil
@@ -768,8 +767,8 @@ func (db *RDBOperation) GetExtraPointsById(logger zerolog.Logger, ctx context.Co
 /////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////
 
-func (db *RDBOperation) GetTeamById(logger zerolog.Logger, ctx context.Context, teamID int64) (entity.TeamV2, error) {
-	team := entity.TeamV2{}
+func (db *RDBOperation) GetTeamById(logger zerolog.Logger, ctx context.Context, teamID int64) (entities.TeamV2, error) {
+	team := entities.TeamV2{}
 
 	const queryGetTeam = `
 	SELECT 
@@ -787,13 +786,13 @@ func (db *RDBOperation) GetTeamById(logger zerolog.Logger, ctx context.Context, 
 	err := db.db.QueryRow(ctx, queryGetTeam, teamID).Scan(&team.Id, &team.Name, &team.ShortName, &team.CityId, &team.Avatar, &team.PlayersIds)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to postgresql.GetTeamById")
-		return entity.TeamV2{}, DecodeDatabaseError(err)
+		return entities.TeamV2{}, DecodeDatabaseError(err)
 	}
 
 	return team, nil
 }
 
-func (db *RDBOperation) GetLeagueListByTeamId(logger zerolog.Logger, ctx context.Context, teamID int64) ([]entity.LeagueShort, error) {
+func (db *RDBOperation) GetLeagueListByTeamId(logger zerolog.Logger, ctx context.Context, teamID int64) ([]entities.LeagueShort, error) {
 	const query = `
 		SELECT 
 			l.id,
@@ -802,7 +801,7 @@ func (db *RDBOperation) GetLeagueListByTeamId(logger zerolog.Logger, ctx context
 			LEFT JOIN teams_leagues_links tll ON l.id = tll.league_id
 		WHERE tll.team_id = $1;`
 
-	var leagues []entity.LeagueShort
+	var leagues []entities.LeagueShort
 
 	rows, err := db.db.Query(ctx, query, teamID)
 	if err != nil {
@@ -812,7 +811,7 @@ func (db *RDBOperation) GetLeagueListByTeamId(logger zerolog.Logger, ctx context
 	defer rows.Close()
 
 	for rows.Next() {
-		league := entity.LeagueShort{}
+		league := entities.LeagueShort{}
 		if err = rows.Scan(&league.ID, &league.Name); err != nil {
 			logger.Error().Stack().Err(err).Msg("failed to postgresql.GetLeagueListByTeamId")
 			return nil, DecodeDatabaseError(err)
@@ -823,7 +822,7 @@ func (db *RDBOperation) GetLeagueListByTeamId(logger zerolog.Logger, ctx context
 	return leagues, nil
 }
 
-func (db *RDBOperation) GetCaptainByTeamId(logger zerolog.Logger, ctx context.Context, teamID int64) (entity.User, error) {
+func (db *RDBOperation) GetCaptainByTeamId(logger zerolog.Logger, ctx context.Context, teamID int64) (entities.User, error) {
 	const query = `
 		SELECT
 			u.id,
@@ -836,20 +835,20 @@ func (db *RDBOperation) GetCaptainByTeamId(logger zerolog.Logger, ctx context.Co
 			JOIN user_roles r ON r.id = u.role_id
 		WHERE t.id = $1 AND u.role_id = $2;`
 
-	var captain entity.User
-	captain.Role = &entity.Role{}
+	var captain entities.User
+	captain.Role = &entities.Role{}
 
 	err := db.db.QueryRow(ctx, query, teamID, constant.CaptainRoleId).
 		Scan(&captain.ID, &captain.Email, &captain.Role.ID, &captain.Role.Name, &captain.Role.Description)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.GetCaptainByTeamId")
-		return entity.User{}, DecodeDatabaseError(err)
+		return entities.User{}, DecodeDatabaseError(err)
 	}
 
 	return captain, nil
 }
 
-func (db *RDBOperation) GetTeamGamesInLeague(logger zerolog.Logger, ctx context.Context, teamId, leagueId int64, tiebreak *bool) ([]entity.Game, error) {
+func (db *RDBOperation) GetTeamGamesInLeague(logger zerolog.Logger, ctx context.Context, teamId, leagueId int64, tiebreak *bool) ([]entities.Game, error) {
 	const query = `
 		SELECT 
 			g.id,
@@ -876,10 +875,10 @@ func (db *RDBOperation) GetTeamGamesInLeague(logger zerolog.Logger, ctx context.
 	}
 	defer rows.Close()
 
-	var games []entity.Game
+	var games []entities.Game
 
 	for rows.Next() {
-		game := entity.Game{}
+		game := entities.Game{}
 		err = rows.Scan(
 			&game.Id,
 			&game.CityId,

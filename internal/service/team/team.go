@@ -8,7 +8,7 @@ import (
 	"math"
 	"net/http"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/constant"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
 	"strconv"
 )
@@ -26,17 +26,17 @@ import (
 // AddPlayerIntoTeam
 // RemovePlayerFromTeam
 
-func (s *Service) GetTeam(ctx context.Context, teamID int64) (entity.GetTeamResponseV2, error) {
+func (s *Service) GetTeam(ctx context.Context, teamID int64) (entities.GetTeamResponseV2, error) {
 	logger := s.logger.With().Str("service", "GetTeam").Logger()
 	timeout, cancel := context.WithTimeout(ctx, s.config.RDB.MaxIdleConnectionTimeout)
 	defer cancel()
 
 	var (
-		teamResponse    entity.GetTeamResponseV2
-		team            entity.TeamV2
-		teamLeagues     []entity.LeagueShort
-		captain         entity.User
-		teamLeagueStats []entity.TeamLeagueStat
+		teamResponse    entities.GetTeamResponseV2
+		team            entities.TeamV2
+		teamLeagues     []entities.LeagueShort
+		captain         entities.User
+		teamLeagueStats []entities.TeamLeagueStat
 	)
 
 	g, ctx := errgroup.WithContext(timeout)
@@ -60,21 +60,21 @@ func (s *Service) GetTeam(ctx context.Context, teamID int64) (entity.GetTeamResp
 	})
 
 	if err := g.Wait(); err != nil {
-		return entity.GetTeamResponseV2{}, err
+		return entities.GetTeamResponseV2{}, err
 	}
 
 	fullPlayers, err := s.getPlayersAddStat(timeout, team.PlayersIds)
 	if err != nil {
-		return entity.GetTeamResponseV2{}, err
+		return entities.GetTeamResponseV2{}, err
 	}
 
 	for _, l := range teamLeagues {
-		teamLeagueStat := entity.TeamLeagueStat{}
+		teamLeagueStat := entities.TeamLeagueStat{}
 
 		tiebreak := false // tiebreak игры не учитываем
 		games, err := s.rdbOperations.GetTeamGamesInLeague(logger, timeout, teamID, l.ID, &tiebreak)
 		if err != nil {
-			return entity.GetTeamResponseV2{}, err
+			return entities.GetTeamResponseV2{}, err
 		}
 
 		var scoredGoals int = 0
@@ -99,7 +99,7 @@ func (s *Service) GetTeam(ctx context.Context, teamID int64) (entity.GetTeamResp
 
 			matches, err := s.rdbOperations.GetMatchListByGameID(timeout, logger, game.Id)
 			if err != nil {
-				return entity.GetTeamResponseV2{}, err
+				return entities.GetTeamResponseV2{}, err
 			}
 
 			for _, m := range matches {
@@ -141,14 +141,14 @@ func (s *Service) GetTeam(ctx context.Context, teamID int64) (entity.GetTeamResp
 	return teamResponse, nil
 }
 
-func (s *Service) getPlayersAddStat(ctx context.Context, playersIds []int64) ([]entity.FullPlayer, error) {
+func (s *Service) getPlayersAddStat(ctx context.Context, playersIds []int64) ([]entities.FullPlayer, error) {
 	logger := s.logger.With().Str("service", "getPlayersAddStat").Logger()
 
-	var fullPlayers []entity.FullPlayer
+	var fullPlayers []entities.FullPlayer
 
 	for i := range playersIds {
 
-		var fp entity.FullPlayer
+		var fp entities.FullPlayer
 
 		fullPlayer, err := s.playerSrv.Get(ctx, int(playersIds[i]))
 		if err != nil {
@@ -168,7 +168,7 @@ func (s *Service) getPlayersAddStat(ctx context.Context, playersIds []int64) ([]
 
 		if fullPlayer.Leagues != nil {
 
-			fp.Leagues = make([]entity.LeagueItem, len(fullPlayer.Leagues))
+			fp.Leagues = make([]entities.LeagueItem, len(fullPlayer.Leagues))
 
 			for j, l := range fullPlayer.Leagues {
 				fp.Leagues[j].ID = l.ID
@@ -182,7 +182,7 @@ func (s *Service) getPlayersAddStat(ctx context.Context, playersIds []int64) ([]
 
 				if l.Teams != nil {
 
-					fp.Leagues[j].Teams = make([]entity.TeamItem, len(l.Teams))
+					fp.Leagues[j].Teams = make([]entities.TeamItem, len(l.Teams))
 
 					for k, t := range l.Teams {
 						fp.Leagues[j].Teams[k].ID = t.ID
@@ -202,7 +202,7 @@ func (s *Service) getPlayersAddStat(ctx context.Context, playersIds []int64) ([]
 	return fullPlayers, nil
 }
 
-func (s *Service) GetTeams(ctx context.Context, cityId int64, onlyFree bool) ([]entity.TeamShort, error) {
+func (s *Service) GetTeams(ctx context.Context, cityId int64, onlyFree bool) ([]entities.TeamShort, error) {
 	logger := s.logger.With().Interface("service", "GetTeams").Logger()
 
 	teams, err := s.rdbOperations.GetTeams(logger, ctx, cityId, onlyFree)
@@ -213,7 +213,7 @@ func (s *Service) GetTeams(ctx context.Context, cityId int64, onlyFree bool) ([]
 	return teams, nil
 }
 
-func (s *Service) GetTeamsByCity(ctx context.Context, onlyFree bool, cityID int64) ([]entity.TeamShort, error) {
+func (s *Service) GetTeamsByCity(ctx context.Context, onlyFree bool, cityID int64) ([]entities.TeamShort, error) {
 	logger := s.logger.With().Interface("service", "GetTeamsByCity").Logger()
 
 	teams, err := s.rdbOperations.GetTeamsByCity(logger, ctx, onlyFree, cityID)
@@ -224,7 +224,7 @@ func (s *Service) GetTeamsByCity(ctx context.Context, onlyFree bool, cityID int6
 	return teams, nil
 }
 
-func (s *Service) GetTeamsByLeague(ctx context.Context, leagueID int64) ([]entity.TeamByLeague, error) {
+func (s *Service) GetTeamsByLeague(ctx context.Context, leagueID int64) ([]entities.TeamByLeague, error) {
 	logger := s.logger.With().Interface("service", "GetTeamsByLeague").Logger()
 
 	teams, err := s.rdbOperations.GetTeamsByLeague(logger, ctx, leagueID)
@@ -239,33 +239,33 @@ func (s *Service) GetTeamsByLeague(ctx context.Context, leagueID int64) ([]entit
 // ///////////////////////////////////////////////////////////////////////////////////
 // ///////////////////////////////////////////////////////////////////////////////////
 
-func (s *Service) GetTeamVsTeamTable(ctx context.Context, cityID, seasonID int64) (entity.GetTeamVsTeamTableResponse, error) {
+func (s *Service) GetTeamVsTeamTable(ctx context.Context, cityID, seasonID int64) (entities.GetTeamVsTeamTableResponse, error) {
 	logger := s.logger.With().Interface("service", "GetTeamVsTeamTable").Logger()
 	leagues, err := s.rdbOperations.FetchLeagues(logger, ctx, cityID, seasonID)
 
 	if err != nil {
 		logger.Error().Err(err).Msg("error GetTeamVsTeamTable")
-		return entity.GetTeamVsTeamTableResponse{}, err
+		return entities.GetTeamVsTeamTableResponse{}, err
 	}
 
 	if len(leagues) == 0 {
 		logger.Error().Err(err).Msg("No leagues found")
-		return entity.GetTeamVsTeamTableResponse{}, error_templates.New("No leagues found", errors.New("No leagues found"), codes.NotFound, http.StatusNotFound)
+		return entities.GetTeamVsTeamTableResponse{}, error_templates.New("No leagues found", errors.New("No leagues found"), codes.NotFound, http.StatusNotFound)
 	}
 
-	var data []entity.Data
+	var data []entities.Data
 	//////////////////////////////////
 	for _, league := range leagues { // Проходим по лигам нужного города
-		var dataItem entity.Data
+		var dataItem entities.Data
 		dataItem.LeagueID = league.ID
 		dataItem.LeagueName = league.Name
 
-		dataItem.Table.Columns = append(dataItem.Table.Columns, entity.Column{Uid: "teamShortName", Name: "Команда"})
+		dataItem.Table.Columns = append(dataItem.Table.Columns, entities.Column{Uid: "teamShortName", Name: "Команда"})
 
 		teams, err := s.rdbOperations.FetchTeams(logger, ctx, league.ID)
 		if err != nil {
 			logger.Error().Err(err).Msg("error get teams")
-			return entity.GetTeamVsTeamTableResponse{}, err
+			return entities.GetTeamVsTeamTableResponse{}, err
 		}
 		if len(teams) == 0 {
 			continue
@@ -273,11 +273,11 @@ func (s *Service) GetTeamVsTeamTable(ctx context.Context, cityID, seasonID int64
 		noGames, err := s.rdbOperations.TeamsHaveNoGames(logger, ctx, teams, seasonID)
 		if err != nil {
 			logger.Error().Err(err).Msg("database error")
-			return entity.GetTeamVsTeamTableResponse{}, err
+			return entities.GetTeamVsTeamTableResponse{}, err
 		}
 		if noGames { // если нет игр в лиге
 			for _, team := range teams { // голы заполняем нулями
-				var bodyItem entity.Body
+				var bodyItem entities.Body
 
 				bodyItem.Id = team.ID
 				bodyItem.TeamShortName = team.ShortName
@@ -286,7 +286,7 @@ func (s *Service) GetTeamVsTeamTable(ctx context.Context, cityID, seasonID int64
 				bodyItem.GamesPlayed = 0
 				bodyItem.GamesToPlay = int64((len(teams) - 1) * 2)
 				for _, t := range teams { // и отображаем нулевой счет
-					var cell entity.TableCell
+					var cell entities.TableCell
 
 					cell.Game1ID = 0
 					cell.Game2ID = 0
@@ -301,8 +301,8 @@ func (s *Service) GetTeamVsTeamTable(ctx context.Context, cityID, seasonID int64
 		}
 		//////////////////////////////////
 		for _, team := range teams { // Проходим по командам текущей лиги
-			var bodyItem entity.Body
-			bodyItem.TableCell = make(map[string]entity.TableCell, 0)
+			var bodyItem entities.Body
+			bodyItem.TableCell = make(map[string]entities.TableCell, 0)
 
 			bodyItem.Id = team.ID
 			bodyItem.TeamShortName = team.ShortName
@@ -312,7 +312,7 @@ func (s *Service) GetTeamVsTeamTable(ctx context.Context, cityID, seasonID int64
 			bodyItem.GamesToPlay = int64((len(teams) - 1) * 2)
 			//////////////////////////////////
 			for _, t := range teams { // Проходим по командам-соперникам
-				var cell entity.TableCell
+				var cell entities.TableCell
 
 				cell.Game1ID = 0
 				cell.Game2ID = 0
@@ -329,12 +329,12 @@ func (s *Service) GetTeamVsTeamTable(ctx context.Context, cityID, seasonID int64
 				gamesHome, err := s.rdbOperations.FetchPastGames(logger, ctx, team.ID, t.ID, cityID, league.ID, &tiebreak)
 				if err != nil {
 					logger.Error().Err(err).Msg("database error")
-					return entity.GetTeamVsTeamTableResponse{}, err
+					return entities.GetTeamVsTeamTableResponse{}, err
 				}
 				gamesOut, err := s.rdbOperations.FetchPastGames(logger, ctx, t.ID, team.ID, cityID, league.ID, &tiebreak)
 				if err != nil {
 					logger.Error().Err(err).Msg("database error")
-					return entity.GetTeamVsTeamTableResponse{}, err
+					return entities.GetTeamVsTeamTableResponse{}, err
 				}
 
 				if len(gamesHome) == 0 && len(gamesOut) == 0 { //если нет ни домашних ни выездных игр
@@ -371,7 +371,7 @@ func (s *Service) GetTeamVsTeamTable(ctx context.Context, cityID, seasonID int64
 						gamesHomeMatches, err := s.rdbOperations.FetchMatches(logger, ctx, cell.Game1ID)
 						if err != nil {
 							logger.Error().Err(err).Msg("database error")
-							return entity.GetTeamVsTeamTableResponse{}, err
+							return entities.GetTeamVsTeamTableResponse{}, err
 						}
 						//////////////////////////////////
 						for _, match := range gamesHomeMatches { // Проходим по домашним матчам
@@ -409,7 +409,7 @@ func (s *Service) GetTeamVsTeamTable(ctx context.Context, cityID, seasonID int64
 						gamesOutMatches, err := s.rdbOperations.FetchMatches(logger, ctx, cell.Game2ID)
 						if err != nil {
 							logger.Error().Err(err).Msg("database error")
-							return entity.GetTeamVsTeamTableResponse{}, err
+							return entities.GetTeamVsTeamTableResponse{}, err
 						}
 						//////////////////////////////////
 						for _, match := range gamesOutMatches { // Проходим по выездным матчам
@@ -436,7 +436,7 @@ func (s *Service) GetTeamVsTeamTable(ctx context.Context, cityID, seasonID int64
 				extraPoints, err := s.rdbOperations.GetTeamExtraPointsCount(logger, ctx, team.ID, league.ID)
 				if err != nil {
 					logger.Error().Err(err).Msg("database error")
-					return entity.GetTeamVsTeamTableResponse{}, err
+					return entities.GetTeamVsTeamTableResponse{}, err
 				}
 				bodyItem.Score += extraPoints // Один раз за лигу считаем дополнительные очки команды
 
@@ -447,16 +447,16 @@ func (s *Service) GetTeamVsTeamTable(ctx context.Context, cityID, seasonID int64
 			dataItem.Table.Body = append(dataItem.Table.Body, bodyItem)
 
 		} // команды текущей лиги
-		dataItem.Table.Columns = append(dataItem.Table.Columns, entity.Column{Uid: "score", Name: "Очки"})
-		dataItem.Table.Columns = append(dataItem.Table.Columns, entity.Column{Uid: "differenceInScore", Name: "+/-"})
-		dataItem.Table.Columns = append(dataItem.Table.Columns, entity.Column{Uid: "gamesPlayed", Name: "Игры"})
-		dataItem.Table.Columns = append(dataItem.Table.Columns, entity.Column{Uid: "gamesToPlay", Name: "Осталось"})
+		dataItem.Table.Columns = append(dataItem.Table.Columns, entities.Column{Uid: "score", Name: "Очки"})
+		dataItem.Table.Columns = append(dataItem.Table.Columns, entities.Column{Uid: "differenceInScore", Name: "+/-"})
+		dataItem.Table.Columns = append(dataItem.Table.Columns, entities.Column{Uid: "gamesPlayed", Name: "Игры"})
+		dataItem.Table.Columns = append(dataItem.Table.Columns, entities.Column{Uid: "gamesToPlay", Name: "Осталось"})
 
 		// добавили игры tiebreak текущей лиги
 		gamesTiebreak, err := s.rdbOperations.FetchPastGamesTiebreak(logger, ctx, league.ID)
 		if err != nil {
 			logger.Error().Err(err).Msg("database error")
-			return entity.GetTeamVsTeamTableResponse{}, err
+			return entities.GetTeamVsTeamTableResponse{}, err
 		}
 		dataItem.GamesTiebreak = gamesTiebreak
 
@@ -464,7 +464,7 @@ func (s *Service) GetTeamVsTeamTable(ctx context.Context, cityID, seasonID int64
 
 	} // лиги нужного города
 
-	var response entity.GetTeamVsTeamTableResponse
+	var response entities.GetTeamVsTeamTableResponse
 	response.Data = data
 	response.Message = "OK"
 	return response, nil
@@ -490,7 +490,7 @@ func resumScore(score, team1Score, team2Score int64) int64 {
 // ///////////////////////////////////////////////////////////////////////////////////
 // ///////////////////////////////////////////////////////////////////////////////////
 
-func (s *Service) Create(ctx context.Context, team entity.CreateTeamRequest) (int64, error) {
+func (s *Service) Create(ctx context.Context, team entities.CreateTeamRequest) (int64, error) {
 	logger := s.logger.With().Interface("service", "Create").Logger()
 
 	id, err := s.rwdbOperations.CreateTeam(logger, ctx, team)
@@ -501,7 +501,7 @@ func (s *Service) Create(ctx context.Context, team entity.CreateTeamRequest) (in
 	return id, nil
 }
 
-func (s *Service) Update(ctx context.Context, UpdateTeamRequest entity.UpdateTeamRequest) (bool, error) {
+func (s *Service) Update(ctx context.Context, UpdateTeamRequest entities.UpdateTeamRequest) (bool, error) {
 	logger := s.logger.With().Interface("service", "Update").Logger()
 
 	res, err := s.rwdbOperations.UpdateTeam(logger, ctx, UpdateTeamRequest)
@@ -547,8 +547,8 @@ func (s *Service) RemovePlayerFromTeam(ctx context.Context, playerID, teamID int
 	return res, nil
 }
 
-func findBestPlayer(players []entity.FullPlayer, leagueId int) entity.FullPlayer {
-	var bestPlayer = entity.FullPlayer{}
+func findBestPlayer(players []entities.FullPlayer, leagueId int) entities.FullPlayer {
+	var bestPlayer = entities.FullPlayer{}
 
 	var maxRating = math.MinInt
 

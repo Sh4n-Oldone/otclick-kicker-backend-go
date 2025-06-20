@@ -7,23 +7,23 @@ import (
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql"
 
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 )
 
 type IService interface {
-	GetList(ctx context.Context, cityID int64) ([]entity.League, error)
-	Create(ctx context.Context, league entity.League, teams []int64) (*int64, error)
-	Update(ctx context.Context, league entity.League, teams []int64) error
+	GetList(ctx context.Context, cityID int64) ([]entities.League, error)
+	Create(ctx context.Context, league entities.League, teams []int64) (*int64, error)
+	Update(ctx context.Context, league entities.League, teams []int64) error
 	Delete(ctx context.Context, id int64) error
 
 	Recalc(ctx context.Context, id int64) error
 
-	CreateExtraPoints(ctx context.Context, req *entity.CreateExtraPointsRequest) (int64, error)
-	UpdateExtraPoints(ctx context.Context, req *entity.UpdateExtraPointsRequest) (bool, error)
+	CreateExtraPoints(ctx context.Context, req *entities.CreateExtraPointsRequest) (int64, error)
+	UpdateExtraPoints(ctx context.Context, req *entities.UpdateExtraPointsRequest) (bool, error)
 	DeleteExtraPoints(ctx context.Context, extraPointsId int64) (bool, error)
 
-	GetExtraPointsListByTeamAndLeagueId(ctx context.Context, teamId, leagueId int64) ([]entity.ExtraPoints, error)
-	GetExtraPointsById(ctx context.Context, extraPointsId int64) (entity.ExtraPoints, error)
+	GetExtraPointsListByTeamAndLeagueId(ctx context.Context, teamId, leagueId int64) ([]entities.ExtraPoints, error)
+	GetExtraPointsById(ctx context.Context, extraPointsId int64) (entities.ExtraPoints, error)
 
 	GetLogger() *zerolog.Logger
 }

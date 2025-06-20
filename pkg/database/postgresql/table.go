@@ -6,58 +6,57 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 )
 
-func (db *RDBOperation) GetTableList(logger zerolog.Logger, ctx context.Context, withDeleted bool) ([]entity.Table, error) {
+func (db *RDBOperation) GetTableList(logger zerolog.Logger, ctx context.Context, withDeleted bool) ([]entities.Table, error) {
 	query := queryGetTableList
 	if withDeleted {
 		query = queryGetTableListWithDeleted
 	}
 
-	rows, err := db.db.Query(ctx, query)	
+	rows, err := db.db.Query(ctx, query)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.GetTableList")
 		return nil, DecodeDatabaseError(err)
 	}
 	defer rows.Close()
 
-	var entities []entity.Table
+	var tables []entities.Table
 
 	for rows.Next() {
-		var entity entity.Table
+		var table entities.Table
 
-		err = rows.Scan(&entity.ID, &entity.Name, &entity.UpdatedAt, &entity.DeletedAt)
+		err = rows.Scan(&table.ID, &table.Name, &table.UpdatedAt, &table.DeletedAt)
 		if err != nil {
 			logger.Error().Stack().Err(err).Msg("failed scan to postgresql.GetTableList")
 			return nil, DecodeDatabaseError(err)
 		}
 
-		entities = append(entities, entity)
+		tables = append(tables, table)
 	}
 
-	return entities, nil
+	return tables, nil
 }
 
-func (db *RDBOperation) GetTableByID(logger zerolog.Logger, ctx context.Context, id int64) (*entity.Table, error) {
-	var entity entity.Table
+func (db *RDBOperation) GetTableByID(logger zerolog.Logger, ctx context.Context, id int64) (*entities.Table, error) {
+	var table entities.Table
 
 	err := db.db.QueryRow(ctx, queryGetTableByID, id).
-		Scan(&entity.ID, &entity.Name, &entity.UpdatedAt, &entity.DeletedAt)
+		Scan(&table.ID, &table.Name, &table.UpdatedAt, &table.DeletedAt)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.GetTableByID")
 		return nil, DecodeDatabaseError(stderr.New(errors.ErrGetPlayer))
 	}
 
-	return &entity, nil
+	return &table, nil
 }
 
-
-func (db *RWDBOperation) CreateTable(logger zerolog.Logger, ctx context.Context, entity entity.Table) (*int64, error) {
+func (db *RWDBOperation) CreateTable(logger zerolog.Logger, ctx context.Context, table entities.Table) (*int64, error) {
 	var id int64
 
-	err := db.db.QueryRow(ctx, queryCreateTable, entity.Name).Scan(&id)
+	err := db.db.QueryRow(ctx, queryCreateTable, table.Name).Scan(&id)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.CreateTable")
 		return nil, DecodeDatabaseError(err)
@@ -66,8 +65,8 @@ func (db *RWDBOperation) CreateTable(logger zerolog.Logger, ctx context.Context,
 	return &id, nil
 }
 
-func (db *RWDBOperation) UpdateTable(logger zerolog.Logger, ctx context.Context, entity entity.Table) error {
-	res, err := db.db.Exec(ctx, queryUpdateTable, entity.ID, entity.Name)
+func (db *RWDBOperation) UpdateTable(logger zerolog.Logger, ctx context.Context, table entities.Table) error {
+	res, err := db.db.Exec(ctx, queryUpdateTable, table.ID, table.Name)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.UpdateTable")
 		return DecodeDatabaseError(err)
