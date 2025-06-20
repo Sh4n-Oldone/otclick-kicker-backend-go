@@ -6,11 +6,9 @@ import (
 	"github.com/rs/zerolog"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
-
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
 )
 
-func (db *RWDBOperation) CreateMatch(logger zerolog.Logger, ctx context.Context, match entity.Match) (int64, error) {
+func (db *RWDBOperation) CreateMatch(logger zerolog.Logger, ctx context.Context, match entities.Match) (int64, error) {
 	var id int64
 
 	err := db.db.QueryRow(ctx, queryCreateMatch,
@@ -33,7 +31,7 @@ func (db *RWDBOperation) CreateMatch(logger zerolog.Logger, ctx context.Context,
 	return id, nil
 }
 
-func (db *RWDBOperation) UpdateMatch(logger zerolog.Logger, ctx context.Context, match entity.Match) error {
+func (db *RWDBOperation) UpdateMatch(logger zerolog.Logger, ctx context.Context, match entities.Match) error {
 	result, err := db.db.Exec(ctx, queryUpdateMatch,
 		match.Date,
 		match.GameID,
@@ -77,7 +75,7 @@ func (db *RWDBOperation) DeleteMatch(logger zerolog.Logger, ctx context.Context,
 	return true, nil
 }
 
-func (db *RDBOperation) GetPastMatchesByPlayerID(logger zerolog.Logger, ctx context.Context, playerID int) ([]entities.Match, error) {
+func (db *RDBOperation) GetPastMatchesByPlayerID(logger zerolog.Logger, ctx context.Context, playerID int) ([]entities.MatchV2, error) {
 	query := `
 		SELECT pm.id, 
 			pm.date, 
@@ -100,7 +98,7 @@ func (db *RDBOperation) GetPastMatchesByPlayerID(logger zerolog.Logger, ctx cont
 		   AND pm.date < NOW()
 		ORDER BY pm.sort, pm.updated_at;`
 
-	matches := make([]entities.Match, 0)
+	matches := make([]entities.MatchV2, 0)
 
 	rows, err := db.db.Query(ctx, query, playerID)
 	if err != nil {
@@ -110,7 +108,7 @@ func (db *RDBOperation) GetPastMatchesByPlayerID(logger zerolog.Logger, ctx cont
 	defer rows.Close()
 
 	for rows.Next() {
-		var m entities.Match
+		var m entities.MatchV2
 		err = rows.Scan(&m.ID, &m.Date, &m.LeagueID, &m.GameID, &m.Team1ID, &m.Team2ID, &m.Player1Team1ID, &m.Player2Team1ID,
 			&m.Player1Team2ID, &m.Player2Team2ID, &m.ScoreTeam1, &m.ScoreTeam2)
 		if err != nil {
@@ -124,8 +122,8 @@ func (db *RDBOperation) GetPastMatchesByPlayerID(logger zerolog.Logger, ctx cont
 	return matches, nil
 }
 
-func (db *RDBOperation) GetMatchListByGameID(ctx context.Context, logger zerolog.Logger, gameID int) ([]entities.Match, error) {
-	matches := make([]entities.Match, 0)
+func (db *RDBOperation) GetMatchListByGameID(ctx context.Context, logger zerolog.Logger, gameID int) ([]entities.MatchV2, error) {
+	matches := make([]entities.MatchV2, 0)
 
 	rows, err := db.db.Query(ctx, queryGetMatchListByGameID, gameID)
 	if err != nil {
@@ -135,7 +133,7 @@ func (db *RDBOperation) GetMatchListByGameID(ctx context.Context, logger zerolog
 	defer rows.Close()
 
 	for rows.Next() {
-		var m entities.Match
+		var m entities.MatchV2
 		err = rows.Scan(&m.ID,
 			&m.Date,
 			&m.GameID,
@@ -166,7 +164,7 @@ func (db *RDBOperation) GetMatchListByGameID(ctx context.Context, logger zerolog
 	return matches, nil
 }
 
-func (db *RDBOperation) GetMatchListByLeagueID(logger zerolog.Logger, ctx context.Context, leagueID int64) ([]entity.Match, error) {
+func (db *RDBOperation) GetMatchListByLeagueID(logger zerolog.Logger, ctx context.Context, leagueID int64) ([]entities.Match, error) {
 	query := `
 		SELECT m.id,
 			m.date,
@@ -195,7 +193,7 @@ func (db *RDBOperation) GetMatchListByLeagueID(logger zerolog.Logger, ctx contex
 		WHERE l.id = $1 
 		ORDER BY g.date, g.updated_at, m.sort, m.updated_at;`
 
-	matches := make([]entity.Match, 0)
+	matches := make([]entities.Match, 0)
 
 	rows, err := db.db.Query(ctx, query, leagueID)
 	if err != nil {
@@ -205,7 +203,7 @@ func (db *RDBOperation) GetMatchListByLeagueID(logger zerolog.Logger, ctx contex
 	defer rows.Close()
 
 	for rows.Next() {
-		var m entity.Match
+		var m entities.Match
 		err = rows.Scan(&m.ID,
 			&m.Date,
 			&m.GameID,
@@ -236,7 +234,7 @@ func (db *RDBOperation) GetMatchListByLeagueID(logger zerolog.Logger, ctx contex
 	return matches, nil
 }
 
-func (db *RWDBOperation) RewriteMatchesAndPlayerRatings(logger zerolog.Logger, ctx context.Context, matches []entity.Match, ratings map[int64]entity.Rating) error {
+func (db *RWDBOperation) RewriteMatchesAndPlayerRatings(logger zerolog.Logger, ctx context.Context, matches []entities.Match, ratings map[int64]entities.Rating) error {
 	tx, err := db.db.Begin(ctx)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to postgresql.UpdateGame")

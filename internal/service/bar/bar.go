@@ -3,10 +3,10 @@ package bar
 import (
 	"context"
 
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 )
 
-func (s *Service) GetList(ctx context.Context, cityID *int64, withDeleted bool) ([]entity.Bar, error) {
+func (s *Service) GetList(ctx context.Context, cityID *int64, withDeleted bool) ([]entities.Bar, error) {
 	logger := s.logger.With().Interface("service", "GetList").Logger()
 
 	list, err := s.rdbOperations.GetBarList(logger, ctx, cityID, withDeleted)
@@ -17,7 +17,7 @@ func (s *Service) GetList(ctx context.Context, cityID *int64, withDeleted bool) 
 	return list, nil
 }
 
-func (s *Service) Create(ctx context.Context, entity entity.Bar) (*int64, error) {
+func (s *Service) Create(ctx context.Context, entity entities.Bar) (*int64, error) {
 	logger := s.logger.With().Interface("service", "Create").Logger()
 
 	id, err := s.rwdbOperations.CreateBar(logger, ctx, entity)
@@ -28,7 +28,7 @@ func (s *Service) Create(ctx context.Context, entity entity.Bar) (*int64, error)
 	return id, nil
 }
 
-func (s *Service) Update(ctx context.Context, entity entity.UpdateBarRequest) error {
+func (s *Service) Update(ctx context.Context, entity entities.UpdateBarRequest) error {
 	logger := s.logger.With().Interface("service", "Update").Logger()
 
 	err := s.rwdbOperations.UpdateBar(logger, ctx, entity)

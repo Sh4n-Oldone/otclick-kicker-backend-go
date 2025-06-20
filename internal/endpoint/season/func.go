@@ -6,7 +6,7 @@ import (
 
 	// "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/middleware"
 
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/season"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
@@ -21,7 +21,7 @@ func makeGetList(s season.IService) endpoint.Endpoint {
 			return nil, err
 		}
 
-		response := &entity.GetSeasonResponse{}
+		response := &entities.GetSeasonResponse{}
 		response.Season = seasons
 
 		return response, nil
@@ -33,7 +33,7 @@ func makeCreate(s season.IService) endpoint.Endpoint {
 		// reqID, ctx := middleware.GetRequestID(ctx)
 		serviceLogger := s.GetLogger().With().Str("Source", "makeCreate").Logger()
 
-		req, err := helpers.CastRequest[*entity.CreateSeasonRequest](request)
+		req, err := helpers.CastRequest[*entities.CreateSeasonRequest](request)
 		if err != nil {
 			serviceLogger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).Msg(errors.FailedCastRequest)
 			return nil, err
@@ -45,7 +45,7 @@ func makeCreate(s season.IService) endpoint.Endpoint {
 			return nil, err
 		}
 
-		entityReq := &entity.Season{
+		entityReq := &entities.Season{
 			Name:        req.Name,
 			Description: req.Description,
 		}
@@ -56,7 +56,7 @@ func makeCreate(s season.IService) endpoint.Endpoint {
 			return nil, err
 		}
 
-		response := &entity.CreateSeasonResponse{}
+		response := &entities.CreateSeasonResponse{}
 		response.Id = *id
 
 		return response, nil
@@ -68,7 +68,7 @@ func makeUpdate(s season.IService) endpoint.Endpoint {
 		// reqID, ctx := middleware.GetRequestID(ctx)
 		logger := s.GetLogger().With().Str("Source", "makeUpdate").Logger()
 
-		req, err := helpers.CastRequest[*entity.UpdateSeasonRequest](request)
+		req, err := helpers.CastRequest[*entities.UpdateSeasonRequest](request)
 		if err != nil {
 			logger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).Msg(errors.FailedCastRequest)
 			return nil, err
@@ -80,7 +80,7 @@ func makeUpdate(s season.IService) endpoint.Endpoint {
 			return nil, err
 		}
 
-		entityReq := entity.UpdateSeasonRequest{
+		entityReq := entities.UpdateSeasonRequest{
 			ID:          req.ID,
 			Name:        req.Name,
 			Description: req.Description,
@@ -107,7 +107,7 @@ func makeDelete(s season.IService) endpoint.Endpoint {
 		// reqID, ctx := middleware.GetRequestID(ctx)
 		logger := s.GetLogger().With().Str("Source", "makeDelete").Logger()
 
-		req, err := helpers.CastRequest[*entity.DeleteSeasonRequest](request)
+		req, err := helpers.CastRequest[*entities.DeleteSeasonRequest](request)
 		if err != nil {
 			logger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).Msg(errors.FailedCastRequest)
 			return nil, err

@@ -11,7 +11,7 @@ import (
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/helpers"
 
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/team"
 )
 
@@ -34,7 +34,7 @@ func makeGetTeam(s team.IService) endpoint.Endpoint {
 		reqID, ctx := middleware.GetRequestID(ctx)
 		serviceLogger := s.GetLogger().With().Str("Source", "makeGetTeam").Logger()
 
-		req, err := helpers.CastRequest[*entity.GetTeamRequest](request)
+		req, err := helpers.CastRequest[*entities.GetTeamRequest](request)
 		if err != nil {
 			serviceLogger.Error().Err(err).Msg("Failed to cast request")
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
@@ -60,7 +60,7 @@ func makeGetTeams(s team.IService) endpoint.Endpoint {
 		reqID, ctx := middleware.GetRequestID(ctx)
 		serviceLogger := s.GetLogger().With().Str("Source", "makeGetTeams").Logger()
 
-		req, err := helpers.CastRequest[*entity.GetTeamsRequest](request)
+		req, err := helpers.CastRequest[*entities.GetTeamsRequest](request)
 		if err != nil {
 			serviceLogger.Error().Err(err).Msg("Failed to cast request")
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
@@ -80,7 +80,7 @@ func makeGetTeamsByCity(s team.IService) endpoint.Endpoint {
 		reqID, ctx := middleware.GetRequestID(ctx)
 		serviceLogger := s.GetLogger().With().Str("Source", "makeGetTeamsByCity").Logger()
 
-		req, err := helpers.CastRequest[*entity.GetTeamsByCityRequest](request)
+		req, err := helpers.CastRequest[*entities.GetTeamsByCityRequest](request)
 		if err != nil {
 			serviceLogger.Error().Err(err).Msg("Failed to cast request")
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
@@ -100,7 +100,7 @@ func makeGetTeamsByLeague(s team.IService) endpoint.Endpoint {
 		reqID, ctx := middleware.GetRequestID(ctx)
 		serviceLogger := s.GetLogger().With().Str("Source", "makeGetTeamsByLeague").Logger()
 
-		req, err := helpers.CastRequest[*entity.GetTeamsByLeagueRequest](request)
+		req, err := helpers.CastRequest[*entities.GetTeamsByLeagueRequest](request)
 		if err != nil {
 			serviceLogger.Error().Err(err).Msg("Failed to cast request")
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
@@ -120,7 +120,7 @@ func makeGetTeamVsTeamTable(s team.IService) endpoint.Endpoint {
 		reqID, ctx := middleware.GetRequestID(ctx)
 		serviceLogger := s.GetLogger().With().Str("Source", "makeGetTeamVsTeamTable").Logger()
 
-		req, err := helpers.CastRequest[*entity.GetTeamVsTeamTableRequest](request)
+		req, err := helpers.CastRequest[*entities.GetTeamVsTeamTableRequest](request)
 		if err != nil {
 			serviceLogger.Error().Err(err).Msg("Failed to cast request")
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
@@ -149,7 +149,7 @@ func makeCreate(s team.IService) endpoint.Endpoint {
 		reqID, ctx := middleware.GetRequestID(ctx)
 		serviceLogger := s.GetLogger().With().Str("Source", "makeCreate").Logger()
 
-		req, err := helpers.CastRequest[*entity.CreateTeamRequest](request)
+		req, err := helpers.CastRequest[*entities.CreateTeamRequest](request)
 		if err != nil {
 			serviceLogger.Error().Err(err).Msg("Failed to cast request")
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
@@ -181,7 +181,7 @@ func makeUpdate(s team.IService) endpoint.Endpoint {
 		reqID, ctx := middleware.GetRequestID(ctx)
 		serviceLogger := s.GetLogger().With().Str("Source", "makeUpdate").Logger()
 
-		req, err := helpers.CastRequest[*entity.UpdateTeamRequest](request)
+		req, err := helpers.CastRequest[*entities.UpdateTeamRequest](request)
 		if err != nil {
 			serviceLogger.Error().Err(err).Msg("Failed to cast request")
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
@@ -212,7 +212,7 @@ func makeDelete(s team.IService) endpoint.Endpoint {
 		reqID, ctx := middleware.GetRequestID(ctx)
 		serviceLogger := s.GetLogger().With().Str("Source", "makemakeDelete").Logger()
 
-		req, err := helpers.CastRequest[*entity.DeleteTeamRequest](request)
+		req, err := helpers.CastRequest[*entities.DeleteTeamRequest](request)
 		if err != nil {
 			serviceLogger.Error().Err(err).Msg("Failed to cast request")
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
@@ -245,7 +245,7 @@ func makeAddPlayerIntoTeam(s team.IService) endpoint.Endpoint {
 		reqID, ctx := middleware.GetRequestID(ctx)
 		serviceLogger := s.GetLogger().With().Str("Source", "makeAddPlayerIntoTeam").Logger()
 
-		req, err := helpers.CastRequest[*entity.PlayerTeam](request)
+		req, err := helpers.CastRequest[*entities.PlayerTeam](request)
 		if err != nil {
 			serviceLogger.Error().Err(err).Msg("Failed to cast request")
 			return false, error_templates.WrapErrorEndpoint(err, reqID)
@@ -276,7 +276,7 @@ func makeRemovePlayerFromTeam(s team.IService) endpoint.Endpoint {
 		reqID, ctx := middleware.GetRequestID(ctx)
 		serviceLogger := s.GetLogger().With().Str("Source", "makeRemovePlayerFromTeam").Logger()
 
-		req, err := helpers.CastRequest[*entity.PlayerTeam](request)
+		req, err := helpers.CastRequest[*entities.PlayerTeam](request)
 		if err != nil {
 			serviceLogger.Error().Err(err).Msg("Failed to cast request")
 			return false, error_templates.WrapErrorEndpoint(err, reqID)

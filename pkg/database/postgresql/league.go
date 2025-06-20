@@ -6,12 +6,11 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog"
 
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 )
 
-func (db *RDBOperation) GetLeagueList(logger zerolog.Logger, ctx context.Context, cityID int64) ([]entity.League, error) {
+func (db *RDBOperation) GetLeagueList(logger zerolog.Logger, ctx context.Context, cityID int64) ([]entities.League, error) {
 	query := queryGetLeagueList
 
 	rows, err := db.db.Query(ctx, query, cityID)
@@ -22,10 +21,10 @@ func (db *RDBOperation) GetLeagueList(logger zerolog.Logger, ctx context.Context
 	}
 	defer rows.Close()
 
-	var leagues []entity.League
+	var leagues []entities.League
 
 	for rows.Next() {
-		var league entity.League
+		var league entities.League
 
 		err = rows.Scan(&league.ID, &league.Name, &league.CityID)
 		if err != nil {
@@ -39,7 +38,7 @@ func (db *RDBOperation) GetLeagueList(logger zerolog.Logger, ctx context.Context
 	return leagues, nil
 }
 
-func (db *RWDBOperation) CreateLeague(logger zerolog.Logger, ctx context.Context, league entity.League, teams []int64) (int64, error) {
+func (db *RWDBOperation) CreateLeague(logger zerolog.Logger, ctx context.Context, league entities.League, teams []int64) (int64, error) {
 	var id int64
 
 	tx, err := db.db.Begin(ctx)
@@ -74,7 +73,7 @@ func (db *RWDBOperation) CreateLeague(logger zerolog.Logger, ctx context.Context
 	return id, nil
 }
 
-func (db *RWDBOperation) UpdateLeague(logger zerolog.Logger, ctx context.Context, league entity.League, teams []int64) error {
+func (db *RWDBOperation) UpdateLeague(logger zerolog.Logger, ctx context.Context, league entities.League, teams []int64) error {
 	tx, err := db.db.Begin(ctx)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to update League record")

@@ -9,7 +9,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"io"
 	"net/http"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
@@ -182,7 +181,7 @@ func decodeFindRequest(_ context.Context, r *http.Request) (interface{}, error) 
 }
 
 func decodeUpdateFutureGameRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := entity.UpdateFutureGameRequest{}
+	request := entities.UpdateFutureGameRequest{}
 	buf := bytebufferpool.Get()
 	defer bytebufferpool.Put(buf)
 
@@ -250,7 +249,8 @@ func decodeGetFutureGamesRequest(_ context.Context, r *http.Request) (interface{
 }
 
 func decodeGetGameListRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := entity.GetGameListRequest{}
+	request := entities.GetGameListRequest{}
+
 	queryParams := r.URL.Query()
 	var err error
 
@@ -339,7 +339,7 @@ func decodeGetGameListRequest(_ context.Context, r *http.Request) (interface{}, 
 }
 
 func decodeCreateFutureGameRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := entity.CreateFutureGameRequest{}
+	request := entities.CreateFutureGameRequest{}
 	buf := bytebufferpool.Get()
 	defer bytebufferpool.Put(buf)
 
@@ -418,7 +418,7 @@ func decodeGetTeamIDRequest(_ context.Context, r *http.Request) (interface{}, er
 }
 
 func decodeDeleteFutureGameRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := entity.DeleteFutureGameRequest{}
+	request := entities.DeleteFutureGameRequest{}
 
 	buf := bytebufferpool.Get()
 	defer bytebufferpool.Put(buf)

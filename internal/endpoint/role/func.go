@@ -7,7 +7,7 @@ import (
 
 	// "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/middleware"
 
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/role"
 )
 
@@ -21,7 +21,7 @@ func makeGetList(s role.IService) endpoint.Endpoint {
 			return nil, err
 		}
 
-		response := &entity.GetRoleListResponse{}
+		response := &entities.GetRoleListResponse{}
 		response.Roles = roles
 
 		return response, nil

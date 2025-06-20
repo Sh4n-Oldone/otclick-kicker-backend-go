@@ -7,10 +7,10 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog"
 
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 )
 
-func (db *RDBOperation) GetSeasonList(logger zerolog.Logger, ctx context.Context) ([]entity.Season, error) {
+func (db *RDBOperation) GetSeasonList(logger zerolog.Logger, ctx context.Context) ([]entities.Season, error) {
 	rows, err := db.db.Query(ctx, queryGetSeasonList)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to GetSeasonList")
@@ -18,10 +18,10 @@ func (db *RDBOperation) GetSeasonList(logger zerolog.Logger, ctx context.Context
 	}
 	defer rows.Close()
 
-	var seasons []entity.Season
+	var seasons []entities.Season
 
 	for rows.Next() {
-		var season entity.Season
+		var season entities.Season
 
 		err = rows.Scan(&season.ID, &season.Name, &season.Description)
 		if err != nil {
@@ -35,10 +35,10 @@ func (db *RDBOperation) GetSeasonList(logger zerolog.Logger, ctx context.Context
 	return seasons, nil
 }
 
-func (db *RWDBOperation) CreateSeason(logger zerolog.Logger, ctx context.Context, entity entity.Season) (*int64, error) {
+func (db *RWDBOperation) CreateSeason(logger zerolog.Logger, ctx context.Context, season entities.Season) (*int64, error) {
 	var id int64
 
-	err := db.db.QueryRow(ctx, queryCreateSeason, entity.Name, entity.Description).Scan(&id)
+	err := db.db.QueryRow(ctx, queryCreateSeason, season.Name, season.Description).Scan(&id)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.CreateSeason")
 		return nil, DecodeDatabaseError(err)
@@ -47,8 +47,8 @@ func (db *RWDBOperation) CreateSeason(logger zerolog.Logger, ctx context.Context
 	return &id, nil
 }
 
-func (db *RWDBOperation) UpdateSeason(logger zerolog.Logger, ctx context.Context, entity entity.UpdateSeasonRequest) error {
-	res, err := db.db.Exec(ctx, queryUpdateSeason, entity.ID, entity.Name, entity.Description)
+func (db *RWDBOperation) UpdateSeason(logger zerolog.Logger, ctx context.Context, req entities.UpdateSeasonRequest) error {
+	res, err := db.db.Exec(ctx, queryUpdateSeason, req.ID, req.Name, req.Description)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.UpdateSeason")
 		return DecodeDatabaseError(err)

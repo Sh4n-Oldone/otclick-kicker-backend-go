@@ -14,7 +14,7 @@ type IService interface {
 	Recover(ctx context.Context, playerID int) error
 	Update(ctx context.Context, player entities.UpdatePlayerRequest) error
 	Find(ctx context.Context, player entities.FindPlayersRequest) (entities.FindPlayersResponse, error)
-	Get(ctx context.Context, id int) (entities.FullPlayer, error)
+	Get(ctx context.Context, id int) (entities.FullPlayerV2, error)
 	GetByTeamID(ctx context.Context, teamID int) ([]entities.Player, error)
 
 	GetLogger() *zerolog.Logger

@@ -11,8 +11,8 @@ import (
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/helpers"
 
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/bar"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 )
 
 func makeGetList(s bar.IService) endpoint.Endpoint {
@@ -20,7 +20,7 @@ func makeGetList(s bar.IService) endpoint.Endpoint {
 		// reqID, ctx := middleware.GetRequestID(ctx)
 		logger := s.GetLogger().With().Str("Source", "makeGetList Bar").Logger()
 
-		req, err := helpers.CastRequest[*entity.GetBarListRequest](request)
+		req, err := helpers.CastRequest[*entities.GetBarListRequest](request)
 		if err != nil {
 			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.FailedCastRequest)
 			return nil, err
@@ -32,7 +32,7 @@ func makeGetList(s bar.IService) endpoint.Endpoint {
 			return nil, err
 		}
 
-		return &entity.GetBarListResponse{Bars: records}, nil
+		return &entities.GetBarListResponse{Bars: records}, nil
 	}
 }
 
@@ -41,7 +41,7 @@ func makeCreate(s bar.IService) endpoint.Endpoint {
 		// reqID, ctx := middleware.GetRequestID(ctx)
 		logger := s.GetLogger().With().Str("Source", "makeCreate Bar").Logger()
 
-		req, err := helpers.CastRequest[*entity.CreateBarRequest](request)
+		req, err := helpers.CastRequest[*entities.CreateBarRequest](request)
 		if err != nil {
 			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.FailedCastRequest)
 			return nil, err
@@ -53,10 +53,10 @@ func makeCreate(s bar.IService) endpoint.Endpoint {
 			return nil, err
 		}
 
-		rel := &entity.City{
+		rel := &entities.City{
 			ID: req.CityID,
 		}
-		entity := &entity.Bar{
+		entity := &entities.Bar{
 			City:        *rel,
 			Name:        req.Name,
 			Description: req.Description,
@@ -83,7 +83,7 @@ func makeUpdate(s bar.IService) endpoint.Endpoint {
 		// reqID, ctx := middleware.GetRequestID(ctx)
 		logger := s.GetLogger().With().Str("Source", "makeUpdate Bar").Logger()
 
-		req, err := helpers.CastRequest[*entity.UpdateBarRequest](request)
+		req, err := helpers.CastRequest[*entities.UpdateBarRequest](request)
 		if err != nil {
 			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.FailedCastRequest)
 			return nil, err
@@ -95,7 +95,7 @@ func makeUpdate(s bar.IService) endpoint.Endpoint {
 			return nil, err
 		}
 
-		eBar := entity.UpdateBarRequest{
+		eBar := entities.UpdateBarRequest{
 			ID:          req.ID,
 			Name:        req.Name,
 			Description: req.Description,
@@ -122,7 +122,7 @@ func makeDelete(s bar.IService) endpoint.Endpoint {
 		// reqID, ctx := middleware.GetRequestID(ctx)
 		logger := s.GetLogger().With().Str("Source", "makeDelete Bar").Logger()
 
-		req, err := helpers.CastRequest[*entity.DeleteBarRequest](request)
+		req, err := helpers.CastRequest[*entities.DeleteBarRequest](request)
 		if err != nil {
 			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.FailedCastRequest)
 			return nil, err

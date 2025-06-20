@@ -9,7 +9,6 @@ import (
 
 	cnst "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/constant"
 
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/game"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/middleware"
@@ -177,7 +176,7 @@ func makeUpdateFutureGame(s game.IService) endpoint.Endpoint {
 		reqID, ctx := middleware.GetRequestID(ctx)
 		serviceLogger := s.GetLogger().With().Str("Source", "game.makeUpdateFutureGame").Logger()
 
-		req, err := helpers.CastRequest[entity.UpdateFutureGameRequest](request)
+		req, err := helpers.CastRequest[entities.UpdateFutureGameRequest](request)
 		if err != nil {
 			serviceLogger.Error().Err(err).Msg("Failed to cast request")
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
@@ -227,7 +226,8 @@ func makeGetGameList(s game.IService) endpoint.Endpoint {
 		reqID, ctx := middleware.GetRequestID(ctx)
 		serviceLogger := s.GetLogger().With().Str("Source", "game.makeGetGameList").Logger()
 
-		req, err := helpers.CastRequest[entity.GetGameListRequest](request)
+		req, err := helpers.CastRequest[entities.GetGameListRequest](request)
+
 		if err != nil {
 			serviceLogger.Error().Err(err).Msg("Failed to cast request")
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
@@ -290,7 +290,7 @@ func makeCreateFutureGame(s game.IService) endpoint.Endpoint {
 		reqID, ctx := middleware.GetRequestID(ctx)
 		serviceLogger := s.GetLogger().With().Str("Source", "game.makeCreateFutureGame").Logger()
 
-		req, err := helpers.CastRequest[entity.CreateFutureGameRequest](request)
+		req, err := helpers.CastRequest[entities.CreateFutureGameRequest](request)
 		if err != nil {
 			serviceLogger.Error().Err(err).Msg("Failed to cast request")
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
@@ -356,7 +356,7 @@ func makeDeleteFutureGame(s game.IService) endpoint.Endpoint {
 		reqID, ctx := middleware.GetRequestID(ctx)
 		serviceLogger := s.GetLogger().With().Str("Source", "game.makeDeleteFutureGame").Logger()
 
-		req, err := helpers.CastRequest[entity.DeleteFutureGameRequest](request)
+		req, err := helpers.CastRequest[entities.DeleteFutureGameRequest](request)
 		if err != nil {
 			serviceLogger.Error().Err(err).Msg("Failed to cast request")
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)

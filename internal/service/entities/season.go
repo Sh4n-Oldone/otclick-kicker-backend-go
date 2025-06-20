@@ -1,4 +1,4 @@
-package entity
+package entities
 
 type CreateSeasonRequest struct {
 	Name        string `db:"name" json:"name"`
