@@ -20,6 +20,31 @@ import (
 
 var validate = helpers.NewCustomValidator()
 
+func parseIntParam(param string) (*int, error) {
+	val, err := strconv.Atoi(param)
+	if err != nil {
+		return nil, stderr.New(errors.WrongParameterError)
+	}
+	return &val, nil
+}
+
+func parseBoolParam(param string) (*bool, error) {
+	val, err := strconv.ParseBool(param)
+	if err != nil {
+		return nil, stderr.New(errors.WrongParameterError)
+	}
+	return &val, nil
+}
+
+func parseDateParam(param string) (*time.Time, error) {
+	// "2006-01-02" для формата YYYY-MM-DD
+	val, err := time.Parse("2006-01-02", param)
+	if err != nil {
+		return nil, stderr.New(errors.ErrWrongDate)
+	}
+	return &val, nil
+}
+
 func decodeCreateRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	request := entities.CreateGameRequest{}
 	buf := bytebufferpool.Get()
@@ -222,6 +247,95 @@ func decodeGetFutureGamesRequest(_ context.Context, r *http.Request) (interface{
 	}
 
 	return cityId, nil
+}
+
+func decodeGetGameListRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	request := entity.GetGameListRequest{}
+	queryParams := r.URL.Query()
+	var err error
+
+	// числовые параметры
+	if cityIdParam := queryParams.Get("cityId"); cityIdParam != "" {
+		if request.CityId, err = parseIntParam(cityIdParam); err != nil {
+			return nil, error_templates.BadRequestError(err)
+		}
+	}
+
+	if leagueIdParam := queryParams.Get("leagueId"); leagueIdParam != "" {
+		if request.LeagueId, err = parseIntParam(leagueIdParam); err != nil {
+			return nil, error_templates.BadRequestError(err)
+		}
+	}
+
+	if seasonIdParam := queryParams.Get("seasonId"); seasonIdParam != "" {
+		if request.SeasonId, err = parseIntParam(seasonIdParam); err != nil {
+			return nil, error_templates.BadRequestError(err)
+		}
+	}
+
+	if placeIdParam := queryParams.Get("placeId"); placeIdParam != "" {
+		if request.PlaceId, err = parseIntParam(placeIdParam); err != nil {
+			return nil, error_templates.BadRequestError(err)
+		}
+	}
+
+	if team1IdParam := queryParams.Get("team1Id"); team1IdParam != "" {
+		if request.Team1Id, err = parseIntParam(team1IdParam); err != nil {
+			return nil, error_templates.BadRequestError(err)
+		}
+	}
+
+	if team2IdParam := queryParams.Get("team2Id"); team2IdParam != "" {
+		if request.Team2Id, err = parseIntParam(team2IdParam); err != nil {
+			return nil, error_templates.BadRequestError(err)
+		}
+	}
+
+	if sortFieldParam := queryParams.Get("sortField"); sortFieldParam != "" {
+		if request.SortField, err = parseIntParam(sortFieldParam); err != nil {
+			return nil, error_templates.BadRequestError(err)
+		}
+	}
+
+	if sortTypeParam := queryParams.Get("sortType"); sortTypeParam != "" {
+		if request.SortType, err = parseIntParam(sortTypeParam); err != nil {
+			return nil, error_templates.BadRequestError(err)
+		}
+	}
+
+	if limitParam := queryParams.Get("limit"); limitParam != "" {
+		if request.Limit, err = parseIntParam(limitParam); err != nil {
+			return nil, error_templates.BadRequestError(err)
+		}
+	}
+
+	if offsetParam := queryParams.Get("offset"); offsetParam != "" {
+		if request.Offset, err = parseIntParam(offsetParam); err != nil {
+			return nil, error_templates.BadRequestError(err)
+		}
+	}
+
+	// булевый параметр
+	if isTiebreakParam := queryParams.Get("isTiebreak"); isTiebreakParam != "" {
+		if request.IsTiebreak, err = parseBoolParam(isTiebreakParam); err != nil {
+			return nil, error_templates.BadRequestError(err)
+		}
+	}
+
+	// даты
+	if dateFromParam := queryParams.Get("dateFrom"); dateFromParam != "" {
+		if request.DateFrom, err = parseDateParam(dateFromParam); err != nil {
+			return nil, error_templates.BadRequestError(err)
+		}
+	}
+
+	if dateToParam := queryParams.Get("dateTo"); dateToParam != "" {
+		if request.DateTo, err = parseDateParam(dateToParam); err != nil {
+			return nil, error_templates.BadRequestError(err)
+		}
+	}
+
+	return request, nil
 }
 
 func decodeCreateFutureGameRequest(_ context.Context, r *http.Request) (interface{}, error) {

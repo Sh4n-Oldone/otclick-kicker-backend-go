@@ -162,3 +162,7 @@ func WrapErrorEndpoint(err error, reqID string) error {
 	}
 	return err
 }
+
+func BadRequestError(err error) error {
+	return New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+}

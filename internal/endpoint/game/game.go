@@ -13,6 +13,7 @@ type Endpoints struct {
 	Find             endpoint.Endpoint
 	UpdateFutureGame endpoint.Endpoint
 	GetYears         endpoint.Endpoint
+	GetGameList      endpoint.Endpoint
 	GetComingGames   endpoint.Endpoint
 	GetFutureGames   endpoint.Endpoint
 	CreateFutureGame endpoint.Endpoint
@@ -29,6 +30,7 @@ func MakeEndpoints(s game.IService) Endpoints {
 		Find:             makeFind(s),
 		UpdateFutureGame: makeUpdateFutureGame(s),
 		GetYears:         makeGetYears(s),
+		GetGameList:      makeGetGameList(s),
 		GetComingGames:   makeGetComingGames(s),
 		GetFutureGames:   makeGetFutureGames(s),
 		CreateFutureGame: makeCreateFutureGame(s),

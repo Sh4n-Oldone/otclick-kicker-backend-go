@@ -590,6 +590,19 @@ func (s *Service) GetGamesYears(ctx context.Context) (entity.GetGamesYearsRespon
 	return resp, nil
 }
 
+func (s *Service) GetGameList(ctx context.Context, request entity.GetGameListRequest) (entity.GetGameListResponse, error) {
+	logger := s.logger.With().Str("service", "game.GetGameList").Logger()
+	timeout, cancel := context.WithTimeout(ctx, s.config.RDB.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	games, err := s.rdbOperations.GetGameList(logger, timeout, request)
+	if err != nil {
+		return entity.GetGameListResponse{}, err
+	}
+
+	return entity.GetGameListResponse{Games: games}, nil
+}
+
 func (s *Service) GetComingGames(ctx context.Context) (entities.GetComingGamesResponse, error) {
 	logger := s.logger.With().Interface("service", "game.GetComingGames").Logger()
 	timeout, cancel := context.WithTimeout(ctx, s.config.RDB.MaxIdleConnectionTimeout)

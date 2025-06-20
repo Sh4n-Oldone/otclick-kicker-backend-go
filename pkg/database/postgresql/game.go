@@ -523,6 +523,121 @@ func (db *RDBOperation) GetGamesYears(logger zerolog.Logger, ctx context.Context
 	return entity.GetGamesYearsResponse{Years: years}, nil
 }
 
+func (db *RDBOperation) GetGameList(logger zerolog.Logger, ctx context.Context, r entity.GetGameListRequest) ([]entity.GameV2, error) {
+	const query string = `
+		SELECT 
+			g.id,
+			g.date,
+			g.city_id,
+			g.league_id,
+			s.id,
+			s.name,
+			s.description,
+			g.place_id,
+			b.id,
+			b.name,
+			tbl.id,
+			tbl.name,
+			t1.id,
+			t1.name,
+			t1.short_name,
+			t2.id,
+			t2.name,
+			t2.short_name,
+			sum(score_team1) as score_team1,
+			sum(score_team2) as score_team2,
+			g.tech_loose_team_id,
+			g.is_tiebreak
+			FROM games g
+				LEFT JOIN places p ON g.place_id = p.id
+				LEFT JOIN teams t1 ON g.team1_id = t1.id
+				LEFT JOIN teams t2 ON g.team2_id = t2.id
+				LEFT JOIN bars b ON p.bar_id = b.id
+				LEFT JOIN tables tbl ON p.table_id = tbl.id
+				LEFT JOIN matches m ON g.id = m.game_id
+				LEFT JOIN seasons s ON g.league_id = s.id
+			WHERE
+				($1::INTEGER IS NULL OR g.city_id = $1)
+				AND ($2::INTEGER IS NULL OR g.league_id = $2)
+				AND ($3::INTEGER IS NULL OR s.id = $3)
+				AND ($4::TIMESTAMPTZ IS NULL OR g.date >= $4)
+				AND ($5::TIMESTAMPTZ IS NULL OR g.date <= $5)
+				AND ($6::INTEGER IS NULL OR g.place_id = $6)
+				AND ($7::INTEGER IS NULL OR t1.id = $7)
+				AND ($8::INTEGER IS NULL OR t2.id = $8)
+				AND ($9::BOOLEAN IS NULL OR g.is_tiebreak = $9)
+			GROUP BY g.id, p.id, t1.id, t2.id, b.id, tbl.id, s.id
+			ORDER BY
+				g.league_id,
+				CASE WHEN $10 = 1 THEN g.id END DESC,
+				g.id
+			LIMIT $11
+			OFFSET $12;
+	`
+	games := make([]entity.GameV2, 0)
+
+	rows, err := db.db.Query(ctx, query,
+		r.CityId, r.LeagueId, r.SeasonId, r.DateFrom, r.DateTo, r.PlaceId,
+		r.Team1Id, r.Team2Id, r.IsTiebreak, r.SortType, r.Limit, r.Offset)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to postgresql.GetGameList")
+		return nil, err
+	}
+
+	for rows.Next() {
+		var game entity.GameV2
+		game.Place = entity.PlaceShort{}
+		game.Place.Bar = entity.BarShort{}
+		game.Place.Table = entity.TableShort{}
+		game.Season = entity.Season{}
+		var seasonId *int64
+		var seasonName *string
+		var seasonDescription *string
+
+		err = rows.Scan(
+			&game.Id,
+			&game.Date,
+			&game.CityId,
+			&game.LeagueId,
+			&seasonId,
+			&seasonName,
+			&seasonDescription,
+			&game.Place.ID,
+			&game.Place.Bar.ID,
+			&game.Place.Bar.Name,
+			&game.Place.Table.ID,
+			&game.Place.Table.Name,
+			&game.Team1.ID,
+			&game.Team1.Name,
+			&game.Team1.ShortName,
+			&game.Team2.ID,
+			&game.Team2.Name,
+			&game.Team2.ShortName,
+			&game.ScoreTeam1,
+			&game.ScoreTeam2,
+			&game.TechLooseTeamId,
+			&game.IsTiebreak,
+		)
+		if err != nil {
+			logger.Error().Err(err).Msg("failed to postgresql.GetGameList")
+			return nil, DecodeDatabaseError(stderr.New(errors.ErrGetGame))
+		}
+		if seasonId != nil {
+			game.Season.ID = *seasonId
+		}
+		if seasonName != nil {
+			game.Season.Name = *seasonName
+		}
+		if seasonDescription != nil {
+			game.Season.Description = *seasonDescription
+		}
+
+		games = append(games, game)
+	}
+
+	return games, nil
+}
+
 func (db *RDBOperation) GetComingGames(logger zerolog.Logger, ctx context.Context) ([]entities.ComingGame, error) {
 	const query string = `
 		SELECT 
