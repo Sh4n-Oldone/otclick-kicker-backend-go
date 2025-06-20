@@ -2,10 +2,14 @@ package league
 
 import (
 	"context"
+	"fmt"
+	"slices"
 
+	stderr "errors"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/constant"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/calculator"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 )
 
 func (s *Service) GetList(ctx context.Context, cityID int64) ([]entities.League, error) {
@@ -33,7 +37,33 @@ func (s *Service) Create(ctx context.Context, league entities.League, teams []in
 func (s *Service) Update(ctx context.Context, league entities.League, teams []int64) error {
 	logger := s.logger.With().Interface("service", "Update").Logger()
 
-	err := s.rwdbOperations.UpdateLeague(logger, ctx, league, teams)
+	oldTeams, err := s.rdbOperations.GetTeamsByLeague(logger, ctx, league.ID)
+	if err != nil {
+		return err
+	}
+
+	newTeams := teams
+	var teamsToDelete []int64
+
+	for _, oldTeam := range oldTeams {
+		if !slices.Contains(newTeams, oldTeam.Id) {
+			teamsToDelete = append(teamsToDelete, oldTeam.Id)
+		}
+	}
+
+	for _, teamId := range teamsToDelete {
+		games, err := s.rdbOperations.GetPastGamesByTeamAndLeague(logger, ctx, int(teamId), int(league.ID))
+		if err != nil {
+			return err
+		}
+
+		if len(games) > 0 {
+			err = stderr.New(fmt.Sprintf(errors.ErrDeleteTeamFromLeague, teamId, league.ID))
+			return err
+		}
+	}
+
+	err = s.rwdbOperations.UpdateLeague(logger, ctx, league, teams)
 	if err != nil {
 		return err
 	}

@@ -43,6 +43,37 @@ func (db *RDBOperation) GetPastGamesByPlayersTeam(logger zerolog.Logger, ctx con
 	return games, nil
 }
 
+func (db *RDBOperation) GetPastGamesByTeamAndLeague(logger zerolog.Logger, ctx context.Context, teamId, leagueId int) ([]entities.GameShort, error) {
+	const query string = `
+		SELECT id
+		FROM public.games
+		WHERE (team1_id = $1 OR team2_id = $1) AND league_id = $2 AND date < NOW()
+	`
+
+	var games []entities.GameShort
+
+	rows, err := db.db.Query(ctx, query, teamId, leagueId)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to postgresql.GetPastGamesByTeamAndLeague")
+		return nil, DecodeDatabaseError(stderr.New(errors.ErrGetGameList))
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var game entities.GameShort
+
+		err = rows.Scan(&game.ID)
+		if err != nil {
+			logger.Error().Err(err).Msg("failed to postgresql.GetPastGamesByTeamAndLeague")
+			return nil, DecodeDatabaseError(stderr.New(errors.ErrGetGame))
+		}
+
+		games = append(games, game)
+	}
+
+	return games, nil
+}
+
 func (db *RDBOperation) GetPastGamesByPlayersTeams(logger zerolog.Logger, ctx context.Context, teamIDs []int) ([]entities.GameShort, error) {
 	const query string = `
 		SELECT id, league_id, city_id, date, team1_id, team2_id
@@ -580,7 +611,7 @@ func (db *RDBOperation) GetGameList(logger zerolog.Logger, ctx context.Context, 
 		r.Team1Id, r.Team2Id, r.IsTiebreak, r.SortType, r.Limit, r.Offset)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to postgresql.GetGameList")
-		return nil, err
+		return nil, DecodeDatabaseError(err)
 	}
 
 	for rows.Next() {
@@ -619,7 +650,7 @@ func (db *RDBOperation) GetGameList(logger zerolog.Logger, ctx context.Context, 
 		)
 		if err != nil {
 			logger.Error().Err(err).Msg("failed to postgresql.GetGameList")
-			return nil, DecodeDatabaseError(stderr.New(errors.ErrGetGame))
+			return nil, DecodeDatabaseError(err)
 		}
 		if seasonId != nil {
 			game.Season.ID = *seasonId
