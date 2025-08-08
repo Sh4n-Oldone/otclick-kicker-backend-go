@@ -3,7 +3,7 @@ package team
 import (
 	"context"
 	"encoding/json"
-	stderr "errors"
+	"errors"
 	"io"
 	"net/http"
 	"strconv"
@@ -12,39 +12,24 @@ import (
 	"github.com/valyala/bytebufferpool"
 	"google.golang.org/grpc/codes"
 
+	cnst "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/constant"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
+	pkgerr "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 )
 
-////////////////////////////////////////////////////////////////////////////////////
-// GetTeam {id}
-// GetTeams
-// GetTeamsByCity {city_id}
-// GetTeamsByLeague {league_id}
-// GetTeamVsTeamTable {city_id}
-
-// Create
-// Update
-// Delete {id}
-
-// AddPlayerIntoTeam
-// RemovePlayerFromTeam
-////////////////////////////////////////////////////////////////////////////////////
-
-// GetTeam{id}
 func decodeGetTeamRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	request := &entities.GetTeamRequest{}
 
 	idParam := chi.URLParam(r, "id")
 	if idParam == "" {
-		err := stderr.New(errors.EmptyParameterError)
+		err := errors.New(pkgerr.EmptyParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
 	id, err := strconv.ParseInt(idParam, 10, 64)
 	if err != nil {
-		err := stderr.New(errors.WrongParameterError)
+		err = errors.New(pkgerr.WrongParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
@@ -53,7 +38,6 @@ func decodeGetTeamRequest(_ context.Context, r *http.Request) (interface{}, erro
 	return request, nil
 }
 
-// // GetTeams
 func decodeGetTeamsRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	request := &entities.GetTeamsRequest{}
 
@@ -67,7 +51,7 @@ func decodeGetTeamsRequest(_ context.Context, r *http.Request) (interface{}, err
 	if cityIdParam != "" {
 		cityID, err := strconv.ParseInt(cityIdParam, 10, 64)
 		if err != nil {
-			err := stderr.New(errors.WrongParameterError)
+			err = errors.New(pkgerr.WrongParameterError)
 			return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 		}
 		request.CityId = cityID
@@ -77,13 +61,12 @@ func decodeGetTeamsRequest(_ context.Context, r *http.Request) (interface{}, err
 	return request, nil
 }
 
-// // GetTeamsByCity{city_id}
 func decodeGetTeamsByCityRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	request := &entities.GetTeamsByCityRequest{}
 
 	idParam := chi.URLParam(r, "city_id")
 	if idParam == "" {
-		err := stderr.New(errors.EmptyParameterError)
+		err := errors.New(pkgerr.EmptyParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
@@ -95,7 +78,7 @@ func decodeGetTeamsByCityRequest(_ context.Context, r *http.Request) (interface{
 
 	cityID, err := strconv.ParseInt(idParam, 10, 64)
 	if err != nil {
-		err := stderr.New(errors.WrongParameterError)
+		err = errors.New(pkgerr.WrongParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
@@ -105,13 +88,12 @@ func decodeGetTeamsByCityRequest(_ context.Context, r *http.Request) (interface{
 	return request, nil
 }
 
-// // GetTeamsByLeague{league_id}
 func decodeGetTeamsByLeagueRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	request := &entities.GetTeamsByLeagueRequest{}
 
 	idParam := chi.URLParam(r, "league_id")
 	if idParam == "" {
-		err := stderr.New(errors.EmptyParameterError)
+		err := errors.New(pkgerr.EmptyParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
@@ -123,7 +105,7 @@ func decodeGetTeamsByLeagueRequest(_ context.Context, r *http.Request) (interfac
 
 	leagueID, err := strconv.ParseInt(idParam, 10, 64)
 	if err != nil {
-		err := stderr.New(errors.WrongParameterError)
+		err = errors.New(pkgerr.WrongParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
@@ -138,23 +120,23 @@ func decodeGetTeamVsTeamTableRequest(_ context.Context, r *http.Request) (interf
 
 	cityIdParam := r.URL.Query().Get("cityId")
 	if cityIdParam == "" {
-		err := stderr.New(errors.EmptyParameterError)
+		err := errors.New(pkgerr.EmptyParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 	cityID, err := strconv.ParseInt(cityIdParam, 10, 64)
 	if err != nil {
-		err := stderr.New(errors.WrongParameterError)
+		err := errors.New(pkgerr.WrongParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
 	seasonIdParam := r.URL.Query().Get("season")
 	if seasonIdParam == "" {
-		err := stderr.New(errors.EmptyParameterError)
+		err := errors.New(pkgerr.EmptyParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 	seasonId, err := strconv.ParseInt(seasonIdParam, 10, 64)
 	if err != nil {
-		err := stderr.New(errors.WrongParameterError)
+		err := errors.New(pkgerr.WrongParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
@@ -164,27 +146,28 @@ func decodeGetTeamVsTeamTableRequest(_ context.Context, r *http.Request) (interf
 	return request, nil
 }
 
-////////////////////////////////////////////////////////////////////////////////////
-
-// Create
 func decodeCreateRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := &entities.CreateTeamRequest{}
+	request := &entities.CreateTeamRequest{Creator: entities.User{Role: &entities.Role{}}}
 	buf := bytebufferpool.Get()
 	defer bytebufferpool.Put(buf)
 
-	cityIdParam := r.URL.Query().Get("cityId")
-	if cityIdParam == "" {
-		err := stderr.New(errors.EmptyParameterError)
+	userId, ok := r.Context().Value(cnst.UserIDContextKey).(int64)
+	if !ok || userId == 0 {
+		err := errors.New(pkgerr.ErrUserIdToken)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
+	request.Creator.ID = userId
 
-	cityId, err := strconv.ParseInt(cityIdParam, 10, 64)
-	if err != nil {
-		err := stderr.New(errors.WrongParameterError)
+	role, ok := r.Context().Value(cnst.RoleNameContextKey).(string)
+	if !ok || role == "" {
+		err := errors.New(pkgerr.ErrRoleToken)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
+	request.Creator.Role.Name = role
 
-	_, err = io.Copy(buf, r.Body)
+	request.CityIdParam = r.URL.Query().Get("cityId")
+
+	_, err := io.Copy(buf, r.Body)
 	if err != nil {
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
@@ -194,11 +177,9 @@ func decodeCreateRequest(_ context.Context, r *http.Request) (interface{}, error
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
-	request.CityId = &cityId
 	return request, nil
 }
 
-// Update
 func decodeUpdateRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	request := &entities.UpdateTeamRequest{}
 
@@ -218,19 +199,18 @@ func decodeUpdateRequest(_ context.Context, r *http.Request) (interface{}, error
 	return request, nil
 }
 
-// Delete {id}
 func decodeDeleteRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	request := &entities.DeleteTeamRequest{}
 
 	idParam := chi.URLParam(r, "id")
 	if idParam == "" {
-		err := stderr.New(errors.EmptyParameterError)
+		err := errors.New(pkgerr.EmptyParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
 	id, err := strconv.ParseInt(idParam, 10, 64)
 	if err != nil {
-		err := stderr.New(errors.WrongParameterError)
+		err = errors.New(pkgerr.WrongParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
@@ -239,9 +219,6 @@ func decodeDeleteRequest(_ context.Context, r *http.Request) (interface{}, error
 	return request, nil
 }
 
-////////////////////////////////////////////////////////////////////////////////////
-
-// AddPlayerIntoTeam
 func decodeAddPlayerIntoTeamRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	request := &entities.PlayerTeam{}
 
@@ -261,7 +238,6 @@ func decodeAddPlayerIntoTeamRequest(_ context.Context, r *http.Request) (interfa
 	return request, nil
 }
 
-// // RemovePlayerFromTeam
 func decodeRemovePlayerFromTeamRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	request := &entities.PlayerTeam{}
 

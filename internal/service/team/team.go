@@ -3,28 +3,18 @@ package team
 import (
 	"context"
 	"errors"
-	"golang.org/x/sync/errgroup"
-	"google.golang.org/grpc/codes"
 	"math"
 	"net/http"
+	"strconv"
+
+	"golang.org/x/sync/errgroup"
+	"google.golang.org/grpc/codes"
+
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/constant"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
-	"strconv"
+	pkgerr "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 )
-
-// GetTeam {id}
-// GetTeams
-// GetTeamsByCity {city_id}
-// GetTeamsByLeague {league_id}
-// GetTeamVsTeamTable {city_id}
-
-// Create
-// Update
-// Delete {id}
-
-// AddPlayerIntoTeam
-// RemovePlayerFromTeam
 
 func (s *Service) GetTeam(ctx context.Context, teamID int64) (entities.GetTeamResponseV2, error) {
 	logger := s.logger.With().Str("service", "GetTeam").Logger()
@@ -234,10 +224,6 @@ func (s *Service) GetTeamsByLeague(ctx context.Context, leagueID int64) ([]entit
 
 	return teams, nil
 }
-
-// ///////////////////////////////////////////////////////////////////////////////////
-// ///////////////////////////////////////////////////////////////////////////////////
-// ///////////////////////////////////////////////////////////////////////////////////
 
 func (s *Service) GetTeamVsTeamTable(ctx context.Context, cityID, seasonID int64) (entities.GetTeamVsTeamTableResponse, error) {
 	logger := s.logger.With().Interface("service", "GetTeamVsTeamTable").Logger()
@@ -486,14 +472,51 @@ func resumScore(score, team1Score, team2Score int64) int64 {
 	return score // -2 ?
 }
 
-// ///////////////////////////////////////////////////////////////////////////////////
-// ///////////////////////////////////////////////////////////////////////////////////
-// ///////////////////////////////////////////////////////////////////////////////////
+func (s *Service) Create(ctx context.Context, request *entities.CreateTeamRequest) (int64, error) {
+	logger := s.logger.With().Str("service", "Create").Logger()
 
-func (s *Service) Create(ctx context.Context, team entities.CreateTeamRequest) (int64, error) {
-	logger := s.logger.With().Interface("service", "Create").Logger()
+	if request.Creator.Role.Name == constant.TournamentMaster {
+		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, request.Creator.ID, &s.config.RDB)
+		if err != nil {
+			return 0, err
+		}
 
-	id, err := s.rwdbOperations.CreateTeam(logger, ctx, team)
+		if request.CityIdParam == "" {
+			// и его cityId не должен быть указан вовсе(наиболее вероятный и желаемый сценарий)
+			request.CityId = master.City.ID
+		} else {
+			// или его cityId должен быть равен cityId мастера по турнирам(эта проверка для подстраховки)
+			cityId, err := strconv.ParseInt(request.CityIdParam, 10, 64)
+			if err != nil {
+				err = errors.New(pkgerr.WrongParameterError + ": " + "cityId")
+				return 0, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+			}
+
+			if cityId != master.City.ID {
+				err = errors.New(pkgerr.ErrCityIdNotEqualMasterCityId)
+				return 0, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+			}
+
+			request.CityId = cityId
+		}
+
+	} else {
+
+		if request.CityIdParam == "" {
+			err := errors.New(pkgerr.EmptyParameterError + ": " + "cityId")
+			return 0, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+
+		cityId, err := strconv.ParseInt(request.CityIdParam, 10, 64)
+		if err != nil {
+			err = errors.New(pkgerr.WrongParameterError + ": " + "cityId")
+			return 0, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+
+		request.CityId = cityId
+	}
+
+	id, err := s.rwdbOperations.CreateTeam(logger, ctx, request)
 	if err != nil {
 		return id, err
 	}
@@ -522,8 +545,6 @@ func (s *Service) Delete(ctx context.Context, id int64) (bool, error) {
 
 	return res, nil
 }
-
-// ///////////////////////////////////////////////////////////////////////////////////
 
 func (s *Service) AddPlayerIntoTeam(ctx context.Context, playerID, teamID int64) (bool, error) {
 	logger := s.logger.With().Interface("service", "AddPlayerIntoTeam").Logger()

@@ -5,10 +5,11 @@ type contextKey uint
 const (
 	AccessToken = "Access-Token"
 
-	SuperUserRole string = "superuser"
-	AdminRole     string = "admin"
-	CaptainRole   string = "captain"
-	CaptainRoleId int    = 3
+	SuperUserRole    string = "superuser"
+	AdminRole        string = "admin"
+	CaptainRole      string = "captain"
+	TournamentMaster string = "tournament-master"
+	CaptainRoleId    int    = 3
 
 	UserIDContextKey contextKey = iota
 	UserEmailContextKey

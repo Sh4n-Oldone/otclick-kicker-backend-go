@@ -90,10 +90,12 @@ type TeamLeagueStat struct {
 // /////////////////////////////////////////////////////////////////////////
 
 type CreateTeamRequest struct {
-	Name      string `db:"name" json:"name"`
-	ShortName string `db:"short_name" json:"shortName"`
-	Avatar    []byte `json:"avatar,omitempty"`
-	CityId    *int64 `db:"city_id" json:"cityId"`
+	Name        string `json:"name" validate:"required,min=1,max=64"`
+	ShortName   string `json:"shortName" validate:"required,min=1,max=32"`
+	Avatar      []byte `json:"avatar,omitempty"`
+	CityId      int64  `json:"cityId"`
+	CityIdParam string `json:"cityIdParam"`
+	Creator     User   `json:"creator" validate:"required"`
 }
 
 type UpdateTeamRequest struct {

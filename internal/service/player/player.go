@@ -2,19 +2,74 @@ package player
 
 import (
 	"context"
+	"errors"
+	"net/http"
 	"slices"
+	"strconv"
 
 	"golang.org/x/sync/errgroup"
+	"google.golang.org/grpc/codes"
+
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/constant"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
+	pkgerr "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 )
 
-func (s *Service) Create(ctx context.Context, player entities.CreatePlayerRequest) (int, error) {
-	logger := s.logger.With().Interface("service", "player.Create").Logger()
-	timeout, cancel := context.WithTimeout(ctx, s.config.RWDB.MaxIdleConnectionTimeout)
-	defer cancel()
+func (s *Service) Create(ctx context.Context, request *entities.CreatePlayerRequest) (int, error) {
+	logger := s.logger.With().Str("service", "player.Create").Logger()
 
-	id, err := s.rwdbOperations.CreatePlayer(logger, timeout, player)
+	// если запрос от имени мастера по турнирам, то...
+	if request.Creator.Role.Name == constant.TournamentMaster {
+		// игрок должен быть активен
+		if request.ActivePlayer == nil || *request.ActivePlayer == false {
+			err := errors.New("игрок должен быть активен")
+			logger.Error().Err(err).Msg("Failed create player request")
+			return 0, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+
+		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, request.Creator.ID, &s.config.RDB)
+		if err != nil {
+			return 0, err
+		}
+
+		if request.CityIdParam == "" {
+			// и его cityId не должен быть указан вовсе(наиболее вероятный и желаемый сценарий)
+			request.CityID = master.City.ID
+		} else {
+			// или его cityId должен быть равен cityId мастера по турнирам(эта проверка для подстраховки)
+			cityId, err := strconv.ParseInt(request.CityIdParam, 10, 64)
+			if err != nil {
+				err = errors.New(pkgerr.WrongParameterError + ": " + "cityId")
+				return 0, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+			}
+
+			if cityId != master.City.ID {
+				err = errors.New(pkgerr.ErrCityIdNotEqualMasterCityId)
+				return 0, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+			}
+
+			request.CityID = cityId
+		}
+
+		// если запрос отимени других уполномоченных ролей, то правила валидации стандартные
+	} else {
+
+		if request.CityIdParam == "" {
+			err := errors.New(pkgerr.EmptyParameterError + ": " + "cityId")
+			return 0, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+
+		cityId, err := strconv.ParseInt(request.CityIdParam, 10, 64)
+		if err != nil || cityId <= 0 {
+			err = errors.New(pkgerr.WrongParameterError + ": " + "cityId")
+			return 0, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+
+		request.CityID = cityId
+	}
+
+	id, err := s.rwdbOperations.CreatePlayer(logger, ctx, *request, &s.config.RDB)
 	if err != nil {
 		return 0, err
 	}

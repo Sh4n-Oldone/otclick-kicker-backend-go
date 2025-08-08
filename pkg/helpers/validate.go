@@ -3,12 +3,11 @@ package helpers
 import (
 	"errors"
 	"fmt"
-	"github.com/go-playground/validator/v10"
-
 	"net/http"
 	"net/mail"
 	"time"
 
+	"github.com/go-playground/validator/v10"
 	"google.golang.org/grpc/codes"
 
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
@@ -416,6 +415,14 @@ func ValidateGetGameList(request entities.GetGameListRequest) error {
 
 	validate := validator.New(validator.WithRequiredStructEnabled())
 	err := validate.Struct(request)
+	if err != nil {
+		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	return nil
+}
+
+func ValidCreateTournamentMasterRequest(request *entities.CreateTournamentMasterRequest, v *validator.Validate) error {
+	err := v.Struct(request)
 	if err != nil {
 		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}

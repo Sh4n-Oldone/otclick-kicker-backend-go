@@ -1,10 +1,12 @@
 package player
 
 import (
+	"net/http"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	kithttp "github.com/go-kit/kit/transport/http"
-	"net/http"
+
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/player"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/user"
@@ -29,7 +31,7 @@ func NewServer(endpoints player.Endpoints, options []kithttp.ServerOption, cfg *
 	r.Get("/players/{id}", kithttp.NewServer(endpoints.Get, decodeGetRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 	r.Get("/players/team/{teamId}", kithttp.NewServer(endpoints.GetByTeam, decodeGetByTeamIDRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 
-	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
+	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdminTournamentMaster()).
 		Post("/players", kithttp.NewServer(endpoints.Create, decodeCreateRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
 		Delete("/players/{id}", kithttp.NewServer(endpoints.Delete, decodeDeleteRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)

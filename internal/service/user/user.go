@@ -2,7 +2,7 @@ package user
 
 import (
 	"context"
-	stderr "errors"
+	"errors"
 	"net/http"
 	"time"
 
@@ -13,7 +13,7 @@ import (
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/crypt"
 	errTmpl "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
+	pkgerr "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/jwt"
 )
 
@@ -52,7 +52,7 @@ func (s *Service) Create(ctx context.Context, request entities.CreateUserRequest
 func (s *Service) Login(ctx context.Context, user entities.User) (*int64, *string, *int64, *string, error) {
 	logger := s.logger.With().Interface("service", "Login").Logger()
 
-	_user, err := s.rdbOperations.GetUser(logger, ctx, nil, &user.Email)
+	_user, err := s.rdbOperations.GetUser(logger, ctx, nil, &user.Email, &s.config.RDB)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
@@ -73,7 +73,7 @@ func (s *Service) Login(ctx context.Context, user entities.User) (*int64, *strin
 func (s *Service) ChangePassword(ctx context.Context, userOld, userNew entities.User) error {
 	logger := s.logger.With().Interface("service", "Login").Logger()
 
-	_user, err := s.rdbOperations.GetUser(logger, ctx, nil, &userOld.Email)
+	_user, err := s.rdbOperations.GetUser(logger, ctx, nil, &userOld.Email, &s.config.RDB)
 	if err != nil {
 		return err
 	}
@@ -101,9 +101,9 @@ func (s *Service) ChangePassword(ctx context.Context, userOld, userNew entities.
 func (s *Service) CheckAuth(ctx context.Context, userID int64, token string) (*bool, *string, *int64, error) {
 	logger := s.logger.With().Interface("service", "CheckAuth").Logger()
 
-	user, err := s.rdbOperations.GetUser(logger, ctx, &userID, nil)
+	user, err := s.rdbOperations.GetUser(logger, ctx, &userID, nil, &s.config.RDB)
 	if err != nil {
-		return nil, nil, nil, errTmpl.New(errors.FailedGetUserData, err, codes.InvalidArgument, http.StatusBadRequest)
+		return nil, nil, nil, errTmpl.New(pkgerr.FailedGetUserData, err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
 	_token, err := jwtV5.Parse(token, func(token *jwtV5.Token) (interface{}, error) {
@@ -117,7 +117,7 @@ func (s *Service) CheckAuth(ctx context.Context, userID int64, token string) (*b
 	}
 
 	if claims, ok := _token.Claims.(jwtV5.MapClaims); ok && _token.Valid {
-		stdErr := stderr.New(errors.WrongParameterError)
+		stdErr := errors.New(pkgerr.WrongParameterError)
 		err = errTmpl.New(stdErr.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 		// error if Access-Token is expired
 		expired, ok2 := claims[cnst.JwtClaimsAttrTokenExpire].(float64)
@@ -168,10 +168,110 @@ func (s *Service) CheckAuth(ctx context.Context, userID int64, token string) (*b
 func (s *Service) GetUser(ctx context.Context, userID int64) (*entities.User, error) {
 	logger := s.logger.With().Interface("service", "GetUser").Logger()
 
-	user, err := s.rdbOperations.GetUser(logger, ctx, &userID, nil)
+	user, err := s.rdbOperations.GetUser(logger, ctx, &userID, nil, &s.config.RDB)
 	if err != nil {
 		return nil, err
 	}
 
 	return user, nil
+}
+
+func (s *Service) CreateTournamentMaster(ctx context.Context, request entities.CreateTournamentMasterRequest) (int64, error) {
+	logger := s.logger.With().Str("service", "CreateTournamentMaster").Logger()
+
+	role, err := s.rdbOperations.GetRole(logger, ctx, nil, &request.RoleName)
+	if err != nil {
+		return 0, err
+	}
+
+	passHash, err := crypt.EncryptPassword([]byte(request.Password), []byte(s.config.Secret.Salt))
+	if err != nil {
+		return 0, errTmpl.New(err.Error(), err, codes.Internal, http.StatusInternalServerError)
+	}
+
+	tMaster := entities.TournamentMaster{
+		User: entities.User{
+			Email:    request.Email,
+			Password: passHash,
+			Role:     role,
+		},
+		City: entities.City{
+			ID: request.CityID,
+		},
+	}
+
+	id, err := s.rwdbOperations.CreateTournamentMaster(logger, ctx, tMaster, &s.config.RWDB)
+	if err != nil {
+		return 0, err
+	}
+
+	return id, nil
+}
+
+func (s *Service) UpdateTournamentMaster(ctx context.Context, request entities.UpdateTournamentMasterRequest) error {
+	logger := s.logger.With().Str("service", "UpdateTournamentMaster").Logger()
+
+	if request.CityID != nil {
+		err := s.rwdbOperations.UpdateTournamentMaster(logger, ctx, request, &s.config.RWDB)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *Service) GetTournamentMasterListByCityId(ctx context.Context, cityID int64) ([]entities.TournamentMaster, error) {
+	logger := s.logger.With().Str("service", "GetTournamentMasterListByCityId").Logger()
+
+	tMasters, err := s.rdbOperations.GetTournamentMasterListByCityId(logger, ctx, cityID, &s.config.RDB)
+	if err != nil {
+		return nil, err
+	}
+
+	return tMasters, nil
+}
+
+func (s *Service) GetTournamentMasterByUserId(ctx context.Context, userID int64) (entities.TournamentMaster, error) {
+	logger := s.logger.With().Str("service", "GetTournamentMasterByUserId").Logger()
+
+	tMaster, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, userID, &s.config.RDB)
+	if err != nil {
+		return entities.TournamentMaster{}, err
+	}
+
+	return tMaster, nil
+}
+
+func (s *Service) GetTournamentMasterList(ctx context.Context) ([]entities.TournamentMaster, error) {
+	logger := s.logger.With().Str("service", "GetTournamentMasterList").Logger()
+
+	tMasters, err := s.rdbOperations.GetTournamentMasterList(logger, ctx, &s.config.RDB)
+	if err != nil {
+		return nil, err
+	}
+
+	return tMasters, nil
+}
+
+func (s *Service) DeleteTournamentMaster(ctx context.Context, userID int64) error {
+	logger := s.logger.With().Str("service", "DeleteTournamentMaster").Logger()
+
+	master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, userID, &s.config.RDB)
+	if err != nil {
+		return err
+	}
+
+	if master.User.Role == nil || master.User.Role.Name != cnst.TournamentMaster {
+		err = errors.New("only for role " + cnst.TournamentMaster)
+		logger.Error().Err(err).Msg("failed user.DeleteTournamentMaster")
+		return errTmpl.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	err = s.rwdbOperations.DeleteTournamentMaster(logger, ctx, userID, &s.config.RWDB)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
