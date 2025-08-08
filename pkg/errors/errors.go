@@ -17,6 +17,9 @@ const (
 	FailedGameByTeamsLeagueMismatch = "ошибка совмещения команд из разных лиг"
 	ErrEmptyField                   = "отсутствует значение в поле запроса"
 	WrongPlaceIdError               = "некорректный id места игры"
+	ErrUserIdToken                  = "не удалось получить идентификатор пользователя из токена"
+	ErrRoleToken                    = "не удалось получить роли из токена"
+	ErrCityIdNotEqualMasterCityId   = "cityId должен быть равен cityId мастера по турнирам или не должен быть указан"
 )
 
 // Database errors

@@ -2,7 +2,9 @@ package player
 
 import (
 	"context"
+
 	"github.com/go-kit/kit/endpoint"
+
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/player"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/middleware"
@@ -21,7 +23,13 @@ func makeCreate(s player.IService) endpoint.Endpoint {
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
-		id, err := s.Create(ctx, *req)
+		err = s.GetValidator().Struct(req)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed validate request")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		id, err := s.Create(ctx, req)
 		if err != nil {
 			serviceLogger.Error().Err(err).Msg("Failed to player.Create")
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)

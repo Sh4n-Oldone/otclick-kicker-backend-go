@@ -3,22 +3,17 @@ package entities
 import "time"
 
 type FullPlayer struct {
-	ID           int     `json:"id"`
-	Name         *string `json:"name,omitempty"`
-	SecondName   *string `json:"secondName,omitempty"`
-	LastName     string  `json:"lastName"`
-	Avatar       []byte  `json:"avatar,omitempty"`
-	ActivePlayer *bool   `json:"activePlayer,omitempty"`
-	Deleted      bool    `json:"deleted"`
-	CityID       *int    `json:"cityId,omitempty"`
-	CityName     *string `json:"cityName,omitempty"`
-
-	Leagues []LeagueItem `json:"leagues,omitempty"`
+	ID           int          `json:"id"`
+	Name         *string      `json:"name,omitempty"`
+	SecondName   *string      `json:"secondName,omitempty"`
+	LastName     string       `json:"lastName"`
+	Avatar       []byte       `json:"avatar,omitempty"`
+	ActivePlayer *bool        `json:"activePlayer,omitempty"`
+	Deleted      bool         `json:"deleted"`
+	CityID       *int         `json:"cityId,omitempty"`
+	CityName     *string      `json:"cityName,omitempty"`
+	Leagues      []LeagueItem `json:"leagues,omitempty"`
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 type PlayersLeague struct {
 	ID     int
@@ -28,12 +23,14 @@ type PlayersLeague struct {
 }
 
 type CreatePlayerRequest struct {
-	Name         *string `json:"name,omitempty"`
-	SecondName   *string `json:"secondName,omitempty"`
-	LastName     string  `json:"lastName"`
+	Name         *string `json:"name,omitempty" validate:"omitempty,min=1,max=64"`
+	SecondName   *string `json:"secondName,omitempty" validate:"omitempty,min=1,max=64"`
+	LastName     string  `json:"lastName" validate:"required,min=1,max=64"`
 	Avatar       []byte  `json:"avatar,omitempty"`
 	ActivePlayer *bool   `json:"activePlayer,omitempty"`
-	CityID       int     `json:"cityId"`
+	CityID       int64   `json:"cityId"`
+	CityIdParam  string  `json:"cityIdParam"`
+	Creator      User    `json:"creator" validate:"required"`
 }
 
 type CreatePlayerResponse struct {

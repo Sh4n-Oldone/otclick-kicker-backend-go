@@ -3,16 +3,15 @@ package postgresql
 import (
 	"context"
 	stderr "errors"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/constant"
-
-	"github.com/rs/zerolog"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
-
 	"fmt"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/rs/zerolog"
+
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/constant"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 )
 
 func (db *RDBOperation) GetTeam(logger zerolog.Logger, ctx context.Context, teamID int64) (entities.GetTeamResponse, error) {
@@ -208,8 +207,6 @@ func (db *RDBOperation) GetTeamsByLeague(logger zerolog.Logger, ctx context.Cont
 }
 
 // ///////////////////////////////////////////////////////////////////////////////////
-// ///////////////////////////////////////////////////////////////////////////////////
-// ///////////////////////////////////////////////////////////////////////////////////
 
 func (db *RDBOperation) FetchLeagues(logger zerolog.Logger, ctx context.Context, cityID int64, seasonID int64) ([]entities.League, error) {
 	rows, err := db.db.Query(ctx, "SELECT id, name FROM leagues WHERE city_id = $1 AND season_id = $2", cityID, seasonID)
@@ -367,6 +364,7 @@ func (db *RDBOperation) FetchMatches(logger zerolog.Logger, ctx context.Context,
 }
 
 // /////////////////////////
+
 func (db *RDBOperation) TeamsHaveNoGames(logger zerolog.Logger, ctx context.Context, teams []entities.Team, seasonID int64) (bool, error) {
 	const queryGame = `SELECT g.id
 					   FROM games g
@@ -400,9 +398,8 @@ func (db *RDBOperation) TeamsHaveNoGames(logger zerolog.Logger, ctx context.Cont
 }
 
 // //////////////////////////////////////////////////////////////////////////////////
-// //////////////////////////////////////////////////////////////////////////////////
-// //////////////////////////////////////////////////////////////////////////////////
-func (db *RWDBOperation) CreateTeam(logger zerolog.Logger, ctx context.Context, team entities.CreateTeamRequest) (int64, error) {
+
+func (db *RWDBOperation) CreateTeam(logger zerolog.Logger, ctx context.Context, team *entities.CreateTeamRequest) (int64, error) {
 	var teamId int64
 	const queryCreateTeam = `INSERT INTO teams (name, short_name, avatar, city_id) VALUES ($1, $2, $3, $4) RETURNING id`
 
@@ -546,6 +543,7 @@ func (db *RWDBOperation) DeleteTeam(logger zerolog.Logger, ctx context.Context, 
 }
 
 // ////////////////////////////////////////////////////////////////////////////////
+
 func (db *RWDBOperation) AddPlayerIntoTeam(logger zerolog.Logger, ctx context.Context, playerID, teamID int64) (bool, error) {
 	var exists int
 	const query1 = "SELECT 1 FROM players_teams_links WHERE player_id = $1 AND team_id = $2"
@@ -653,7 +651,7 @@ func (db *RDBOperation) GetTeamExtraPointsCount(logger zerolog.Logger, ctx conte
 }
 
 // ///////////////////////////////////////////////////////////////////////////////////////
-// ///////////////////////////////////////////////////////////////////////////////////////
+
 func (db *RWDBOperation) CreateExtraPoints(logger zerolog.Logger, ctx context.Context, req *entities.CreateExtraPointsRequest) (int64, error) {
 	const query = "INSERT INTO team_extra_points(team_id, league_id, reason, points) VALUES($1, $2, $3, $4) RETURNING id"
 
@@ -764,7 +762,6 @@ func (db *RDBOperation) GetExtraPointsById(logger zerolog.Logger, ctx context.Co
 	return extraPoints, nil
 }
 
-/////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////
 
 func (db *RDBOperation) GetTeamById(logger zerolog.Logger, ctx context.Context, teamID int64) (entities.TeamV2, error) {

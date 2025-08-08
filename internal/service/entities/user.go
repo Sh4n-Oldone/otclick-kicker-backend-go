@@ -8,6 +8,11 @@ type User struct {
 	Team     *Team  `json:"team,omitempty"`
 }
 
+type TournamentMaster struct {
+	User User `json:"user"`
+	City City `json:"city"`
+}
+
 type CreateUserRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
@@ -15,9 +20,25 @@ type CreateUserRequest struct {
 	TeamID   int64  `json:"teamId,omitempty"`
 }
 
+type CreateTournamentMasterRequest struct {
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required,gte=6,lte=64"`
+	RoleName string `json:"roleName" validate:"required,eq=tournament-master"`
+	CityID   int64  `json:"cityId" validate:"required,gt=0"`
+}
+
 type CreateUserResponse struct {
 	Token   string `json:"token"`
 	Message string `json:"message"`
+}
+
+type UpdateTournamentMasterRequest struct {
+	UserID int64  `json:"userId" validate:"required,gt=0"`
+	CityID *int64 `json:"cityId" validate:"omitempty,gt=0"`
+}
+
+type GetTournamentMastersResponse struct {
+	Masters []TournamentMaster `json:"masters"`
 }
 
 type LoginUserRequest struct {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/go-playground/validator/v10"
 	"net"
 	"net/http"
 	"runtime"
@@ -297,15 +298,16 @@ func initServices(config *config.Configuration, cache cache.ICache, baseLogger z
 func initEndpoints(
 	appConfig *config.Configuration,
 	apiLogger zerolog.Logger,
+	validator *validator.Validate,
 	rwdbOperationer postgresql.RWDBOperationer,
 	rdbOperationer postgresql.RDBOperationer,
 ) endpoint.ServicesEndpoints {
 	citySrv := srvCity.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
-	userSrv := srvUser.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
+	userSrv := srvUser.NewService(appConfig, &apiLogger, validator, rwdbOperationer, rdbOperationer)
 	matchSrv := srvMatch.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
 	roleSrv := srvRole.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
-	playerSrv := srvPlayer.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
-	teamSrv := srvTeam.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer, playerSrv)
+	playerSrv := srvPlayer.NewService(appConfig, &apiLogger, validator, rwdbOperationer, rdbOperationer)
+	teamSrv := srvTeam.NewService(appConfig, &apiLogger, validator, rwdbOperationer, rdbOperationer, playerSrv)
 	leagueSrv := srvLeague.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
 	gameSrv := srvGame.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
 	tableSrv := srvTable.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)

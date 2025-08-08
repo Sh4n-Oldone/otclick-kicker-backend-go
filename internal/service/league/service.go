@@ -12,7 +12,7 @@ import (
 
 type IService interface {
 	GetList(ctx context.Context, cityID int64) ([]entities.League, error)
-	Create(ctx context.Context, league entities.League, teams []int64) (*int64, error)
+	Create(ctx context.Context, league entities.League, teams []int64, cityId int64, creator entities.User) (*int64, error)
 	Update(ctx context.Context, league entities.League, teams []int64) error
 	Delete(ctx context.Context, id int64) error
 

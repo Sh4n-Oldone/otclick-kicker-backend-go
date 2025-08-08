@@ -3,18 +3,19 @@ package league
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"strconv"
 
-	stderr "errors"
-
 	"github.com/go-chi/chi/v5"
 	"github.com/valyala/bytebufferpool"
 	"google.golang.org/grpc/codes"
+
+	cnst "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/constant"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
+	pkgerr "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 )
 
 func decodeGetListRequest(ctx context.Context, r *http.Request) (interface{}, error) {
@@ -22,13 +23,13 @@ func decodeGetListRequest(ctx context.Context, r *http.Request) (interface{}, er
 
 	cityIDParam := r.URL.Query().Get("cityId")
 	if cityIDParam == "" {
-		err := stderr.New(errors.EmptyParameterError)
+		err := errors.New(pkgerr.EmptyParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
 	cityID, err := strconv.ParseInt(cityIDParam, 10, 64)
 	if err != nil {
-		err := stderr.New(errors.WrongParameterError)
+		err := errors.New(pkgerr.WrongParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
@@ -43,15 +44,29 @@ func decodeCreateRequest(_ context.Context, r *http.Request) (interface{}, error
 	buf := bytebufferpool.Get()
 	defer bytebufferpool.Put(buf)
 
+	userId, ok := r.Context().Value(cnst.UserIDContextKey).(float64)
+	if !ok || userId == 0 {
+		err := errors.New(pkgerr.ErrUserIdToken)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	request.Creator.ID = int64(userId)
+
+	role, ok := r.Context().Value(cnst.RoleNameContextKey).(string)
+	if !ok || role == "" {
+		err := errors.New(pkgerr.ErrRoleToken)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	request.Creator.Role.Name = role
+
 	cityIDParam := r.URL.Query().Get("cityId")
 	if cityIDParam == "" {
-		err := stderr.New(errors.EmptyParameterError)
+		err := errors.New(pkgerr.EmptyParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
 	cityID, err := strconv.ParseInt(cityIDParam, 10, 64)
 	if err != nil {
-		err := stderr.New(errors.WrongParameterError)
+		err := errors.New(pkgerr.WrongParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
@@ -78,13 +93,13 @@ func decodeUpdateRequest(_ context.Context, r *http.Request) (interface{}, error
 
 	idParam := chi.URLParam(r, "id")
 	if idParam == "" {
-		err := stderr.New(errors.EmptyParameterError)
+		err := errors.New(pkgerr.EmptyParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
 	id, err := strconv.ParseInt(idParam, 10, 64)
 	if err != nil {
-		err := stderr.New(errors.WrongParameterError)
+		err := errors.New(pkgerr.WrongParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
@@ -108,13 +123,13 @@ func decodeDeleteRequest(_ context.Context, r *http.Request) (interface{}, error
 
 	idParam := chi.URLParam(r, "id")
 	if idParam == "" {
-		err := stderr.New(errors.EmptyParameterError)
+		err := errors.New(pkgerr.EmptyParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
 	id, err := strconv.ParseInt(idParam, 10, 64)
 	if err != nil {
-		err := stderr.New(errors.WrongParameterError)
+		err := errors.New(pkgerr.WrongParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
@@ -128,13 +143,13 @@ func decodeRecalcRequest(_ context.Context, r *http.Request) (interface{}, error
 
 	idParam := chi.URLParam(r, "id")
 	if idParam == "" {
-		err := stderr.New(errors.EmptyParameterError)
+		err := errors.New(pkgerr.EmptyParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
 	id, err := strconv.ParseInt(idParam, 10, 64)
 	if err != nil {
-		err := stderr.New(errors.WrongParameterError)
+		err := errors.New(pkgerr.WrongParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
@@ -144,9 +159,7 @@ func decodeRecalcRequest(_ context.Context, r *http.Request) (interface{}, error
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// Create ExtraPoints
 func decodeCreateExtraPointsRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	request := &entities.CreateExtraPointsRequest{}
 
@@ -166,7 +179,6 @@ func decodeCreateExtraPointsRequest(_ context.Context, r *http.Request) (interfa
 	return request, nil
 }
 
-// Update ExtraPoints
 func decodeUpdateExtraPointsRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	request := &entities.UpdateExtraPointsRequest{}
 
@@ -186,19 +198,18 @@ func decodeUpdateExtraPointsRequest(_ context.Context, r *http.Request) (interfa
 	return request, nil
 }
 
-// Delete ExtraPoints
 func decodeDeleteExtraPointsRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	request := &entities.IdRequest{}
 
 	idParam := chi.URLParam(r, "id")
 	if idParam == "" {
-		err := stderr.New(errors.EmptyParameterError)
+		err := errors.New(pkgerr.EmptyParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
 	extraPointsId, err := strconv.ParseInt(idParam, 10, 64)
 	if err != nil {
-		err := stderr.New(errors.WrongParameterError)
+		err := errors.New(pkgerr.WrongParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
@@ -206,29 +217,28 @@ func decodeDeleteExtraPointsRequest(_ context.Context, r *http.Request) (interfa
 	return request, nil
 }
 
-// Get ExtraPointsListByTeamAndLeagueId
 func decodeGetExtraPointsListByTeamAndLeagueIdRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	request := &entities.TeamLeagueIdRequest{}
 
 	teamIdParam := chi.URLParam(r, "team_id")
 	if teamIdParam == "" {
-		err := stderr.New(errors.EmptyParameterError)
+		err := errors.New(pkgerr.EmptyParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 	teamId, err := strconv.ParseInt(teamIdParam, 10, 64)
 	if err != nil {
-		err := stderr.New(errors.WrongParameterError)
+		err := errors.New(pkgerr.WrongParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
 	leagueIdParam := chi.URLParam(r, "league_id")
 	if leagueIdParam == "" {
-		err := stderr.New(errors.EmptyParameterError)
+		err := errors.New(pkgerr.EmptyParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 	leagueId, err := strconv.ParseInt(leagueIdParam, 10, 64)
 	if err != nil {
-		err := stderr.New(errors.WrongParameterError)
+		err := errors.New(pkgerr.WrongParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
@@ -238,19 +248,18 @@ func decodeGetExtraPointsListByTeamAndLeagueIdRequest(_ context.Context, r *http
 	return request, nil
 }
 
-// Get ExtraPointsById
 func decodeGetExtraPointsByIdRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	request := &entities.IdRequest{}
 
 	idParam := chi.URLParam(r, "id")
 	if idParam == "" {
-		err := stderr.New(errors.EmptyParameterError)
+		err := errors.New(pkgerr.EmptyParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
 	extraPointsId, err := strconv.ParseInt(idParam, 10, 64)
 	if err != nil {
-		err := stderr.New(errors.WrongParameterError)
+		err := errors.New(pkgerr.WrongParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 

@@ -6,6 +6,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
 
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 )
 
@@ -16,12 +17,15 @@ type RWDBOperationer interface {
 
 	CreateUser(logger zerolog.Logger, ctx context.Context, user entities.User) (id *int64, err error)
 	UpdateUser(logger zerolog.Logger, ctx context.Context, user entities.User) error
+	CreateTournamentMaster(logger zerolog.Logger, ctx context.Context, master entities.TournamentMaster, config *config.DBConfig) (id int64, err error)
+	UpdateTournamentMaster(logger zerolog.Logger, ctx context.Context, master entities.UpdateTournamentMasterRequest, cfg *config.DBConfig) error
+	DeleteTournamentMaster(logger zerolog.Logger, ctx context.Context, userId int64, cfg *config.DBConfig) error
 
 	CreateMatch(logger zerolog.Logger, ctx context.Context, match entities.Match) (id int64, err error)
 	UpdateMatch(logger zerolog.Logger, ctx context.Context, match entities.Match) error
 	DeleteMatch(logger zerolog.Logger, ctx context.Context, id int64) (bool, error)
 
-	CreatePlayer(logger zerolog.Logger, ctx context.Context, player entities.CreatePlayerRequest) (int, error)
+	CreatePlayer(logger zerolog.Logger, ctx context.Context, player entities.CreatePlayerRequest, dbConfig *config.DBConfig) (int, error)
 	DeletePlayer(logger zerolog.Logger, ctx context.Context, playerID int) error
 	RecoverPlayer(logger zerolog.Logger, ctx context.Context, playerID int) error
 	UpdatePlayer(logger zerolog.Logger, ctx context.Context, playerData entities.UpdatePlayerRequest) error
@@ -37,7 +41,7 @@ type RWDBOperationer interface {
 	CreatePlace(logger zerolog.Logger, ctx context.Context, entity entities.Place) (id *int64, err error)
 	UpdatePlace(logger zerolog.Logger, ctx context.Context, entity entities.Place) error
 	DeletePlace(logger zerolog.Logger, ctx context.Context, id int64) error
-	CreateTeam(logger zerolog.Logger, ctx context.Context, team entities.CreateTeamRequest) (id int64, err error)
+	CreateTeam(logger zerolog.Logger, ctx context.Context, team *entities.CreateTeamRequest) (id int64, err error)
 	UpdateTeam(logger zerolog.Logger, ctx context.Context, team entities.UpdateTeamRequest) (bool, error)
 	DeleteTeam(logger zerolog.Logger, ctx context.Context, id int64) (bool, error)
 	AddPlayerIntoTeam(logger zerolog.Logger, ctx context.Context, playerID, teamID int64) (bool, error)
@@ -74,7 +78,10 @@ type RDBOperationer interface {
 
 	GetCityList(logger zerolog.Logger, ctx context.Context, withDelete bool) ([]entities.City, error)
 
-	GetUser(logger zerolog.Logger, ctx context.Context, id *int64, email *string) (*entities.User, error)
+	GetUser(logger zerolog.Logger, ctx context.Context, id *int64, email *string, cfg *config.DBConfig) (*entities.User, error)
+	GetTournamentMasterByUserId(logger zerolog.Logger, ctx context.Context, userId int64, cfg *config.DBConfig) (entities.TournamentMaster, error)
+	GetTournamentMasterListByCityId(logger zerolog.Logger, ctx context.Context, cityID int64, cfg *config.DBConfig) ([]entities.TournamentMaster, error)
+	GetTournamentMasterList(logger zerolog.Logger, ctx context.Context, cfg *config.DBConfig) ([]entities.TournamentMaster, error)
 
 	GetPlayerByID(logger zerolog.Logger, ctx context.Context, playerID int) (entities.Player, error)
 	GetPlayersByTeamID(logger zerolog.Logger, ctx context.Context, teamID int) ([]entities.Player, error)

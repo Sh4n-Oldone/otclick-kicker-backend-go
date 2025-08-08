@@ -2,14 +2,14 @@ package league
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 
-	stderr "errors"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/constant"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/calculator"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
+	pkgerr "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 )
 
 func (s *Service) GetList(ctx context.Context, cityID int64) ([]entities.League, error) {
@@ -23,8 +23,8 @@ func (s *Service) GetList(ctx context.Context, cityID int64) ([]entities.League,
 	return leagues, nil
 }
 
-func (s *Service) Create(ctx context.Context, league entities.League, teams []int64) (*int64, error) {
-	logger := s.logger.With().Interface("service", "Create").Logger()
+func (s *Service) Create(ctx context.Context, league entities.League, teams []int64, cityId int64, creator entities.User) (*int64, error) {
+	logger := s.logger.With().Str("service", "Create").Logger()
 
 	id, err := s.rwdbOperations.CreateLeague(logger, ctx, league, teams)
 	if err != nil {
@@ -58,7 +58,7 @@ func (s *Service) Update(ctx context.Context, league entities.League, teams []in
 		}
 
 		if len(games) > 0 {
-			err = stderr.New(fmt.Sprintf(errors.ErrDeleteTeamFromLeague, teamId, league.ID))
+			err = errors.New(fmt.Sprintf(pkgerr.ErrDeleteTeamFromLeague, teamId, league.ID))
 			return err
 		}
 	}
@@ -229,7 +229,6 @@ func (s *Service) Recalc(ctx context.Context, id int64) error {
 	return nil
 }
 
-///////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////
 
 func (s *Service) CreateExtraPoints(ctx context.Context, req *entities.CreateExtraPointsRequest) (int64, error) {
