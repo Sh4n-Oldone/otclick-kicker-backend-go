@@ -41,11 +41,11 @@ type RWDBOperationer interface {
 	CreatePlace(logger zerolog.Logger, ctx context.Context, entity entities.Place) (id *int64, err error)
 	UpdatePlace(logger zerolog.Logger, ctx context.Context, entity entities.Place) error
 	DeletePlace(logger zerolog.Logger, ctx context.Context, id int64) error
-	CreateTeam(logger zerolog.Logger, ctx context.Context, team *entities.CreateTeamRequest) (id int64, err error)
-	UpdateTeam(logger zerolog.Logger, ctx context.Context, team entities.UpdateTeamRequest) (bool, error)
+	CreateTeam(logger zerolog.Logger, ctx context.Context, team entities.CreateTeamRequest) (id int64, err error)
+	UpdateTeam(logger zerolog.Logger, ctx context.Context, team entities.UpdateTeamRequest, cfg *config.DBConfig) (bool, error)
 	DeleteTeam(logger zerolog.Logger, ctx context.Context, id int64) (bool, error)
-	AddPlayerIntoTeam(logger zerolog.Logger, ctx context.Context, playerID, teamID int64) (bool, error)
-	RemovePlayerFromTeam(logger zerolog.Logger, ctx context.Context, playerID, teamID int64) (bool, error)
+	AddPlayerIntoTeam(logger zerolog.Logger, ctx context.Context, playerID, teamID int64, cfg *config.DBConfig) (bool, error)
+	RemovePlayerFromTeam(logger zerolog.Logger, ctx context.Context, playerID, teamID int64, cfg *config.DBConfig) (bool, error)
 	CreateLeague(logger zerolog.Logger, ctx context.Context, league entities.League, teams []int64) (id int64, err error)
 	UpdateLeague(logger zerolog.Logger, ctx context.Context, league entities.League, teams []int64) error
 	DeleteLeague(logger zerolog.Logger, ctx context.Context, id int64) error
@@ -83,7 +83,7 @@ type RDBOperationer interface {
 	GetTournamentMasterListByCityId(logger zerolog.Logger, ctx context.Context, cityID int64, cfg *config.DBConfig) ([]entities.TournamentMaster, error)
 	GetTournamentMasterList(logger zerolog.Logger, ctx context.Context, cfg *config.DBConfig) ([]entities.TournamentMaster, error)
 
-	GetPlayerByID(logger zerolog.Logger, ctx context.Context, playerID int) (entities.Player, error)
+	GetPlayerByID(logger zerolog.Logger, ctx context.Context, playerID int, cfg *config.DBConfig) (entities.Player, error)
 	GetPlayersByTeamID(logger zerolog.Logger, ctx context.Context, teamID int) ([]entities.Player, error)
 
 	GetPastMatchesByPlayerID(logger zerolog.Logger, ctx context.Context, playerID int) ([]entities.MatchV2, error)
@@ -114,7 +114,7 @@ type RDBOperationer interface {
 	GetComingGames(logger zerolog.Logger, ctx context.Context) ([]entities.ComingGame, error)
 	GetFutureGames(logger zerolog.Logger, ctx context.Context, cityID int) ([]entities.ShortGame, error)
 	GetTeamGames(logger zerolog.Logger, ctx context.Context, teamID int) ([]entities.TeamGame, error)
-	GetTeam(logger zerolog.Logger, ctx context.Context, teamID int64) (entities.GetTeamResponse, error)
+	GetTeam(logger zerolog.Logger, ctx context.Context, teamID int64, cfg *config.DBConfig) (entities.GetTeamResponse, error)
 	GetTeams(logger zerolog.Logger, ctx context.Context, cityId int64, onlyFree bool) ([]entities.TeamShort, error)
 	GetTeamsByCity(logger zerolog.Logger, ctx context.Context, onlyFree bool, cityID int64) ([]entities.TeamShort, error)
 	GetTeamsByLeague(logger zerolog.Logger, ctx context.Context, leagueID int64) ([]entities.TeamByLeague, error)
@@ -139,7 +139,7 @@ type RDBOperationer interface {
 
 	GetSeasonList(logger zerolog.Logger, ctx context.Context) ([]entities.Season, error)
 
-	GetTeamById(logger zerolog.Logger, ctx context.Context, teamID int64) (entities.TeamV2, error)
+	GetTeamById(logger zerolog.Logger, ctx context.Context, teamID int64, cfg *config.DBConfig) (entities.TeamV2, error)
 	GetLeagueListByTeamId(logger zerolog.Logger, ctx context.Context, teamID int64) ([]entities.LeagueShort, error)
 	GetCaptainByTeamId(logger zerolog.Logger, ctx context.Context, teamID int64) (entities.User, error)
 	GetTeamGamesInLeague(logger zerolog.Logger, ctx context.Context, teamId, leagueId int64, tiebreak *bool) ([]entities.Game, error)

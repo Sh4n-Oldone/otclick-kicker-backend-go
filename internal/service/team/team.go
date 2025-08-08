@@ -3,6 +3,7 @@ package team
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math"
 	"net/http"
 	"strconv"
@@ -12,6 +13,7 @@ import (
 
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/constant"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/convert"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
 	pkgerr "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 )
@@ -33,7 +35,7 @@ func (s *Service) GetTeam(ctx context.Context, teamID int64) (entities.GetTeamRe
 
 	g.Go(func() error {
 		var err error
-		team, err = s.rdbOperations.GetTeamById(logger, timeout, teamID)
+		team, err = s.rdbOperations.GetTeamById(logger, timeout, teamID, &s.config.RDB)
 		return err
 	})
 
@@ -456,22 +458,6 @@ func (s *Service) GetTeamVsTeamTable(ctx context.Context, cityID, seasonID int64
 	return response, nil
 }
 
-func resumScore(score, team1Score, team2Score int64) int64 {
-	if team1Score < 1 && team2Score < 1 {
-		return score
-	}
-
-	if team1Score == team2Score {
-		return score // both team got +2 instead?
-	}
-
-	if team1Score > team2Score {
-		return score + 2
-	}
-
-	return score // -2 ?
-}
-
 func (s *Service) Create(ctx context.Context, request *entities.CreateTeamRequest) (int64, error) {
 	logger := s.logger.With().Str("service", "Create").Logger()
 
@@ -482,10 +468,11 @@ func (s *Service) Create(ctx context.Context, request *entities.CreateTeamReques
 		}
 
 		if request.CityIdParam == "" {
-			// и его cityId не должен быть указан вовсе(наиболее вероятный и желаемый сценарий)
+
 			request.CityId = master.City.ID
+
 		} else {
-			// или его cityId должен быть равен cityId мастера по турнирам(эта проверка для подстраховки)
+
 			cityId, err := strconv.ParseInt(request.CityIdParam, 10, 64)
 			if err != nil {
 				err = errors.New(pkgerr.WrongParameterError + ": " + "cityId")
@@ -516,18 +503,49 @@ func (s *Service) Create(ctx context.Context, request *entities.CreateTeamReques
 		request.CityId = cityId
 	}
 
-	id, err := s.rwdbOperations.CreateTeam(logger, ctx, request)
+	id, err := s.rwdbOperations.CreateTeam(logger, ctx, *request)
 	if err != nil {
-		return id, err
+		return 0, err
 	}
 
 	return id, nil
 }
 
-func (s *Service) Update(ctx context.Context, UpdateTeamRequest entities.UpdateTeamRequest) (bool, error) {
-	logger := s.logger.With().Interface("service", "Update").Logger()
+func (s *Service) Update(ctx context.Context, request *entities.UpdateTeamRequest) (bool, error) {
+	logger := s.logger.With().Str("service", "Update").Logger()
 
-	res, err := s.rwdbOperations.UpdateTeam(logger, ctx, UpdateTeamRequest)
+	if request.Updater.Role != nil && request.Updater.Role.Name == constant.TournamentMaster {
+		team, err := s.rdbOperations.GetTeamById(logger, ctx, request.ID, &s.config.RDB)
+		if err != nil {
+			return false, err
+		}
+
+		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, request.Updater.ID, &s.config.RDB)
+		if err != nil {
+			return false, err
+		}
+
+		if team.CityId == nil || *team.CityId != master.City.ID {
+			err = fmt.Errorf(
+				"город команды(ID: %s) не совпадает с городом мастера по турнирам(ID: %d)",
+				convert.IntPtrToStr[int64](team.CityId),
+				master.City.ID,
+			)
+			return false, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+
+		if request.CityId != nil && *request.CityId != master.City.ID {
+			err = fmt.Errorf(
+				"мастер по турнирам может работать только с командами своего города(ID: %d), ID города в запросе - %d",
+				master.City.ID,
+				*request.CityId,
+			)
+			logger.Error().Err(err).Msg("failed to team.Update")
+			return false, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+	}
+
+	res, err := s.rwdbOperations.UpdateTeam(logger, ctx, *request, &s.config.RWDB)
 	if err != nil {
 		return res, err
 	}
@@ -546,21 +564,95 @@ func (s *Service) Delete(ctx context.Context, id int64) (bool, error) {
 	return res, nil
 }
 
-func (s *Service) AddPlayerIntoTeam(ctx context.Context, playerID, teamID int64) (bool, error) {
-	logger := s.logger.With().Interface("service", "AddPlayerIntoTeam").Logger()
+func (s *Service) AddPlayerIntoTeam(ctx context.Context, req *entities.MovingPlayerTeam) (bool, error) {
+	logger := s.logger.With().Str("service", "AddPlayerIntoTeam").Logger()
 
-	res, err := s.rwdbOperations.AddPlayerIntoTeam(logger, ctx, playerID, teamID)
+	if req.Executor.Role != nil && req.Executor.Role.Name == constant.TournamentMaster {
+		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, req.Executor.ID, &s.config.RDB)
+		if err != nil {
+			return false, err
+		}
+
+		player, err := s.rdbOperations.GetPlayerByID(logger, ctx, int(req.PlayerID), &s.config.RDB)
+		if err != nil {
+			return false, err
+		}
+
+		team, err := s.rdbOperations.GetTeamById(logger, ctx, req.TeamID, &s.config.RDB)
+		if err != nil {
+			return false, err
+		}
+
+		if player.CityID == nil || int64(*player.CityID) != master.City.ID {
+			err = fmt.Errorf(
+				"город игрока(ID: %s) не совпадает с городом мастера по турнирам(ID: %d)",
+				convert.IntPtrToStr[int](player.CityID),
+				master.City.ID,
+			)
+			logger.Error().Err(err).Msg("failed team.AddPlayerIntoTeam")
+			return false, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+
+		if team.CityId == nil || *team.CityId != master.City.ID {
+			err = fmt.Errorf(
+				"город команды(ID: %s) не совпадает с городом мастера по турнирам(ID: %d)",
+				convert.IntPtrToStr[int64](team.CityId),
+				master.City.ID,
+			)
+			logger.Error().Err(err).Msg("failed team.AddPlayerIntoTeam")
+			return false, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+	}
+
+	res, err := s.rwdbOperations.AddPlayerIntoTeam(logger, ctx, req.PlayerID, req.TeamID, &s.config.RWDB)
 	if err != nil {
-		return res, err
+		return false, err
 	}
 
 	return res, nil
 }
 
-func (s *Service) RemovePlayerFromTeam(ctx context.Context, playerID, teamID int64) (bool, error) {
-	logger := s.logger.With().Interface("service", "RemovePlayerFromTeam").Logger()
+func (s *Service) RemovePlayerFromTeam(ctx context.Context, req *entities.MovingPlayerTeam) (bool, error) {
+	logger := s.logger.With().Str("service", "RemovePlayerFromTeam").Logger()
 
-	res, err := s.rwdbOperations.RemovePlayerFromTeam(logger, ctx, playerID, teamID)
+	if req.Executor.Role != nil && req.Executor.Role.Name == constant.TournamentMaster {
+		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, req.Executor.ID, &s.config.RDB)
+		if err != nil {
+			return false, err
+		}
+
+		player, err := s.rdbOperations.GetPlayerByID(logger, ctx, int(req.PlayerID), &s.config.RDB)
+		if err != nil {
+			return false, err
+		}
+
+		team, err := s.rdbOperations.GetTeamById(logger, ctx, req.TeamID, &s.config.RDB)
+		if err != nil {
+			return false, err
+		}
+
+		if player.CityID == nil || int64(*player.CityID) != master.City.ID {
+			err = fmt.Errorf(
+				"город игрока(ID: %s) не совпадает с городом мастера по турнирам(ID: %d)",
+				convert.IntPtrToStr[int](player.CityID),
+				master.City.ID,
+			)
+			logger.Error().Err(err).Msg("failed team.AddPlayerIntoTeam")
+			return false, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+
+		if team.CityId == nil || *team.CityId != master.City.ID {
+			err = fmt.Errorf(
+				"город команды(ID: %s) не совпадает с городом мастера по турнирам(ID: %d)",
+				convert.IntPtrToStr[int64](team.CityId),
+				master.City.ID,
+			)
+			logger.Error().Err(err).Msg("failed team.AddPlayerIntoTeam")
+			return false, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+	}
+
+	res, err := s.rwdbOperations.RemovePlayerFromTeam(logger, ctx, req.PlayerID, req.TeamID, &s.config.RWDB)
 	if err != nil {
 		return res, err
 	}
@@ -584,4 +676,20 @@ func findBestPlayer(players []entities.FullPlayer, leagueId int) entities.FullPl
 	}
 
 	return bestPlayer
+}
+
+func resumScore(score, team1Score, team2Score int64) int64 {
+	if team1Score < 1 && team2Score < 1 {
+		return score
+	}
+
+	if team1Score == team2Score {
+		return score // both team got +2 instead?
+	}
+
+	if team1Score > team2Score {
+		return score + 2
+	}
+
+	return score // -2 ?
 }

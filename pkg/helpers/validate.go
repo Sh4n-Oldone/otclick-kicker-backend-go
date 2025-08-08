@@ -81,42 +81,10 @@ func ValidateUpdateMatchRequest(request *entities.UpdateMatchRequest) error {
 	return nil
 }
 
-func ValidateCreateTeamRequest(request *entities.CreateTeamRequest) error {
-	if request.Name == "" {
-		err := error_templates.New("invalid request fields", errors.New("invalid request fields"), codes.InvalidArgument, http.StatusBadRequest)
-		return error_templates.WrapErrorDetail(err, fmt.Sprintf("wrong value of parameter %T", request.Name))
-	}
-	if request.ShortName == "" {
-		err := error_templates.New("invalid request fields", errors.New("invalid request fields"), codes.InvalidArgument, http.StatusBadRequest)
-		return error_templates.WrapErrorDetail(err, fmt.Sprintf("wrong value of parameter %T", request.ShortName))
-	}
-	return nil
-}
-
-func ValidateUpdateTeamRequest(request *entities.UpdateTeamRequest) error {
-	if request.ID <= 0 {
-		err := error_templates.New("invalid request fields", errors.New("invalid request fields"), codes.InvalidArgument, http.StatusBadRequest)
-		return error_templates.WrapErrorDetail(err, fmt.Sprintf("wrong value of parameter %T", request.ID))
-	}
-	return nil
-}
-
 func ValidateDeleteTeamRequest(request *entities.DeleteTeamRequest) error {
 	if request.ID <= 0 {
 		err := error_templates.New("invalid request fields", errors.New("invalid request fields"), codes.InvalidArgument, http.StatusBadRequest)
 		return error_templates.WrapErrorDetail(err, fmt.Sprintf("wrong value of parameter %T", request.ID))
-	}
-	return nil
-}
-
-func ValidatePlayerTeamRequest(request *entities.PlayerTeam) error {
-	if request.PlayerID <= 0 {
-		err := error_templates.New("invalid request fields", errors.New("invalid request fields"), codes.InvalidArgument, http.StatusBadRequest)
-		return error_templates.WrapErrorDetail(err, fmt.Sprintf("wrong value of parameter %T", request.PlayerID))
-	}
-	if request.TeamID <= 0 {
-		err := error_templates.New("invalid request fields", errors.New("invalid request fields"), codes.InvalidArgument, http.StatusBadRequest)
-		return error_templates.WrapErrorDetail(err, fmt.Sprintf("wrong value of parameter %T", request.TeamID))
 	}
 	return nil
 }

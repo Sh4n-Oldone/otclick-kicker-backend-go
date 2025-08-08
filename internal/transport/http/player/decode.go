@@ -85,7 +85,7 @@ func decodeUpdateRequest(_ context.Context, r *http.Request) (interface{}, error
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
-	id, err := strconv.Atoi(paramID)
+	id, err := strconv.ParseInt(paramID, 10, 64)
 	if err != nil || id <= 0 {
 		err = errors.New(pkgerr.WrongParameterError)
 		return nil, error_templates.New(err.Error(), err, http.StatusBadRequest, http.StatusBadRequest)

@@ -1,8 +1,9 @@
 package entities
 
-type PlayerTeam struct {
-	PlayerID int64 `db:"player_id" json:"playerId"`
-	TeamID   int64 `db:"team_id" json:"teamId"`
+type MovingPlayerTeam struct {
+	PlayerID int64 `json:"playerId" validate:"required,gt=0"`
+	TeamID   int64 `json:"teamId" validate:"required,gt=0"`
+	Executor User  `validate:"required"`
 }
 
 type PlayerGetTeam struct {
@@ -23,10 +24,6 @@ type PlayerGetTeam struct {
 	CityID              *int64  `json:"cityId"`
 }
 
-// - 'percentageOfParticipation'
-// - 'leagues'
-// - 'leaguesCount'
-
 type TeamShort struct { // ByCity
 	ID        int64  `db:"id" json:"id"`
 	Name      string `db:"name" json:"name"`
@@ -41,8 +38,6 @@ type TeamByLeague struct {
 	CityId    *int64  `db:"city_id" json:"cityId"`
 	Players   []int64 `json:"players"`
 }
-
-// /////////////////////////////////////////////////////////////////////////
 
 type LeagueShort struct {
 	ID   int64  `db:"id" json:"id"`
@@ -87,8 +82,6 @@ type TeamLeagueStat struct {
 	BestPlayer      FullPlayer  `json:"bestPlayer,omitempty"`
 }
 
-// /////////////////////////////////////////////////////////////////////////
-
 type CreateTeamRequest struct {
 	Name        string `json:"name" validate:"required,min=1,max=64"`
 	ShortName   string `json:"shortName" validate:"required,min=1,max=32"`
@@ -98,12 +91,20 @@ type CreateTeamRequest struct {
 	Creator     User   `json:"creator" validate:"required"`
 }
 
+type CreateTeamByMasterRequest struct {
+	Name      string           `json:"name" validate:"required,min=1,max=64"`
+	ShortName string           `json:"shortName" validate:"required,min=1,max=32"`
+	Avatar    []byte           `json:"avatar,omitempty"`
+	Master    TournamentMaster `validate:"required"`
+}
+
 type UpdateTeamRequest struct {
-	ID        int64   `db:"id" json:"id"`
-	Name      *string `db:"name" json:"name"`
-	ShortName *string `db:"short_name" json:"shortName"`
+	ID        int64   `json:"id" validate:"required,gt=0"`
+	Name      *string `json:"name" validate:"omitempty,min=1,max=64"`
+	ShortName *string `json:"shortName" validate:"omitempty,min=1,max=32"`
 	Avatar    []byte  `json:"avatar,omitempty"`
-	CityId    *int64  `db:"city_id" json:"cityId"`
+	CityId    *int64  `json:"cityId" validate:"omitempty,gt=0"`
+	Updater   User    `validate:"required"`
 }
 
 type DeleteTeamRequest struct {
@@ -129,16 +130,11 @@ type GetTeamsByLeagueRequest struct {
 	LeagueID int64 `db:"league_id" json:"league_id" validate:"required,gt=0"`
 }
 
-// //////////////////////////////////
-
 type GetTeamVsTeamTableRequest struct {
 	CityID   int64 `json:"cityId"`
 	SeasonID int64 `json:"seasonId"`
 	// WithoutEmpty bool  `json:" withoutEmpty"`
 }
-
-// //////////////////////////////////
-// используется в entity/user.go
 
 type Team struct {
 	ID        int64   `json:"id" db:"id"`
@@ -148,8 +144,6 @@ type Team struct {
 	League    *League `json:"league,omitempty"`
 	City      *City   `json:"city,omitempty"`
 }
-
-// /////////////////////////////////////////////////////////////////////
 
 type GetTeamVsTeamTableResponse struct {
 	Data    []Data `json:"data"`
@@ -194,41 +188,3 @@ type GameFetch struct {
 	ID              int64  `json:"id"`
 	TechLooseTeamID *int64 `json:"techLooseTeamId"`
 }
-
-// {
-// 	"data": [
-// 	  {
-// 		"id": "",
-// 		"name": "",
-// 		"table": {
-// 		  "columns": [
-// 			{
-// 			  "uid": "",
-// 			  "name": ""
-// 			},
-// 			...
-// 		  ],
-// 		  "body": [
-// 			{
-// 			  "id": "",
-// 			  "teamShortName": "",
-// 			  "score": "",
-// 			  "differenceInScore": "",
-// 			  "gamesPlayed": "",
-// 			  "gamesToPlay": "",
-// 			  "FS": {
-// 				"match1Id": 0,
-// 				"match2Id": 0,
-// 				"score1": "0:0",
-// 				"score2": "0:0"
-// 			  },
-// 			  ...
-// 			},
-// 			...
-// 		  ]
-// 		}
-// 	  },
-// 	  ...
-// 	]
-// 	"message": "OK"
-//   }

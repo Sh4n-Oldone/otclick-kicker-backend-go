@@ -33,11 +33,11 @@ func (s *Service) Create(ctx context.Context, request entities.CreateGameRequest
 	defer cancel()
 
 	// Getting league for teams and validate it
-	team1resp, err := s.rdbOperations.GetTeam(logger, ctx, int64(request.Team1ID))
+	team1resp, err := s.rdbOperations.GetTeam(logger, ctx, int64(request.Team1ID), &s.config.RDB)
 	if err != nil {
 		return entities.CreateGameResponse{}, err
 	}
-	team2resp, err := s.rdbOperations.GetTeam(logger, ctx, int64(request.Team2ID))
+	team2resp, err := s.rdbOperations.GetTeam(logger, ctx, int64(request.Team2ID), &s.config.RDB)
 	if err != nil {
 		return entities.CreateGameResponse{}, err
 	}
@@ -214,11 +214,11 @@ func (s *Service) Delete(ctx context.Context, gameID int) error {
 	}
 
 	// Getting league for teams and validate it
-	team1resp, err := s.rdbOperations.GetTeam(logger, ctx, int64(game.Team1ID))
+	team1resp, err := s.rdbOperations.GetTeam(logger, ctx, int64(game.Team1ID), &s.config.RDB)
 	if err != nil {
 		return err
 	}
-	team2resp, err := s.rdbOperations.GetTeam(logger, ctx, int64(game.Team2ID))
+	team2resp, err := s.rdbOperations.GetTeam(logger, ctx, int64(game.Team2ID), &s.config.RDB)
 	if err != nil {
 		return err
 	}
@@ -319,11 +319,11 @@ func (s *Service) Update(ctx context.Context, request entities.UpdateGameRequest
 	defer cancel()
 
 	// Getting league for teams and validate it
-	team1resp, err := s.rdbOperations.GetTeam(logger, ctx, int64(request.Team1ID))
+	team1resp, err := s.rdbOperations.GetTeam(logger, ctx, int64(request.Team1ID), &s.config.RDB)
 	if err != nil {
 		return err
 	}
-	team2resp, err := s.rdbOperations.GetTeam(logger, ctx, int64(request.Team2ID))
+	team2resp, err := s.rdbOperations.GetTeam(logger, ctx, int64(request.Team2ID), &s.config.RDB)
 	if err != nil {
 		return err
 	}

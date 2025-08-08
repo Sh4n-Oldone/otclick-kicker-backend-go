@@ -21,7 +21,7 @@ func (s *Service) Create(ctx context.Context, request *entities.CreatePlayerRequ
 
 	// если запрос от имени мастера по турнирам, то...
 	if request.Creator.Role.Name == constant.TournamentMaster {
-		// игрок должен быть активен
+		// игрок должен быть активен...
 		if request.ActivePlayer == nil || *request.ActivePlayer == false {
 			err := errors.New("игрок должен быть активен")
 			logger.Error().Err(err).Msg("Failed create player request")
@@ -36,6 +36,7 @@ func (s *Service) Create(ctx context.Context, request *entities.CreatePlayerRequ
 		if request.CityIdParam == "" {
 			// и его cityId не должен быть указан вовсе(наиболее вероятный и желаемый сценарий)
 			request.CityID = master.City.ID
+
 		} else {
 			// или его cityId должен быть равен cityId мастера по турнирам(эта проверка для подстраховки)
 			cityId, err := strconv.ParseInt(request.CityIdParam, 10, 64)
@@ -52,7 +53,6 @@ func (s *Service) Create(ctx context.Context, request *entities.CreatePlayerRequ
 			request.CityID = cityId
 		}
 
-		// если запрос отимени других уполномоченных ролей, то правила валидации стандартные
 	} else {
 
 		if request.CityIdParam == "" {
@@ -210,7 +210,7 @@ func (s *Service) Get(ctx context.Context, id int) (entities.FullPlayerV2, error
 
 	g.Go(func() error {
 		var err error
-		player, err = s.rdbOperations.GetPlayerByID(logger, timeout, id)
+		player, err = s.rdbOperations.GetPlayerByID(logger, timeout, id, &s.config.RDB)
 		return err
 	})
 
