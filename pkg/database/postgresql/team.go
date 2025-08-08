@@ -2,19 +2,26 @@ package postgresql
 
 import (
 	"context"
-	stderr "errors"
+	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog"
+	"google.golang.org/grpc/codes"
 
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/constant"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
+	errtmp "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
+	pkgerr "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 )
 
-func (db *RDBOperation) GetTeam(logger zerolog.Logger, ctx context.Context, teamID int64) (entities.GetTeamResponse, error) {
+func (db *RDBOperation) GetTeam(logger zerolog.Logger, ctx context.Context, teamID int64, cfg *config.DBConfig) (entities.GetTeamResponse, error) {
+	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
 	team := entities.GetTeamResponse{}
 
 	const queryGetTeam = `SELECT t.id, t.name, t.short_name, t.avatar, t.city_id,
@@ -28,48 +35,50 @@ func (db *RDBOperation) GetTeam(logger zerolog.Logger, ctx context.Context, team
 
 	var leagueIDs []int64
 	var playerIDs []int64
-	err := db.db.QueryRow(ctx, queryGetTeam, teamID).Scan(&team.ID, &team.Name, &team.ShortName, &team.Avatar, &team.CityId, &leagueIDs, &playerIDs)
+	err := db.db.QueryRow(timeout, queryGetTeam, teamID).Scan(&team.ID, &team.Name, &team.ShortName, &team.Avatar, &team.CityId, &leagueIDs, &playerIDs)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to GetTeam")
 		return entities.GetTeamResponse{}, DecodeDatabaseError(err)
 	}
-	// ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 	const queryGetLeagueByID = `SELECT name FROM leagues WHERE id = $1;`
+
 	var leagues = []entities.LeagueShort{}
+
 	for _, leagueID := range leagueIDs {
 		var l entities.LeagueShort
 
 		l.ID = leagueID
 
-		err := db.db.QueryRow(ctx, queryGetLeagueByID, leagueID).
+		err = db.db.QueryRow(timeout, queryGetLeagueByID, leagueID).
 			Scan(&l.Name)
 		if err != nil {
 			logger.Error().Stack().Err(err).Msg("failed to postgresql.GetTeam/queryGetPlayerByID")
-			return entities.GetTeamResponse{}, DecodeDatabaseError(stderr.New(errors.ErrGetPlayer))
+			return entities.GetTeamResponse{}, DecodeDatabaseError(errors.New(pkgerr.ErrGetPlayer))
 		}
 
 		leagues = append(leagues, l)
 	}
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 	queryGetPlayerByID := `
-	SELECT
-        p.id,
-        p.name,
-        p.second_name,
-        p.last_name,
-        p.avatar,
-        p.active_player,
-        (p.deleted_at IS NOT NULL) AS deleted,
-        p.city_id,
-        t.name,
-        t.short_name,
-		r.value
-    FROM players p
-    LEFT JOIN players_teams_links ptl ON p.id = ptl.player_id
-    LEFT JOIN teams t ON t.id = ptl.team_id
-    LEFT JOIN rating r ON p.id = r.player_id %s
-    WHERE p.id = $1;
-	`
+		SELECT
+			p.id,
+			p.name,
+			p.second_name,
+			p.last_name,
+			p.avatar,
+			p.active_player,
+			(p.deleted_at IS NOT NULL) AS deleted,
+			p.city_id,
+			t.name,
+			t.short_name,
+			r.value
+		FROM players p
+		LEFT JOIN players_teams_links ptl ON p.id = ptl.player_id
+		LEFT JOIN teams t ON t.id = ptl.team_id
+		LEFT JOIN rating r ON p.id = r.player_id %s
+		WHERE p.id = $1;`
+
 	// возможно, проще было сделать через слияние SQL запросов
 	if len(leagueIDs) == 0 {
 		queryGetPlayerByID = fmt.Sprintf(queryGetPlayerByID, "")
@@ -83,7 +92,7 @@ func (db *RDBOperation) GetTeam(logger zerolog.Logger, ctx context.Context, team
 	for _, playerID := range playerIDs {
 		var p entities.PlayerGetTeam
 
-		err := db.db.QueryRow(ctx, queryGetPlayerByID, playerID).
+		err = db.db.QueryRow(timeout, queryGetPlayerByID, playerID).
 			Scan(&p.ID,
 				&p.Name,
 				&p.SecondName,
@@ -97,7 +106,7 @@ func (db *RDBOperation) GetTeam(logger zerolog.Logger, ctx context.Context, team
 				&p.RatingNumber)
 		if err != nil {
 			logger.Error().Stack().Err(err).Msg("failed to postgresql.GetTeam/queryGetPlayerByID")
-			return entities.GetTeamResponse{}, DecodeDatabaseError(stderr.New(errors.ErrGetPlayer))
+			return entities.GetTeamResponse{}, DecodeDatabaseError(errors.New(pkgerr.ErrGetPlayer))
 		}
 		players = append(players, p)
 	}
@@ -205,8 +214,6 @@ func (db *RDBOperation) GetTeamsByLeague(logger zerolog.Logger, ctx context.Cont
 
 	return teams, nil
 }
-
-// ///////////////////////////////////////////////////////////////////////////////////
 
 func (db *RDBOperation) FetchLeagues(logger zerolog.Logger, ctx context.Context, cityID int64, seasonID int64) ([]entities.League, error) {
 	rows, err := db.db.Query(ctx, "SELECT id, name FROM leagues WHERE city_id = $1 AND season_id = $2", cityID, seasonID)
@@ -363,8 +370,6 @@ func (db *RDBOperation) FetchMatches(logger zerolog.Logger, ctx context.Context,
 	return matches, nil
 }
 
-// /////////////////////////
-
 func (db *RDBOperation) TeamsHaveNoGames(logger zerolog.Logger, ctx context.Context, teams []entities.Team, seasonID int64) (bool, error) {
 	const queryGame = `SELECT g.id
 					   FROM games g
@@ -397,16 +402,14 @@ func (db *RDBOperation) TeamsHaveNoGames(logger zerolog.Logger, ctx context.Cont
 	return true, nil
 }
 
-// //////////////////////////////////////////////////////////////////////////////////
-
-func (db *RWDBOperation) CreateTeam(logger zerolog.Logger, ctx context.Context, team *entities.CreateTeamRequest) (int64, error) {
+func (db *RWDBOperation) CreateTeam(logger zerolog.Logger, ctx context.Context, team entities.CreateTeamRequest) (int64, error) {
 	var teamId int64
 	const queryCreateTeam = `INSERT INTO teams (name, short_name, avatar, city_id) VALUES ($1, $2, $3, $4) RETURNING id`
 
 	tx, err := db.db.Begin(ctx)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.CreateTeam")
-		return 0, DecodeDatabaseError(stderr.New(errors.ErrCreateTeam))
+		return 0, DecodeDatabaseError(errors.New(pkgerr.ErrCreateTeam))
 	}
 
 	// Вставка команды в таблицу `teams` и получение `id` новой команды
@@ -424,63 +427,34 @@ func (db *RWDBOperation) CreateTeam(logger zerolog.Logger, ctx context.Context, 
 	if err = tx.Commit(ctx); err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.CreateTeam")
 		_ = tx.Rollback(ctx)
-		return 0, DecodeDatabaseError(stderr.New(errors.ErrCreateTeam))
+		return 0, DecodeDatabaseError(errors.New(pkgerr.ErrCreateTeam))
 	}
 
 	return teamId, nil
 }
 
-func (db *RWDBOperation) UpdateTeam(logger zerolog.Logger, ctx context.Context, team entities.UpdateTeamRequest) (bool, error) {
-	var fields []string
-	var values []interface{}
-	index := 1
+func (db *RWDBOperation) UpdateTeam(logger zerolog.Logger, ctx context.Context, req entities.UpdateTeamRequest, cfg *config.DBConfig) (bool, error) {
+	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+	defer cancel()
 
-	// Проверяем и добавляем поля для обновления
-	if team.Name != nil {
-		fields = append(fields, fmt.Sprintf("name = $%d", index))
-		values = append(values, *team.Name)
-		index++
-	}
-	if team.ShortName != nil {
-		fields = append(fields, fmt.Sprintf("short_name = $%d", index))
-		values = append(values, *team.ShortName)
-		index++
-	}
-	if team.Avatar != nil {
-		fields = append(fields, fmt.Sprintf("avatar = $%d", index))
-		values = append(values, team.Avatar)
-		index++
-	}
-	if team.CityId != nil {
-		fields = append(fields, fmt.Sprintf("city_id = $%d", index))
-		values = append(values, *team.CityId)
-		index++
-	}
+	const query string = `
+		UPDATE teams
+		SET
+		name = COALESCE($1, name),
+		short_name = COALESCE($2, short_name),
+		city_id = COALESCE($3, city_id),
+		avatar = COALESCE($4, avatar)
+		WHERE id = $5;`
 
-	// Если нет полей для обновления, возвращаем предупреждение
-	if len(fields) == 0 {
-		logger.Warn().Msg("No fields to update")
-		return false, nil
+	tag, err := db.db.Exec(timeout, query, req.Name, req.ShortName, req.CityId, req.Avatar, req.ID)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to postgresql.UpdateTeam")
+		return false, DecodeDatabaseError(err)
 	}
-
-	// Создание запроса для обновления полей таблицы `teams`
-	if len(fields) > 0 {
-		fieldsQuery := strings.Join(fields, ", ")
-		queryUpdateTeam := fmt.Sprintf("UPDATE teams SET %s WHERE id = $%d", fieldsQuery, index)
-		values = append(values, team.ID)
-
-		// Выполняем запрос обновления команды
-		result, err := db.db.Exec(ctx, queryUpdateTeam, values...)
-		if err != nil {
-			logger.Error().Err(err).Msg("failed to update Team record")
-			return false, DecodeDatabaseError(err)
-		}
-
-		rowsAffected := result.RowsAffected()
-		if rowsAffected == 0 {
-			logger.Error().Err(err).Msg("no rows were affected for the team update")
-			return false, stderr.New("Failed to Update Team, it does not exist")
-		}
+	if tag.RowsAffected() == 0 {
+		err = errors.New("no rows affected")
+		logger.Error().Err(err).Msg("postgresql.UpdateTeam no rows affected")
+		return false, errtmp.New(err.Error(), err, codes.NotFound, http.StatusNotFound)
 	}
 
 	return true, nil
@@ -497,7 +471,7 @@ func (db *RWDBOperation) DeleteTeam(logger zerolog.Logger, ctx context.Context, 
 	tx, err := db.db.Begin(ctx)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to begin transaction in DeleteTeam")
-		return false, DecodeDatabaseError(stderr.New(errors.ErrDeleteTeam))
+		return false, DecodeDatabaseError(errors.New(pkgerr.ErrDeleteTeam))
 	}
 
 	// Удаление из `players_teams_links`
@@ -529,70 +503,84 @@ func (db *RWDBOperation) DeleteTeam(logger zerolog.Logger, ctx context.Context, 
 	if rowsAffected == 0 {
 		logger.Warn().Msg("No team was deleted; it may not exist")
 		_ = tx.Rollback(ctx)
-		return false, stderr.New("Failed to delete team; it may not exist")
+		return false, errors.New("failed to delete team; it may not exist")
 	}
 
 	// Коммит транзакции
 	if err = tx.Commit(ctx); err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to commit transaction in DeleteTeam")
 		_ = tx.Rollback(ctx)
-		return false, DecodeDatabaseError(stderr.New(errors.ErrDeleteTeam))
+		return false, DecodeDatabaseError(errors.New(pkgerr.ErrDeleteTeam))
 	}
 
 	return true, nil
 }
 
-// ////////////////////////////////////////////////////////////////////////////////
+func (db *RWDBOperation) AddPlayerIntoTeam(logger zerolog.Logger, ctx context.Context, playerID, teamID int64, cfg *config.DBConfig) (bool, error) {
+	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+	defer cancel()
 
-func (db *RWDBOperation) AddPlayerIntoTeam(logger zerolog.Logger, ctx context.Context, playerID, teamID int64) (bool, error) {
 	var exists int
+
 	const query1 = "SELECT 1 FROM players_teams_links WHERE player_id = $1 AND team_id = $2"
-	err := db.db.QueryRow(ctx, query1, playerID, teamID).Scan(&exists)
-	if err == nil {
-		logger.Error().Err(err).Msg("Player already in that team!")
-		return false, stderr.New("Player already in that team!")
-	}
-	if err != pgx.ErrNoRows {
-		logger.Error().Err(err).Msg("Team or player not found")
+
+	err := db.db.QueryRow(timeout, query1, playerID, teamID).Scan(&exists)
+	if err != nil && errors.Is(err, pgx.ErrNoRows) == false {
+		logger.Error().Err(err).Msg(err.Error())
 		return false, DecodeDatabaseError(err)
 	}
 
+	if exists > 0 {
+		err = errors.New("player already exists in team")
+		logger.Error().Err(err).Msg(err.Error())
+		return false, errtmp.New(err.Error(), err, codes.AlreadyExists, http.StatusConflict)
+	}
+
 	const query2 = "INSERT INTO players_teams_links(player_id, team_id) VALUES($1, $2)"
-	tag, err := db.db.Exec(ctx, query2, playerID, teamID)
+
+	tag, err := db.db.Exec(timeout, query2, playerID, teamID)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to AddPlayerIntoTeam")
 		return false, DecodeDatabaseError(err)
 	}
 	if tag.RowsAffected() == 0 {
-		logger.Error().Msg("No rows affected, failed to insert player into team")
-		return false, stderr.New("Failed to add player into team")
+		err = errors.New("no rows affected")
+		logger.Error().Err(err).Msg("no rows affected in AddPlayerIntoTeam")
+		return false, errtmp.New(err.Error(), err, codes.NotFound, http.StatusNotFound)
 	}
 
 	return true, nil
 }
 
-func (db *RWDBOperation) RemovePlayerFromTeam(logger zerolog.Logger, ctx context.Context, playerID, teamID int64) (bool, error) {
+func (db *RWDBOperation) RemovePlayerFromTeam(logger zerolog.Logger, ctx context.Context, playerID, teamID int64, cfg *config.DBConfig) (bool, error) {
+	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
 	var exists int
+
 	const query1 = "SELECT 1 FROM players_teams_links WHERE player_id = $1 AND team_id = $2"
-	err := db.db.QueryRow(ctx, query1, playerID, teamID).Scan(&exists)
-	if err == pgx.ErrNoRows {
-		logger.Error().Msg("Player not in that team!")
-		return false, stderr.New("Player not in that team!")
-	}
+
+	err := db.db.QueryRow(timeout, query1, playerID, teamID).Scan(&exists)
 	if err != nil {
-		logger.Error().Err(err).Msg("Team or player not found")
+		if errors.Is(err, pgx.ErrNoRows) {
+			logger.Error().Err(err).Msg("Player not in that team!")
+			return false, DecodeDatabaseError(err)
+		}
+		logger.Error().Err(err).Msg("failed to RemovePlayerFromTeam")
 		return false, DecodeDatabaseError(err)
 	}
 
 	const query2 = "DELETE FROM players_teams_links WHERE player_id = $1 AND team_id = $2"
-	tag, err := db.db.Exec(ctx, query2, playerID, teamID)
+
+	tag, err := db.db.Exec(timeout, query2, playerID, teamID)
 	if err != nil {
 		logger.Error().Err(err).Msg("Failed to RemovePlayerFromTeam")
 		return false, DecodeDatabaseError(err)
 	}
 	if tag.RowsAffected() == 0 {
-		logger.Error().Msg("No rows affected, failed to remove player from team")
-		return false, stderr.New("failed to remove player from team")
+		err = errors.New("no rows affected")
+		logger.Error().Err(err).Msg("No rows affected, failed to remove player from team")
+		return false, errtmp.New(err.Error(), err, codes.NotFound, http.StatusNotFound)
 	}
 
 	return true, nil
@@ -650,8 +638,6 @@ func (db *RDBOperation) GetTeamExtraPointsCount(logger zerolog.Logger, ctx conte
 	return extraPoints, nil
 }
 
-// ///////////////////////////////////////////////////////////////////////////////////////
-
 func (db *RWDBOperation) CreateExtraPoints(logger zerolog.Logger, ctx context.Context, req *entities.CreateExtraPointsRequest) (int64, error) {
 	const query = "INSERT INTO team_extra_points(team_id, league_id, reason, points) VALUES($1, $2, $3, $4) RETURNING id"
 
@@ -681,7 +667,7 @@ func (db *RWDBOperation) UpdateExtraPoints(logger zerolog.Logger, ctx context.Co
 		return false, DecodeDatabaseError(err)
 	}
 	if tag.RowsAffected() == 0 {
-		err = stderr.New("No rows affected, failed to postgresql.UpdateExtraPoints")
+		err = errors.New("no rows affected, failed to postgresql.UpdateExtraPoints")
 		logger.Error().Msg(err.Error())
 		return false, DecodeDatabaseError(err)
 	}
@@ -697,7 +683,7 @@ func (db *RWDBOperation) DeleteExtraPoints(logger zerolog.Logger, ctx context.Co
 		return false, DecodeDatabaseError(err)
 	}
 	if tag.RowsAffected() == 0 {
-		err = stderr.New("No rows affected, failed to postgresql.DeleteExtraPoints")
+		err = errors.New("no rows affected, failed to postgresql.DeleteExtraPoints")
 		logger.Error().Msg(err.Error())
 		return false, DecodeDatabaseError(err)
 	}
@@ -762,9 +748,10 @@ func (db *RDBOperation) GetExtraPointsById(logger zerolog.Logger, ctx context.Co
 	return extraPoints, nil
 }
 
-/////////////////////////////////////////////////////////////////////////////////////////
+func (db *RDBOperation) GetTeamById(logger zerolog.Logger, ctx context.Context, teamID int64, cfg *config.DBConfig) (entities.TeamV2, error) {
+	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+	defer cancel()
 
-func (db *RDBOperation) GetTeamById(logger zerolog.Logger, ctx context.Context, teamID int64) (entities.TeamV2, error) {
 	team := entities.TeamV2{}
 
 	const queryGetTeam = `
@@ -780,7 +767,8 @@ func (db *RDBOperation) GetTeamById(logger zerolog.Logger, ctx context.Context, 
 	WHERE t.id = $1
 	GROUP BY t.id`
 
-	err := db.db.QueryRow(ctx, queryGetTeam, teamID).Scan(&team.Id, &team.Name, &team.ShortName, &team.CityId, &team.Avatar, &team.PlayersIds)
+	err := db.db.QueryRow(timeout, queryGetTeam, teamID).
+		Scan(&team.Id, &team.Name, &team.ShortName, &team.CityId, &team.Avatar, &team.PlayersIds)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to postgresql.GetTeamById")
 		return entities.TeamV2{}, DecodeDatabaseError(err)
@@ -803,7 +791,7 @@ func (db *RDBOperation) GetLeagueListByTeamId(logger zerolog.Logger, ctx context
 	rows, err := db.db.Query(ctx, query, teamID)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.GetLeagueListByTeamId")
-		return nil, DecodeDatabaseError(stderr.New(errors.ErrGetPlayer))
+		return nil, DecodeDatabaseError(errors.New(pkgerr.ErrGetPlayer))
 	}
 	defer rows.Close()
 

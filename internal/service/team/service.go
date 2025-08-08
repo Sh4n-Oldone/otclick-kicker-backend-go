@@ -20,11 +20,11 @@ type IService interface {
 	GetTeamVsTeamTable(ctx context.Context, cityID, seasonID int64) (entities.GetTeamVsTeamTableResponse, error)
 
 	Create(ctx context.Context, team *entities.CreateTeamRequest) (int64, error)
-	Update(ctx context.Context, team entities.UpdateTeamRequest) (bool, error)
+	Update(ctx context.Context, team *entities.UpdateTeamRequest) (bool, error)
 	Delete(ctx context.Context, id int64) (bool, error)
 
-	AddPlayerIntoTeam(ctx context.Context, playerID, teamID int64) (bool, error)
-	RemovePlayerFromTeam(ctx context.Context, playerID, teamID int64) (bool, error)
+	AddPlayerIntoTeam(ctx context.Context, req *entities.MovingPlayerTeam) (bool, error)
+	RemovePlayerFromTeam(ctx context.Context, req *entities.MovingPlayerTeam) (bool, error)
 
 	GetLogger() *zerolog.Logger
 	GetValidator() *validator.Validate

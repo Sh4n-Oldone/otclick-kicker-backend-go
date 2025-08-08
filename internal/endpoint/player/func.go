@@ -96,6 +96,12 @@ func makeUpdate(s player.IService) endpoint.Endpoint {
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
+		err = s.GetValidator().Struct(req)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed validate request")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
 		err = s.Update(ctx, *req)
 		if err != nil {
 			serviceLogger.Error().Err(err).Msg("Failed to player.Update")

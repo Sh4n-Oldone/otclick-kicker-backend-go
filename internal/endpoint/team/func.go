@@ -120,8 +120,6 @@ func makeGetTeamVsTeamTable(s team.IService) endpoint.Endpoint {
 	}
 }
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 func makeCreate(s team.IService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		reqID, ctx := middleware.GetRequestID(ctx)
@@ -166,15 +164,16 @@ func makeUpdate(s team.IService) endpoint.Endpoint {
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
-		err = helpers.ValidateUpdateTeamRequest(req)
+		err = s.GetValidator().Struct(req)
 		if err != nil {
 			serviceLogger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).Msg(errors.FailedValidateRequest)
-			return nil, err
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
-		res, err := s.Update(ctx, *req)
+		res, err := s.Update(ctx, req)
 		if err != nil {
-			return res, err
+			serviceLogger.Error().Err(err).Msg("Failed to team.makeUpdate")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
 		response := &struct {
@@ -217,28 +216,27 @@ func makeDelete(s team.IService) endpoint.Endpoint {
 	}
 }
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 func makeAddPlayerIntoTeam(s team.IService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		reqID, ctx := middleware.GetRequestID(ctx)
 		serviceLogger := s.GetLogger().With().Str("Source", "makeAddPlayerIntoTeam").Logger()
 
-		req, err := helpers.CastRequest[*entities.PlayerTeam](request)
+		req, err := helpers.CastRequest[*entities.MovingPlayerTeam](request)
 		if err != nil {
 			serviceLogger.Error().Err(err).Msg("Failed to cast request")
-			return false, error_templates.WrapErrorEndpoint(err, reqID)
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
-		err = helpers.ValidatePlayerTeamRequest(req)
+		err = s.GetValidator().Struct(req)
 		if err != nil {
-			serviceLogger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).Msg(errors.FailedValidateRequest)
-			return false, err
+			serviceLogger.Error().Err(error_templates.ErrorDetailFromError(err)).Msg(errors.FailedValidateRequest)
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
-		res, err := s.AddPlayerIntoTeam(ctx, req.PlayerID, req.TeamID)
+		res, err := s.AddPlayerIntoTeam(ctx, req)
 		if err != nil {
-			return res, err
+			serviceLogger.Error().Err(error_templates.ErrorDetailFromError(err)).Msg("failed team.makeAddPlayerIntoTeam")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
 		response := &struct {
@@ -255,21 +253,22 @@ func makeRemovePlayerFromTeam(s team.IService) endpoint.Endpoint {
 		reqID, ctx := middleware.GetRequestID(ctx)
 		serviceLogger := s.GetLogger().With().Str("Source", "makeRemovePlayerFromTeam").Logger()
 
-		req, err := helpers.CastRequest[*entities.PlayerTeam](request)
+		req, err := helpers.CastRequest[*entities.MovingPlayerTeam](request)
 		if err != nil {
 			serviceLogger.Error().Err(err).Msg("Failed to cast request")
-			return false, error_templates.WrapErrorEndpoint(err, reqID)
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
-		err = helpers.ValidatePlayerTeamRequest(req)
+		err = s.GetValidator().Struct(req)
 		if err != nil {
-			serviceLogger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).Msg(errors.FailedValidateRequest)
-			return false, err
+			serviceLogger.Error().Err(error_templates.ErrorDetailFromError(err)).Msg(errors.FailedValidateRequest)
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
-		res, err := s.RemovePlayerFromTeam(ctx, req.PlayerID, req.TeamID)
+		res, err := s.RemovePlayerFromTeam(ctx, req)
 		if err != nil {
-			return res, err
+			serviceLogger.Error().Err(error_templates.ErrorDetailFromError(err)).Msg("failed team.makeRemovePlayerFromTeam")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
 		response := &struct {

@@ -38,12 +38,12 @@ type CreatePlayerResponse struct {
 }
 
 type UpdatePlayerRequest struct {
-	ID           int     `json:"id"`
-	Name         *string `json:"name,omitempty"`
-	SecondName   *string `json:"secondName,omitempty"`
-	LastName     *string `json:"lastName,omitempty"`
+	ID           int64   `json:"id" validate:"required,gt=0"`
+	Name         *string `json:"name,omitempty" validate:"omitempty,min=1,max=64"`
+	SecondName   *string `json:"secondName,omitempty" validate:"omitempty,min=1,max=64"`
+	LastName     *string `json:"lastName,omitempty" validate:"omitempty,min=1,max=64"`
 	ActivePlayer *bool   `json:"activePlayer,omitempty"`
-	Avatar       *string `json:"avatar,omitempty"`
+	Avatar       []byte  `json:"avatar,omitempty"`
 	CityID       *int32  `json:"cityId,omitempty"`
 }
 

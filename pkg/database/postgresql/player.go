@@ -3,7 +3,6 @@ package postgresql
 import (
 	"context"
 	"errors"
-
 	"github.com/rs/zerolog"
 
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
@@ -124,7 +123,10 @@ func (db *RWDBOperation) UpdatePlayer(logger zerolog.Logger, ctx context.Context
 	return nil
 }
 
-func (db *RDBOperation) GetPlayerByID(logger zerolog.Logger, ctx context.Context, playerID int) (entities.Player, error) {
+func (db *RDBOperation) GetPlayerByID(logger zerolog.Logger, ctx context.Context, playerID int, cfg *config.DBConfig) (entities.Player, error) {
+	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
 	const query string = `
 	SELECT
         p.id,
@@ -148,11 +150,11 @@ func (db *RDBOperation) GetPlayerByID(logger zerolog.Logger, ctx context.Context
 
 	var p entities.Player
 
-	err := db.db.QueryRow(ctx, query, playerID).
+	err := db.db.QueryRow(timeout, query, playerID).
 		Scan(&p.ID, &p.Name, &p.SecondName, &p.LastName, &p.ActivePlayer, &p.DeletedAt, &p.Avatar, &p.CityID, &p.CityName, &p.TeamID, &p.TeamName, &p.TeamShortName)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.GetPlayerByID")
-		return entities.Player{}, DecodeDatabaseError(errors.New(pkgerr.ErrGetPlayer))
+		return entities.Player{}, DecodeDatabaseError(err)
 	}
 
 	return p, nil

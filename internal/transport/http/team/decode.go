@@ -181,10 +181,23 @@ func decodeCreateRequest(_ context.Context, r *http.Request) (interface{}, error
 }
 
 func decodeUpdateRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := &entities.UpdateTeamRequest{}
-
+	request := &entities.UpdateTeamRequest{Updater: entities.User{Role: &entities.Role{}}}
 	buf := bytebufferpool.Get()
 	defer bytebufferpool.Put(buf)
+
+	userId, ok := r.Context().Value(cnst.UserIDContextKey).(int64)
+	if !ok || userId == 0 {
+		err := errors.New(pkgerr.ErrUserIdToken)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	request.Updater.ID = userId
+
+	role, ok := r.Context().Value(cnst.RoleNameContextKey).(string)
+	if !ok || role == "" {
+		err := errors.New(pkgerr.ErrRoleToken)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	request.Updater.Role.Name = role
 
 	_, err := io.Copy(buf, r.Body)
 	if err != nil {
@@ -220,10 +233,24 @@ func decodeDeleteRequest(_ context.Context, r *http.Request) (interface{}, error
 }
 
 func decodeAddPlayerIntoTeamRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := &entities.PlayerTeam{}
+	request := &entities.MovingPlayerTeam{Executor: entities.User{Role: &entities.Role{}}}
 
 	buf := bytebufferpool.Get()
 	defer bytebufferpool.Put(buf)
+
+	userId, ok := r.Context().Value(cnst.UserIDContextKey).(int64)
+	if !ok || userId == 0 {
+		err := errors.New(pkgerr.ErrUserIdToken)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	request.Executor.ID = userId
+
+	role, ok := r.Context().Value(cnst.RoleNameContextKey).(string)
+	if !ok || role == "" {
+		err := errors.New(pkgerr.ErrRoleToken)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	request.Executor.Role.Name = role
 
 	_, err := io.Copy(buf, r.Body)
 	if err != nil {
@@ -239,10 +266,24 @@ func decodeAddPlayerIntoTeamRequest(_ context.Context, r *http.Request) (interfa
 }
 
 func decodeRemovePlayerFromTeamRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := &entities.PlayerTeam{}
+	request := &entities.MovingPlayerTeam{Executor: entities.User{Role: &entities.Role{}}}
 
 	buf := bytebufferpool.Get()
 	defer bytebufferpool.Put(buf)
+
+	userId, ok := r.Context().Value(cnst.UserIDContextKey).(int64)
+	if !ok || userId == 0 {
+		err := errors.New(pkgerr.ErrUserIdToken)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	request.Executor.ID = userId
+
+	role, ok := r.Context().Value(cnst.RoleNameContextKey).(string)
+	if !ok || role == "" {
+		err := errors.New(pkgerr.ErrRoleToken)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	request.Executor.Role.Name = role
 
 	_, err := io.Copy(buf, r.Body)
 	if err != nil {
