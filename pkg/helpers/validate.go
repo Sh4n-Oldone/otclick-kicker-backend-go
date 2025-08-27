@@ -204,45 +204,6 @@ func ValidateDeleteBarRequest(request *entities.DeleteBarRequest) error {
 	return nil
 }
 
-func ValidateCreatePlaceRequest(request *entities.CreatePlaceRequest) error {
-	if request.BarID <= 0 {
-		err := error_templates.New("invalid request fields", errors.New("invalid request fields"), codes.InvalidArgument, http.StatusBadRequest)
-		return error_templates.WrapErrorDetail(err, fmt.Sprintf("wrong value of parameter %T", request.BarID))
-	}
-	if request.TableID <= 0 {
-		err := error_templates.New("invalid request fields", errors.New("invalid request fields"), codes.InvalidArgument, http.StatusBadRequest)
-		return error_templates.WrapErrorDetail(err, fmt.Sprintf("wrong value of parameter %T", request.TableID))
-	}
-
-	return nil
-}
-
-func ValidateUpdatePlaceRequest(request *entities.UpdatePlaceRequest) error {
-	if request.ID <= 0 {
-		err := error_templates.New("invalid request fields", errors.New("invalid request fields"), codes.InvalidArgument, http.StatusBadRequest)
-		return error_templates.WrapErrorDetail(err, fmt.Sprintf("wrong value of parameter %T", request.ID))
-	}
-	if request.BarID <= 0 {
-		err := error_templates.New("invalid request fields", errors.New("invalid request fields"), codes.InvalidArgument, http.StatusBadRequest)
-		return error_templates.WrapErrorDetail(err, fmt.Sprintf("wrong value of parameter %T", request.BarID))
-	}
-	if request.TableID <= 0 {
-		err := error_templates.New("invalid request fields", errors.New("invalid request fields"), codes.InvalidArgument, http.StatusBadRequest)
-		return error_templates.WrapErrorDetail(err, fmt.Sprintf("wrong value of parameter %T", request.TableID))
-	}
-
-	return nil
-}
-
-func ValidateDeletePlaceRequest(request *entities.DeletePlaceRequest) error {
-	if request.ID <= 0 {
-		err := error_templates.New("invalid request fields", errors.New("invalid request fields"), codes.InvalidArgument, http.StatusBadRequest)
-		return error_templates.WrapErrorDetail(err, fmt.Sprintf("wrong value of parameter %T", request.ID))
-	}
-
-	return nil
-}
-
 func ValidateCreateLeagueRequest(request *entities.CreateLeagueRequest) error {
 	if request.Name == "" {
 		err := error_templates.New("invalid request fields", errors.New("invalid request fields"), codes.InvalidArgument, http.StatusBadRequest)
@@ -380,7 +341,6 @@ func ValidateDeleteFutureGame(request entities.DeleteFutureGameRequest) error {
 }
 
 func ValidateGetGameList(request entities.GetGameListRequest) error {
-
 	validate := validator.New(validator.WithRequiredStructEnabled())
 	err := validate.Struct(request)
 	if err != nil {

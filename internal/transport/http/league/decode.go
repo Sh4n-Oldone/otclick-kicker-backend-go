@@ -39,12 +39,12 @@ func decodeGetListRequest(ctx context.Context, r *http.Request) (interface{}, er
 }
 
 func decodeCreateRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := &entities.CreateLeagueRequest{}
+	request := &entities.CreateLeagueRequest{Creator: entities.User{Role: &entities.Role{}}}
 
 	buf := bytebufferpool.Get()
 	defer bytebufferpool.Put(buf)
 
-	userId, ok := r.Context().Value(cnst.UserIDContextKey).(float64)
+	userId, ok := r.Context().Value(cnst.UserIDContextKey).(intt64)
 	if !ok || userId == 0 {
 		err := errors.New(pkgerr.ErrUserIdToken)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)

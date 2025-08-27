@@ -38,9 +38,9 @@ type RWDBOperationer interface {
 	UpdateTable(logger zerolog.Logger, ctx context.Context, entity entities.Table) error
 	DeleteTable(logger zerolog.Logger, ctx context.Context, id int64) error
 
-	CreatePlace(logger zerolog.Logger, ctx context.Context, entity entities.Place) (id *int64, err error)
-	UpdatePlace(logger zerolog.Logger, ctx context.Context, entity entities.Place) error
-	DeletePlace(logger zerolog.Logger, ctx context.Context, id int64) error
+	CreatePlace(logger zerolog.Logger, ctx context.Context, entity entities.CreatePlaceRequest, cfg *config.DBConfig) (id *int64, err error)
+	UpdatePlace(logger zerolog.Logger, ctx context.Context, entity entities.UpdatePlaceRequest, cfg *config.DBConfig) error
+	DeletePlace(logger zerolog.Logger, ctx context.Context, id int64, cfg *config.DBConfig) error
 	CreateTeam(logger zerolog.Logger, ctx context.Context, team entities.CreateTeamRequest) (id int64, err error)
 	UpdateTeam(logger zerolog.Logger, ctx context.Context, team entities.UpdateTeamRequest, cfg *config.DBConfig) (bool, error)
 	DeleteTeam(logger zerolog.Logger, ctx context.Context, id int64) (bool, error)
@@ -101,10 +101,10 @@ type RDBOperationer interface {
 	GetTableList(logger zerolog.Logger, ctx context.Context, withDelete bool) ([]entities.Table, error)
 
 	GetBarList(logger zerolog.Logger, ctx context.Context, cityID *int64, withDelete bool) ([]entities.Bar, error)
-	GetBarByID(logger zerolog.Logger, ctx context.Context, id int64) (*entities.Bar, error)
+	GetBarByID(logger zerolog.Logger, ctx context.Context, id int64, cfg *config.DBConfig) (*entities.Bar, error)
 
 	GetPlaceList(logger zerolog.Logger, ctx context.Context, barID, tableID, cityID *int64, withDelete bool) ([]entities.Place, error)
-	GetPlaceByID(logger zerolog.Logger, ctx context.Context, id int64) (*entities.Place, error)
+	GetPlaceByID(logger zerolog.Logger, ctx context.Context, id int64, cfg *config.DBConfig) (*entities.Place, error)
 	GetLeagueList(logger zerolog.Logger, ctx context.Context, cityID int64) ([]entities.League, error)
 
 	GetGame(logger zerolog.Logger, ctx context.Context, gameID int) (entities.GetGameResponse, error)

@@ -1,10 +1,11 @@
-package city
+package place
 
 import (
+	"net/http"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	kithttp "github.com/go-kit/kit/transport/http"
-	"net/http"
 
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/place"
@@ -28,11 +29,11 @@ func NewServer(endpoints place.Endpoints, options []kithttp.ServerOption, cfg *c
 
 	//Actual
 	r.Get("/places", kithttp.NewServer(endpoints.GetList, decodeGetListRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
-	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
+	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdminTournamentMaster()).
 		Post("/places", kithttp.NewServer(endpoints.Create, decodeCreateRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
-	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
+	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdminTournamentMaster()).
 		Put("/places", kithttp.NewServer(endpoints.Update, decodeUpdateRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
-	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
+	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdminTournamentMaster()).
 		Delete("/places/{id}", kithttp.NewServer(endpoints.Delete, decodeDeleteRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 
 	return r

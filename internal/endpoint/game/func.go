@@ -227,7 +227,6 @@ func makeGetGameList(s game.IService) endpoint.Endpoint {
 		serviceLogger := s.GetLogger().With().Str("Source", "game.makeGetGameList").Logger()
 
 		req, err := helpers.CastRequest[entities.GetGameListRequest](request)
-
 		if err != nil {
 			serviceLogger.Error().Err(err).Msg("Failed to cast request")
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)

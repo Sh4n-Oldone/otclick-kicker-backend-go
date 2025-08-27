@@ -2,12 +2,14 @@ package postgresql
 
 import (
 	"context"
-	stderr "errors"
+	"errors"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog"
+
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
+	pkgerr "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 )
 
 func (db *RDBOperation) GetBarList(logger zerolog.Logger, ctx context.Context, cityID *int64, withDeleted bool) ([]entities.Bar, error) {
@@ -61,15 +63,18 @@ func (db *RDBOperation) GetBarList(logger zerolog.Logger, ctx context.Context, c
 	return bars, nil
 }
 
-func (db *RDBOperation) GetBarByID(logger zerolog.Logger, ctx context.Context, id int64) (*entities.Bar, error) {
+func (db *RDBOperation) GetBarByID(logger zerolog.Logger, ctx context.Context, id int64, cfg *config.DBConfig) (*entities.Bar, error) {
+	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
 	var bar entities.Bar
 	bar.City = entities.City{}
 
-	err := db.db.QueryRow(ctx, queryGetBarByID, id).
+	err := db.db.QueryRow(timeout, queryGetBarByID, id).
 		Scan(&bar.ID, &bar.City.ID, &bar.Name, &bar.Description, &bar.UpdatedAt, &bar.DeletedAt)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.GetBarByID")
-		return nil, DecodeDatabaseError(stderr.New(errors.ErrGetPlayer))
+		return nil, DecodeDatabaseError(errors.New(pkgerr.ErrGetPlayer))
 	}
 
 	return &bar, nil

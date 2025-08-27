@@ -36,16 +36,19 @@ type GetPlaceResponse struct {
 }
 
 type CreatePlaceRequest struct {
-	BarID   int64 `json:"barId"`
-	TableID int64 `json:"tableId"`
+	BarID   int64 `json:"barId" validate:"required,gt=0"`
+	TableID int64 `json:"tableId" validate:"required,gt=0"`
+	Creator User
 }
 
 type UpdatePlaceRequest struct {
-	ID      int64 `json:"id"`
-	BarID   int64 `json:"barId"`
-	TableID int64 `json:"tableId"`
+	PlaceID  int64 `json:"id" validate:"required,gt=0"`
+	BarID    int64 `json:"barId" validate:"required,gt=0"`
+	TableID  int64 `json:"tableId" validate:"required,gt=0"`
+	Executor User
 }
 
 type DeletePlaceRequest struct {
-	ID int64
+	ID       int64 `validate:"required,gt=0"`
+	Executor User
 }
