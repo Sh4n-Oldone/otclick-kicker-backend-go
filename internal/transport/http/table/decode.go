@@ -1,23 +1,23 @@
-package city
+package table
 
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"strconv"
 
-	stderr "errors"
-
 	"github.com/go-chi/chi/v5"
 	"github.com/valyala/bytebufferpool"
 	"google.golang.org/grpc/codes"
+
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
+	pkgerr "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 )
 
-func decodeGetListRequest(ctx context.Context, r *http.Request) (interface{}, error) {
+func decodeGetListRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	request := &entities.GetTableListRequest{}
 
 	withDeleted := r.URL.Query().Get("withDeleted")
@@ -69,13 +69,13 @@ func decodeUpdateRequest(_ context.Context, r *http.Request) (interface{}, error
 func decodeDeleteRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	idParam := chi.URLParam(r, "id")
 	if idParam == "" {
-		err := stderr.New(errors.EmptyParameterError)
+		err := errors.New(pkgerr.EmptyParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
 	id, err := strconv.ParseInt(idParam, 10, 64)
 	if err != nil {
-		err := stderr.New(errors.WrongParameterError)
+		err = errors.New(pkgerr.WrongParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 

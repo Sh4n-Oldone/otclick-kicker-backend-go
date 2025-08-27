@@ -468,9 +468,9 @@ const (
 			bar_id = COALESCE($2, bar_id),
 			table_id = COALESCE($3, table_id),
 			updated_at = NOW()
-		WHERE id = $1;`
+		WHERE id = $1 AND deleted_at IS NULL;`
 
-	queryDeletePlace string = `UPDATE places SET deleted_at = NOW() WHERE id = $1;`
+	queryDeletePlace string = `UPDATE places SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL;`
 	// <--
 
 	// League queries -->
