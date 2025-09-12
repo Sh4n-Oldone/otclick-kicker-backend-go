@@ -89,7 +89,7 @@ func (s *Service) GetTeam(ctx context.Context, teamID int64) (entities.GetTeamRe
 				}
 			}
 
-			matches, err := s.rdbOperations.GetMatchListByGameID(timeout, logger, game.Id)
+			matches, err := s.rdbOperations.GetMatchListByGameID(timeout, logger, int64(game.Id), &s.config.RDB)
 			if err != nil {
 				return entities.GetTeamResponseV2{}, err
 			}

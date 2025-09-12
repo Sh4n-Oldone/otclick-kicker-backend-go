@@ -12,7 +12,6 @@ import (
 	"github.com/valyala/bytebufferpool"
 	"google.golang.org/grpc/codes"
 
-	cnst "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/constant"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
 	pkgerr "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
@@ -39,24 +38,10 @@ func decodeGetListRequest(ctx context.Context, r *http.Request) (interface{}, er
 }
 
 func decodeCreateRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := &entities.CreateLeagueRequest{Creator: entities.User{Role: &entities.Role{}}}
+	request := &entities.CreateLeagueRequest{}
 
 	buf := bytebufferpool.Get()
 	defer bytebufferpool.Put(buf)
-
-	userId, ok := r.Context().Value(cnst.UserIDContextKey).(intt64)
-	if !ok || userId == 0 {
-		err := errors.New(pkgerr.ErrUserIdToken)
-		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
-	}
-	request.Creator.ID = int64(userId)
-
-	role, ok := r.Context().Value(cnst.RoleNameContextKey).(string)
-	if !ok || role == "" {
-		err := errors.New(pkgerr.ErrRoleToken)
-		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
-	}
-	request.Creator.Role.Name = role
 
 	cityIDParam := r.URL.Query().Get("cityId")
 	if cityIDParam == "" {
@@ -66,7 +51,7 @@ func decodeCreateRequest(_ context.Context, r *http.Request) (interface{}, error
 
 	cityID, err := strconv.ParseInt(cityIDParam, 10, 64)
 	if err != nil {
-		err := errors.New(pkgerr.WrongParameterError)
+		err = errors.New(pkgerr.WrongParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
@@ -129,7 +114,7 @@ func decodeDeleteRequest(_ context.Context, r *http.Request) (interface{}, error
 
 	id, err := strconv.ParseInt(idParam, 10, 64)
 	if err != nil {
-		err := errors.New(pkgerr.WrongParameterError)
+		err = errors.New(pkgerr.WrongParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 

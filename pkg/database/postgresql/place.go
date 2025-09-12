@@ -94,7 +94,7 @@ func (db *RDBOperation) GetPlaceByID(logger zerolog.Logger, ctx context.Context,
 		Scan(&place.ID, &place.Bar.ID, &place.Table.ID, &place.UpdatedAt, &place.DeletedAt)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.GetBarByID")
-		return nil, DecodeDatabaseError(errors.New(pkgerr.ErrGetPlayer))
+		return nil, DecodeDatabaseError(err)
 	}
 
 	return &place, nil

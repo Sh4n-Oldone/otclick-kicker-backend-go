@@ -2,6 +2,7 @@ package game
 
 import (
 	"context"
+	"github.com/go-playground/validator/v10"
 	"github.com/rs/zerolog"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
@@ -23,30 +24,45 @@ type IService interface {
 	GetTeamGames(ctx context.Context, teamID int) (entities.GetTeamGamesResponse, error)
 	DeleteFutureGame(ctx context.Context, gameID int64) error
 
+	CreateFutureTournamentGame(ctx context.Context, request *entities.CreateFutureTournamentGameRequest) (int64, error)
+	UpdateFutureTournamentGame(ctx context.Context, request *entities.UpdateFutureTournamentGameRequest) error
+	DeleteFutureTournamentGame(ctx context.Context, request *entities.DeleteFutureTournamentGameRequest) error
+	DeletePlayedTournamentGame(ctx context.Context, request *entities.DeletePlayedTournamentGameRequest) error
+	CreatePlayedTournamentGame(ctx context.Context, request *entities.CreatePlayedTournamentGameRequest) (int64, error)
+	UpdatePlayedTournamentGame(ctx context.Context, request *entities.UpdatePlayedTournamentGameRequest) error
+
 	GetLogger() *zerolog.Logger
+	GetValidator() *validator.Validate
 }
 
 type Service struct {
-	logger         *zerolog.Logger
 	config         *config.Configuration
+	logger         *zerolog.Logger
+	validator      *validator.Validate
 	rdbOperations  postgresql.RDBOperationer
 	rwdbOperations postgresql.RWDBOperationer
 }
 
-// GetLogger is a method of business logic layer that gets a logger for logging events in a upper layer.
+// GetLogger is a method of business logic layer that gets a logger for logging events in an upper layer.
 func (s *Service) GetLogger() *zerolog.Logger {
 	return s.logger
+}
+
+func (s *Service) GetValidator() *validator.Validate {
+	return s.validator
 }
 
 func NewService(
 	config *config.Configuration,
 	logger *zerolog.Logger,
+	validator *validator.Validate,
 	rwdbOperationer postgresql.RWDBOperationer,
 	rdbOperationer postgresql.RDBOperationer,
 ) IService {
 	return &Service{
 		config:         config,
 		logger:         logger,
+		validator:      validator,
 		rwdbOperations: rwdbOperationer,
 		rdbOperations:  rdbOperationer,
 	}

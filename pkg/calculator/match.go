@@ -5,7 +5,7 @@ import (
 	"math"
 )
 
-func MatchRaitingCalculation(ctx context.Context, score1, score2, rating11, rating21, rating12, rating22 int) (int, int, int, int, error) {
+func MatchRatingCalculation(ctx context.Context, score1, score2, rating11, rating21, rating12, rating22 int) (int, int, int, int, error) {
 	// average rate for team1
 	averRating1 := rating11
 	if rating12 > 0 {
