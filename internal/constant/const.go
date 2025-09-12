@@ -27,4 +27,7 @@ const (
 	WinPoints      int = 2
 	TechWinGoals   int = 42
 	TechLooseGoals int = 30
+
+	RegularTournamentTypeID int64 = 1
+	PlayoffTournamentTypeID int64 = 2
 )

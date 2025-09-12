@@ -1,0 +1,75 @@
+package entities
+
+import "time"
+
+type GetTournamentTypeListRequest struct {
+	WithDeleted bool `json:"withDeleted"`
+}
+
+type CreateTournamentRequest struct {
+	CityIDParam      string
+	CityID           int64
+	TournamentTypeID int64
+	SeasonID         int64          `json:"seasonId" validate:"required,gt=0"`
+	Name             string         `json:"name" validate:"required,min=1,max=128"`
+	TeamIDs          []int64        `json:"teamIds" validate:"required,min=2"`
+	Rules            TournamentRule `json:"rules" validate:"required"`
+	Creator          User
+}
+
+type UpdateTournamentRequest struct {
+	ID               int64 `json:"id" validate:"required,gt=0"`
+	TournamentTypeID *int64
+	CityID           *int64  `json:"cityId" validate:"omitempty,gt=0"`
+	SeasonID         *int64  `json:"seasonId" validate:"omitempty,gt=0"`
+	Name             *string `json:"name" validate:"omitempty,min=1,max=128"`
+	TeamIDs          []int64 `json:"teamIds" validate:"omitempty,min=2"`
+	Rules            *TournamentRule
+	Executor         User
+}
+
+type DeleteTournamentRequest struct {
+	ID int64 `validate:"required,gt=0"`
+}
+
+type Tournament struct {
+	ID       int64             `json:"id"`
+	TypeID   int64             `json:"typeId"`
+	Name     string            `json:"name"`
+	Rules    TournamentRule    `json:"rules"`
+	CityID   int64             `json:"cityId"`
+	SeasonID int64             `json:"seasonId"`
+	Stages   []TournamentStage `json:"stages"`
+	TeamIDs  []int64           `json:"teamIds"`
+}
+
+type TournamentStage struct {
+	ID           int64 `json:"id"`
+	TournamentID int64 `json:"tournamentId"`
+	IsFinished   bool  `json:"isFinished"`
+}
+
+type TournamentType struct {
+	ID          int64      `json:"id"`
+	Name        string     `json:"name"`
+	Description string     `json:"description"`
+	DeletedAt   *time.Time `json:"deletedAt,omitempty"`
+}
+
+type TournamentRule struct {
+	Regular *Regular `json:"regular,omitempty"`
+	PlayOff *PlayOff `json:"playOff,omitempty"`
+}
+
+type Regular struct {
+	BestOf int64 `json:"bestOf"`
+}
+
+type PlayOff struct {
+	BestOf int64   `json:"bestOf"`
+	Looser *Looser `json:"looser,omitempty"`
+}
+
+type Looser struct {
+	BestOf int64 `json:"bestOf"`
+}

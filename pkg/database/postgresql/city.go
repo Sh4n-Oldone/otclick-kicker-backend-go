@@ -2,6 +2,7 @@ package postgresql
 
 import (
 	"context"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog"
@@ -37,6 +38,26 @@ func (db *RDBOperation) GetCityList(logger zerolog.Logger, ctx context.Context, 
 	}
 
 	return cities, nil
+}
+
+func (db *RDBOperation) GetCityByBarId(logger zerolog.Logger, ctx context.Context, barID int64, cfg *config.DBConfig) (entities.City, error) {
+	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	var city entities.City
+
+	const query string = `SELECT c.id, c.name, c.ru
+		FROM bars b
+		JOIN cities c ON c.id = b.city_id
+		WHERE b.id = $1 AND c.deleted_at IS NULL AND b.deleted_at IS NULL;`
+
+	err := db.db.QueryRow(timeout, query, barID).Scan(&city.ID, &city.Name, &city.Ru)
+	if err != nil {
+		logger.Error().Stack().Err(err).Msg("failed to postgresql.GetCityByBarId")
+		return entities.City{}, DecodeDatabaseError(err)
+	}
+
+	return city, nil
 }
 
 func (db *RWDBOperation) CreateCity(logger zerolog.Logger, ctx context.Context, city entities.City) (*int64, error) {

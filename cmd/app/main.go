@@ -91,21 +91,6 @@ func main() {
 
 	rwdbOperationer, rdbOperationer := postgresql.NewOperationer(rwdb, rdb)
 
-	//rds, err := initRedisConnection(appConfig)
-	//if err != nil {
-	//	coreLogger.Fatal().Err(err).Msg("failed to establish a connection with the redis")
-	//} else {
-	//	coreLogger.Info().Msg("successful connection with the redis")
-	//}
-	//defer func(rds *goRedis.Client) {
-	//	err = rds.Close()
-	//	if err != nil {
-	//		coreLogger.Error().Msg("failed to close the redis connection")
-	//	}
-	//}(rds)
-
-	// redisDB, err := redis.New(rds)
-
 	validation := helpers.NewCustomValidator()
 
 	userService := user.NewService(appConfig, &apiLogger, validation, rwdbOperationer, rdbOperationer)

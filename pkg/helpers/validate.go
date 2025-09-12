@@ -226,19 +226,6 @@ func ValidateUpdateLeagueRequest(request *entities.UpdateLeagueRequest) error {
 	return nil
 }
 
-func NewCustomValidator() *validator.Validate {
-	validate := validator.New(validator.WithRequiredStructEnabled())
-
-	_ = validate.RegisterValidation("valid-date", validateDate)
-
-	return validate
-}
-
-func validateDate(fl validator.FieldLevel) bool {
-	date := fl.Field().Interface().(time.Time)
-	return !(date.Equal(time.Unix(0, 0)) || date.IsZero() || date.Year() == 0)
-}
-
 func ValidateCreateExtraPointsRequest(request *entities.CreateExtraPointsRequest) error {
 	if request.TeamId <= 0 {
 		err := fmt.Errorf("wrong value of parameter %T", request.TeamId)
@@ -349,10 +336,17 @@ func ValidateGetGameList(request entities.GetGameListRequest) error {
 	return nil
 }
 
-func ValidCreateTournamentMasterRequest(request *entities.CreateTournamentMasterRequest, v *validator.Validate) error {
-	err := v.Struct(request)
-	if err != nil {
-		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
-	}
-	return nil
+/**/
+
+func NewCustomValidator() *validator.Validate {
+	validate := validator.New(validator.WithRequiredStructEnabled())
+
+	_ = validate.RegisterValidation("valid-date", validateDate)
+
+	return validate
+}
+
+func validateDate(fl validator.FieldLevel) bool {
+	date := fl.Field().Interface().(time.Time)
+	return !(date.Equal(time.Unix(0, 0)) || date.IsZero() || date.Year() == 0)
 }

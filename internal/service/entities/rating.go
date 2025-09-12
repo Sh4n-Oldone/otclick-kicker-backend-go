@@ -8,3 +8,10 @@ type Rating struct {
 	Value     int64     `db:"value" json:"value"`
 	UpdatedAt time.Time `db:"updated_at" json:"updated_at"`
 }
+
+type TournamentRating struct {
+	PlayerID     int64     `json:"playerId"`
+	TournamentID int64     `json:"tournamentId"`
+	Value        int64     `json:"value"`
+	UpdatedAt    time.Time `json:"updatedAt"`
+}

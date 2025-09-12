@@ -2,6 +2,7 @@ package game
 
 import (
 	"github.com/go-kit/kit/endpoint"
+
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/game"
 )
 
@@ -19,6 +20,13 @@ type Endpoints struct {
 	CreateFutureGame endpoint.Endpoint
 	GetTeamGames     endpoint.Endpoint
 	DeleteFutureGame endpoint.Endpoint
+
+	CreateFutureTournamentGame endpoint.Endpoint
+	UpdateFutureTournamentGame endpoint.Endpoint
+	DeleteFutureTournamentGame endpoint.Endpoint
+	CreatePlayedTournamentGame endpoint.Endpoint
+	UpdatePlayedTournamentGame endpoint.Endpoint
+	DeletePlayedTournamentGame endpoint.Endpoint
 }
 
 func MakeEndpoints(s game.IService) Endpoints {
@@ -36,5 +44,12 @@ func MakeEndpoints(s game.IService) Endpoints {
 		CreateFutureGame: makeCreateFutureGame(s),
 		GetTeamGames:     makeGetTeamGames(s),
 		DeleteFutureGame: makeDeleteFutureGame(s),
+
+		CreateFutureTournamentGame: makeCreateFutureTournamentGame(s),
+		UpdateFutureTournamentGame: makeUpdateFutureTournamentGame(s),
+		DeleteFutureTournamentGame: makeDeleteFutureTournamentGame(s),
+		CreatePlayedTournamentGame: makeCreatePlayedTournamentGame(s),
+		UpdatePlayedTournamentGame: makeUpdatePlayedTournamentGame(s),
+		DeletePlayedTournamentGame: makeDeletePlayedTournamentGame(s),
 	}
 }

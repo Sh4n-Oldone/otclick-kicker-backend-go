@@ -2,30 +2,30 @@ package game
 
 import (
 	"context"
-	stderr "errors"
+	"errors"
 	"github.com/go-kit/kit/endpoint"
 	"google.golang.org/grpc/codes"
 	"net/http"
 
 	cnst "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/constant"
-
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/game"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/middleware"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
+	pkgerr "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/helpers"
 )
 
 func makeCreate(s game.IService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		reqID, ctx := middleware.GetRequestID(ctx)
-		serviceLogger := s.GetLogger().With().Str("Source", "game.makeCreate").Logger()
+		serviceLogger := s.GetLogger().With().Str("Source", "game.makeCreate").Str("request_id", reqID).Logger()
 
 		req, err := helpers.CastRequest[entities.CreateGameRequest](request)
 		if err != nil {
 			serviceLogger.Error().Err(err).Msg("Failed to cast request")
-			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+			return nil, error_templates.WrapErrorEndpoint(
+				error_templates.New(pkgerr.FailedCastRequest, err, codes.InvalidArgument, http.StatusBadRequest), reqID)
 		}
 
 		// Captain-Flow
@@ -36,8 +36,8 @@ func makeCreate(s game.IService) endpoint.Endpoint {
 		rTeam1ID := int64(req.Team1ID)
 		rTeam2ID := int64(req.Team2ID)
 		if role == cnst.CaptainRole && (teamID != rTeam1ID && teamID != rTeam2ID) {
+			err = error_templates.New(pkgerr.WrongUserRole, errors.New(pkgerr.WrongUserRole), codes.Unauthenticated, http.StatusForbidden)
 			serviceLogger.Error().Err(err).Msg("Failed to captain request")
-			err = error_templates.New(errors.WrongUserRole, stderr.New(errors.WrongUserRole), codes.Unauthenticated, http.StatusUnauthorized)
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
@@ -45,11 +45,18 @@ func makeCreate(s game.IService) endpoint.Endpoint {
 		if len(req.Matches) > 0 {
 			for _, m := range req.Matches {
 				if m.Team1ID != req.Team1ID || m.Team2ID != req.Team2ID {
+					err = error_templates.New(pkgerr.ErrDifferentTeams, errors.New(pkgerr.ErrDifferentTeams), codes.InvalidArgument, http.StatusBadRequest)
 					serviceLogger.Error().Err(err).Msg("Failed to makeCreate")
-					err = error_templates.New(errors.ErrDifferentTeams, stderr.New(errors.ErrDifferentTeams), codes.InvalidArgument, http.StatusBadRequest)
 					return nil, error_templates.WrapErrorEndpoint(err, reqID)
 				}
 			}
+		}
+
+		err = s.GetValidator().Struct(req)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed validation")
+			return nil, error_templates.WrapErrorEndpoint(
+				error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest), reqID)
 		}
 
 		resp, err := s.Create(ctx, req)
@@ -126,14 +133,14 @@ func makeUpdate(s game.IService) endpoint.Endpoint {
 		rTeam2ID := int64(req.Team2ID)
 		if role == cnst.CaptainRole && (teamID != rTeam1ID && teamID != rTeam2ID) {
 			serviceLogger.Error().Err(err).Msg("Failed to captain request")
-			err = error_templates.New(errors.WrongUserRole, stderr.New(errors.WrongUserRole), codes.Unauthenticated, http.StatusUnauthorized)
+			err = error_templates.New(pkgerr.WrongUserRole, errors.New(pkgerr.WrongUserRole), codes.Unauthenticated, http.StatusUnauthorized)
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
 		for _, m := range req.Matches {
 			if m.Team1ID != req.Team1ID || m.Team2ID != req.Team2ID {
 				serviceLogger.Error().Err(err).Msg("Failed to makeUpdate")
-				err = error_templates.New(errors.ErrDifferentTeams, stderr.New(errors.ErrDifferentTeams), codes.InvalidArgument, http.StatusBadRequest)
+				err = error_templates.New(pkgerr.ErrDifferentTeams, errors.New(pkgerr.ErrDifferentTeams), codes.InvalidArgument, http.StatusBadRequest)
 				return nil, error_templates.WrapErrorEndpoint(err, reqID)
 			}
 		}
@@ -191,7 +198,7 @@ func makeUpdateFutureGame(s game.IService) endpoint.Endpoint {
 		rTeam2ID := int64(req.Team2ID)
 		if role == cnst.CaptainRole && (teamID != rTeam1ID && teamID != rTeam2ID) {
 			serviceLogger.Error().Err(err).Msg("Failed to captain request")
-			err = error_templates.New(errors.WrongUserRole, stderr.New(errors.WrongUserRole), codes.Unauthenticated, http.StatusUnauthorized)
+			err = error_templates.New(pkgerr.WrongUserRole, errors.New(pkgerr.WrongUserRole), codes.Unauthenticated, http.StatusUnauthorized)
 			return nil, err
 		}
 
@@ -234,7 +241,7 @@ func makeGetGameList(s game.IService) endpoint.Endpoint {
 
 		err = helpers.ValidateGetGameList(req)
 		if err != nil {
-			serviceLogger.Error().Err(err).Msg(errors.FailedValidateRequest)
+			serviceLogger.Error().Err(err).Msg(pkgerr.FailedValidateRequest)
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
@@ -304,7 +311,7 @@ func makeCreateFutureGame(s game.IService) endpoint.Endpoint {
 		rTeam2ID := int64(req.Team2ID)
 		if role == cnst.CaptainRole && (teamID != rTeam1ID && teamID != rTeam2ID) {
 			serviceLogger.Error().Err(err).Msg("Failed to captain request")
-			err = error_templates.New(errors.WrongUserRole, stderr.New(errors.WrongUserRole), codes.Unauthenticated, http.StatusUnauthorized)
+			err = error_templates.New(pkgerr.WrongUserRole, errors.New(pkgerr.WrongUserRole), codes.Unauthenticated, http.StatusUnauthorized)
 			return nil, err
 		}
 
@@ -336,7 +343,7 @@ func makeGetTeamGames(s game.IService) endpoint.Endpoint {
 		ctxTeamID := ctx.Value(cnst.TeamIDContextKey)
 		if role == cnst.CaptainRole && ctxTeamID != int64(teamID) {
 			serviceLogger.Error().Err(err).Msg("Failed to captain request")
-			err = error_templates.New(errors.WrongUserRole, stderr.New(errors.WrongUserRole), codes.Unauthenticated, http.StatusUnauthorized)
+			err = error_templates.New(pkgerr.WrongUserRole, errors.New(pkgerr.WrongUserRole), codes.Unauthenticated, http.StatusUnauthorized)
 			return nil, err
 		}
 
@@ -363,7 +370,7 @@ func makeDeleteFutureGame(s game.IService) endpoint.Endpoint {
 
 		err = helpers.ValidateDeleteFutureGame(req)
 		if err != nil {
-			serviceLogger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).Msg(errors.FailedValidateRequest)
+			serviceLogger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).Msg(pkgerr.FailedValidateRequest)
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
@@ -373,7 +380,7 @@ func makeDeleteFutureGame(s game.IService) endpoint.Endpoint {
 		rTeam1ID := req.Team1ID
 		rTeam2ID := req.Team2ID
 		if role == cnst.CaptainRole && (teamID != rTeam1ID && teamID != rTeam2ID) {
-			err = error_templates.New(errors.WrongUserRole, stderr.New(errors.WrongUserRole), codes.Unauthenticated, http.StatusUnauthorized)
+			err = error_templates.New(pkgerr.WrongUserRole, errors.New(pkgerr.WrongUserRole), codes.Unauthenticated, http.StatusUnauthorized)
 			serviceLogger.Error().Err(err).Msg("Failed to captain request")
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
@@ -386,6 +393,204 @@ func makeDeleteFutureGame(s game.IService) endpoint.Endpoint {
 
 		return entities.OkResponse{
 			Message: "OK",
+		}, nil
+	}
+}
+
+func makeCreateFutureTournamentGame(s game.IService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "makeCreateFutureTournamentGame").Str("request_id", reqID).Logger()
+
+		req, err := helpers.CastRequest[*entities.CreateFutureTournamentGameRequest](request)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed to cast request")
+			return nil, error_templates.WrapErrorEndpoint(
+				error_templates.New(pkgerr.FailedCastRequest, err, codes.InvalidArgument, http.StatusBadRequest), reqID)
+		}
+
+		err = s.GetValidator().Struct(req)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed validation")
+			return nil, error_templates.WrapErrorEndpoint(
+				error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest), reqID)
+		}
+
+		id, err := s.CreateFutureTournamentGame(ctx, req)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed CreateFutureTournamentGame")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		return struct {
+			Id int64 `json:"id"`
+		}{
+			Id: id,
+		}, nil
+	}
+}
+
+func makeUpdateFutureTournamentGame(s game.IService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "makeUpdateFutureTournamentGame").Str("request_id", reqID).Logger()
+
+		req, err := helpers.CastRequest[*entities.UpdateFutureTournamentGameRequest](request)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed to cast request")
+			return nil, error_templates.WrapErrorEndpoint(
+				error_templates.New(pkgerr.FailedCastRequest, err, codes.InvalidArgument, http.StatusBadRequest), reqID)
+		}
+
+		err = s.GetValidator().Struct(req)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed validation")
+			return nil, error_templates.WrapErrorEndpoint(
+				error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest), reqID)
+		}
+
+		err = s.UpdateFutureTournamentGame(ctx, req)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed UpdateFutureTournamentGame")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		return struct {
+			Message int64 `json:"updatedGameId"`
+		}{
+			Message: req.GameID,
+		}, nil
+	}
+}
+
+func makeDeleteFutureTournamentGame(s game.IService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "makeDeleteFutureTournamentGame").Str("request_id", reqID).Logger()
+
+		req, err := helpers.CastRequest[*entities.DeleteFutureTournamentGameRequest](request)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed to cast request")
+			return nil, error_templates.WrapErrorEndpoint(
+				error_templates.New(pkgerr.FailedCastRequest, err, codes.InvalidArgument, http.StatusBadRequest), reqID)
+		}
+
+		err = s.GetValidator().Struct(req)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed validation")
+			return nil, error_templates.WrapErrorEndpoint(
+				error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest), reqID)
+		}
+
+		err = s.DeleteFutureTournamentGame(ctx, req)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed DeleteFutureTournamentGame")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		return struct {
+			Message int64 `json:"deletedGameId"`
+		}{
+			Message: req.GameID,
+		}, nil
+	}
+}
+
+func makeCreatePlayedTournamentGame(s game.IService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "makeCreatePlayedTournamentGame").Str("request_id", reqID).Logger()
+
+		req, err := helpers.CastRequest[*entities.CreatePlayedTournamentGameRequest](request)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed to cast request")
+			return nil, error_templates.WrapErrorEndpoint(
+				error_templates.New(pkgerr.FailedCastRequest, err, codes.InvalidArgument, http.StatusBadRequest), reqID)
+		}
+
+		err = s.GetValidator().Struct(req)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed validation")
+			return nil, error_templates.WrapErrorEndpoint(
+				error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest), reqID)
+		}
+
+		id, err := s.CreatePlayedTournamentGame(ctx, req)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed CreatePlayedTournamentGame")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		return struct {
+			Id int64 `json:"id"`
+		}{
+			Id: id,
+		}, nil
+	}
+}
+
+func makeUpdatePlayedTournamentGame(s game.IService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "makeUpdatePlayedTournamentGame").Str("request_id", reqID).Logger()
+
+		req, err := helpers.CastRequest[*entities.UpdatePlayedTournamentGameRequest](request)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed to cast request")
+			return nil, error_templates.WrapErrorEndpoint(
+				error_templates.New(pkgerr.FailedCastRequest, err, codes.InvalidArgument, http.StatusBadRequest), reqID)
+		}
+
+		err = s.GetValidator().Struct(req)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed validation")
+			return nil, error_templates.WrapErrorEndpoint(
+				error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest), reqID)
+		}
+
+		err = s.UpdatePlayedTournamentGame(ctx, req)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed UpdatePlayedTournamentGame")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		return struct {
+			Message int64 `json:"updatedGameId"`
+		}{
+			Message: req.GameID,
+		}, nil
+	}
+}
+
+func makeDeletePlayedTournamentGame(s game.IService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "makeDeletePlayedTournamentGame").Str("request_id", reqID).Logger()
+
+		req, err := helpers.CastRequest[*entities.DeletePlayedTournamentGameRequest](request)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed to cast request")
+			return nil, error_templates.WrapErrorEndpoint(
+				error_templates.New(pkgerr.FailedCastRequest, err, codes.InvalidArgument, http.StatusBadRequest), reqID)
+		}
+
+		err = s.GetValidator().Struct(req)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed validation")
+			return nil, error_templates.WrapErrorEndpoint(
+				error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest), reqID)
+		}
+
+		err = s.DeletePlayedTournamentGame(ctx, req)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed DeletePlayedTournamentGame")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		return struct {
+			Message int64 `json:"deletedGameId"`
+		}{
+			Message: req.GameID,
 		}, nil
 	}
 }

@@ -125,10 +125,6 @@ type GameTiebreak struct {
 	TechLooseTeamId *int       `json:"techLooseTeamId,omitempty"`
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 type GameShort struct {
 	ID       int
 	CityID   int
@@ -218,4 +214,73 @@ type ComingGame struct {
 	Team1Name string    `json:"team1ShortName"`
 	Team2ID   int       `json:"team2Id"`
 	Team2Name string    `json:"team2ShortName"`
+}
+
+type TournamentGame struct {
+	ID              int64
+	CityID          int64
+	PlaceID         *int64
+	Date            *time.Time
+	Team1ID         int64
+	Team2ID         int64
+	TechLooseTeamID *int64
+	IsTiebreak      bool
+	StageID         int64
+}
+
+type CreateFutureTournamentGameRequest struct {
+	TournamentID int64      `json:"tournamentId" validate:"required,gt=0"`
+	StageID      int64      `json:"stageId" validate:"required,gt=0"`
+	PlaceID      *int64     `json:"placeId" validate:"omitempty,gt=0"`
+	Date         *time.Time `json:"date" validate:"omitempty,valid-date"`
+	Team1ID      int64      `json:"team1Id" validate:"required,gt=0"`
+	Team2ID      int64      `json:"team2Id" validate:"required,gt=0"`
+	IsTiebreak   bool       `json:"isTiebreak"`
+	CityID       int64
+	Creator      User
+}
+
+type UpdateFutureTournamentGameRequest struct {
+	GameID   int64      `validate:"required,gt=0"`
+	PlaceID  *int64     `json:"placeId" validate:"omitempty,gt=0"`
+	Date     *time.Time `json:"date" validate:"omitempty,valid-date"`
+	Team1ID  *int64     `json:"team1Id" validate:"omitempty,gt=0"`
+	Team2ID  *int64     `json:"team2Id" validate:"omitempty,gt=0"`
+	Executor User
+}
+
+type DeleteFutureTournamentGameRequest struct {
+	GameID   int64 `validate:"required,gt=0"`
+	Executor User
+}
+
+type CreatePlayedTournamentGameRequest struct {
+	TournamentID    int64        `json:"tournamentId" validate:"required,gt=0"`
+	StageID         int64        `json:"stageId" validate:"required,gt=0"`
+	PlaceID         int64        `json:"placeId" validate:"required,gt=0"`
+	Date            time.Time    `json:"date" validate:"required,valid-date"`
+	Team1ID         int64        `json:"team1Id" validate:"required,gt=0"`
+	Team2ID         int64        `json:"team2Id" validate:"required,gt=0"`
+	IsTiebreak      bool         `json:"isTiebreak"`
+	TechLooseTeamID *int64       `json:"techLooseTeamId" validate:"omitempty,gt=0"`
+	Matches         []GamesMatch `json:"matches" validate:"omitempty,dive"`
+	CityID          int64
+	Creator         User
+}
+
+type UpdatePlayedTournamentGameRequest struct {
+	GameID          int64      `validate:"required,gt=0"`
+	Date            time.Time  `json:"date" validate:"omitempty,valid-date"`
+	PlaceID         int64      `json:"placeId" validate:"omitempty,gt=0"`
+	Team1ID         int64      `json:"team1Id" validate:"omitempty,gt=0"`
+	Team2ID         int64      `json:"team2Id" validate:"omitempty,gt=0"`
+	TechLooseTeamID *int64     `json:"techLooseTeamId" validate:"omitempty,gt=0"`
+	Matches         []NewMatch `json:"matches" validate:"omitempty,dive"`
+	StageID         int64
+	Executor        User
+}
+
+type DeletePlayedTournamentGameRequest struct {
+	GameID   int64 `validate:"required,gt=0"`
+	Executor User
 }

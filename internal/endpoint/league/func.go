@@ -47,7 +47,7 @@ func makeCreate(s league.IService) endpoint.Endpoint {
 
 		req := request.(*entities.CreateLeagueRequest)
 
-		id, err := s.Create(ctx, *league, req.Teams, req.CityID, req.Creator)
+		id, err := s.Create(ctx, *league, req.Teams)
 		if err != nil {
 			serviceLogger.Error().Err(err).Msg("Failed to league.makeCreate")
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)

@@ -23,7 +23,7 @@ func (s *Service) GetList(ctx context.Context, cityID int64) ([]entities.League,
 	return leagues, nil
 }
 
-func (s *Service) Create(ctx context.Context, league entities.League, teams []int64, cityId int64, creator entities.User) (*int64, error) {
+func (s *Service) Create(ctx context.Context, league entities.League, teams []int64) (*int64, error) {
 	logger := s.logger.With().Str("service", "Create").Logger()
 
 	id, err := s.rwdbOperations.CreateLeague(logger, ctx, league, teams)
@@ -175,7 +175,7 @@ func (s *Service) Recalc(ctx context.Context, id int64) error {
 		matches[i].Player2Team1RateBefore = &_rating21
 		matches[i].Player2Team2RateBefore = &_rating22
 
-		rating11, rating12, rating21, rating22, err := calculator.MatchRaitingCalculation(ctx, int(*match.ScoreTeam1), int(*match.ScoreTeam2), int(_rating11), int(_rating12), int(_rating21), int(_rating22))
+		rating11, rating12, rating21, rating22, err := calculator.MatchRatingCalculation(ctx, int(*match.ScoreTeam1), int(*match.ScoreTeam2), int(_rating11), int(_rating12), int(_rating21), int(_rating22))
 		if err != nil {
 			return err
 		}

@@ -3,46 +3,22 @@ package game
 import (
 	"context"
 	"encoding/json"
-	stderr "errors"
+	"errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/valyala/bytebufferpool"
 	"google.golang.org/grpc/codes"
 	"io"
 	"net/http"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/constant"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
+	pkgerr "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/helpers"
 	"strconv"
 	"time"
 )
 
 var validate = helpers.NewCustomValidator()
-
-func parseIntParam(param string) (*int, error) {
-	val, err := strconv.Atoi(param)
-	if err != nil {
-		return nil, stderr.New(errors.WrongParameterError)
-	}
-	return &val, nil
-}
-
-func parseBoolParam(param string) (*bool, error) {
-	val, err := strconv.ParseBool(param)
-	if err != nil {
-		return nil, stderr.New(errors.WrongParameterError)
-	}
-	return &val, nil
-}
-
-func parseDateParam(param string) (*time.Time, error) {
-	// "2006-01-02" для формата YYYY-MM-DD
-	val, err := time.Parse("2006-01-02", param)
-	if err != nil {
-		return nil, stderr.New(errors.ErrWrongDate)
-	}
-	return &val, nil
-}
 
 func decodeCreateRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	request := entities.CreateGameRequest{}
@@ -51,13 +27,13 @@ func decodeCreateRequest(_ context.Context, r *http.Request) (interface{}, error
 
 	cityIdParam := r.URL.Query().Get("cityId")
 	if cityIdParam == "" {
-		err := stderr.New(errors.EmptyParameterError)
+		err := errors.New(pkgerr.EmptyParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
 	cityId, err := strconv.Atoi(cityIdParam)
 	if err != nil {
-		err = stderr.New(errors.WrongParameterError)
+		err = errors.New(pkgerr.WrongParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
@@ -65,7 +41,7 @@ func decodeCreateRequest(_ context.Context, r *http.Request) (interface{}, error
 	if isTiebreakParam != "" {
 		isTiebreak, err := strconv.ParseBool(isTiebreakParam)
 		if err != nil {
-			err = stderr.New(errors.WrongParameterError)
+			err = errors.New(pkgerr.WrongParameterError)
 			return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 		}
 		request.IsTiebreak = isTiebreak
@@ -82,30 +58,24 @@ func decodeCreateRequest(_ context.Context, r *http.Request) (interface{}, error
 
 	request.CityID = cityId
 
-	err = validate.Struct(request)
-	if err != nil {
-		err = stderr.New(errors.ValidationErr + ": " + err.Error())
-		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
-	}
-
 	return request, nil
 }
 
 func decodeIdParamRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	gameIdParam := chi.URLParam(r, "id")
 	if gameIdParam == "" {
-		err := stderr.New(errors.EmptyParameterError)
+		err := errors.New(pkgerr.EmptyParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
 	gameId, err := strconv.Atoi(gameIdParam)
 	if err != nil {
-		err = stderr.New(errors.WrongParameterError)
+		err = errors.New(pkgerr.WrongParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
 	if gameId < 1 {
-		err = stderr.New(errors.WrongParameterError)
+		err = errors.New(pkgerr.WrongParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
@@ -129,14 +99,14 @@ func decodeUpdateRequest(_ context.Context, r *http.Request) (interface{}, error
 
 	err = validate.Struct(request)
 	if err != nil {
-		err = stderr.New(errors.ValidationErr + ": " + err.Error())
+		err = errors.New(pkgerr.ValidationErr + ": " + err.Error())
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
 	if request.Matches != nil {
 		for _, match := range request.Matches {
 			if match.Team1ID != request.Team1ID || match.Team2ID != request.Team2ID {
-				err = stderr.New(errors.ValidationErr + ": " + "id команд в игре и матче не совпадают")
+				err = errors.New(pkgerr.ValidationErr + ": " + "id команд в игре и матче не совпадают")
 				return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 			}
 		}
@@ -152,25 +122,25 @@ func decodeFindRequest(_ context.Context, r *http.Request) (interface{}, error) 
 
 	team1IdParam := r.URL.Query().Get("team1Id")
 	if team1IdParam == "" {
-		err := stderr.New(errors.EmptyParameterError)
+		err := errors.New(pkgerr.EmptyParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
 	team1Id, err := strconv.Atoi(team1IdParam)
 	if err != nil || team1Id < 1 {
-		err = stderr.New(errors.WrongParameterError)
+		err = errors.New(pkgerr.WrongParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
 	team2IdParam := r.URL.Query().Get("team2Id")
 	if team2IdParam == "" {
-		err = stderr.New(errors.EmptyParameterError)
+		err = errors.New(pkgerr.EmptyParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
 	team2Id, err := strconv.Atoi(team2IdParam)
 	if err != nil || team2Id < 1 {
-		err = stderr.New(errors.WrongParameterError)
+		err = errors.New(pkgerr.WrongParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
@@ -197,13 +167,13 @@ func decodeUpdateFutureGameRequest(_ context.Context, r *http.Request) (interfac
 
 	err = validate.Struct(request)
 	if err != nil {
-		err = stderr.New(errors.ValidationErr + ": " + err.Error())
+		err = errors.New(pkgerr.ValidationErr + ": " + err.Error())
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
 	if request.PlaceID != nil {
 		if *request.PlaceID <= 0 {
-			err = stderr.New(errors.ValidationErr + ": " + errors.WrongPlaceIdError)
+			err = errors.New(pkgerr.ValidationErr + ": " + pkgerr.WrongPlaceIdError)
 			return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 		}
 	}
@@ -211,7 +181,7 @@ func decodeUpdateFutureGameRequest(_ context.Context, r *http.Request) (interfac
 	if request.Date != nil {
 		date := *request.Date
 		if date.Equal(time.Unix(0, 0)) || date.IsZero() || date.Year() == 0 {
-			err = stderr.New(errors.ValidationErr + ": " + errors.ErrWrongDate)
+			err = errors.New(pkgerr.ValidationErr + ": " + pkgerr.ErrWrongDate)
 			return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 		}
 	}
@@ -230,18 +200,18 @@ func decodeGetComingGamesRequest(_ context.Context, _ *http.Request) (interface{
 func decodeGetFutureGamesRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	cityIdParam := r.URL.Query().Get("cityId")
 	if cityIdParam == "" {
-		err := stderr.New(errors.EmptyParameterError)
+		err := errors.New(pkgerr.EmptyParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
 	cityId, err := strconv.Atoi(cityIdParam)
 	if err != nil {
-		err = stderr.New(errors.WrongParameterError)
+		err = errors.New(pkgerr.WrongParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
 	if cityId < 1 {
-		err = stderr.New(errors.WrongParameterError)
+		err = errors.New(pkgerr.WrongParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
@@ -355,13 +325,13 @@ func decodeCreateFutureGameRequest(_ context.Context, r *http.Request) (interfac
 
 	cityIdParam := r.URL.Query().Get("cityId")
 	if cityIdParam == "" {
-		err = stderr.New(errors.EmptyParameterError)
+		err = errors.New(pkgerr.EmptyParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
 	cityId, err := strconv.Atoi(cityIdParam)
 	if err != nil {
-		err = stderr.New(errors.WrongParameterError)
+		err = errors.New(pkgerr.WrongParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
@@ -371,7 +341,7 @@ func decodeCreateFutureGameRequest(_ context.Context, r *http.Request) (interfac
 	if isTiebreakParam != "" {
 		isTiebreak, err := strconv.ParseBool(isTiebreakParam)
 		if err != nil {
-			err = stderr.New(errors.WrongParameterError)
+			err = errors.New(pkgerr.WrongParameterError)
 			return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 		}
 		request.IsTiebreak = isTiebreak
@@ -379,13 +349,13 @@ func decodeCreateFutureGameRequest(_ context.Context, r *http.Request) (interfac
 
 	err = validate.Struct(request)
 	if err != nil {
-		err = stderr.New(errors.ValidationErr + ": " + err.Error())
+		err = errors.New(pkgerr.ValidationErr + ": " + err.Error())
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
 	if request.PlaceID != nil {
 		if *request.PlaceID <= 0 {
-			err = stderr.New(errors.ValidationErr + ": " + errors.WrongPlaceIdError)
+			err = errors.New(pkgerr.ValidationErr + ": " + pkgerr.WrongPlaceIdError)
 			return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 		}
 	}
@@ -393,7 +363,7 @@ func decodeCreateFutureGameRequest(_ context.Context, r *http.Request) (interfac
 	if request.Date != nil {
 		date := *request.Date
 		if date.Equal(time.Unix(0, 0)) || date.IsZero() || date.Year() == 0 {
-			err = stderr.New(errors.ValidationErr + ": " + errors.ErrWrongDate)
+			err = errors.New(pkgerr.ValidationErr + ": " + pkgerr.ErrWrongDate)
 			return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 		}
 	}
@@ -404,13 +374,13 @@ func decodeCreateFutureGameRequest(_ context.Context, r *http.Request) (interfac
 func decodeGetTeamIDRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	paramID := chi.URLParam(r, "team_id")
 	if paramID == "" {
-		err := stderr.New(errors.EmptyParameterError)
+		err := errors.New(pkgerr.EmptyParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
 	id, err := strconv.Atoi(paramID)
 	if err != nil || id <= 0 {
-		err = stderr.New(errors.WrongParameterError)
+		err = errors.New(pkgerr.WrongParameterError)
 		return nil, error_templates.New(err.Error(), err, http.StatusBadRequest, http.StatusBadRequest)
 	}
 
@@ -425,13 +395,13 @@ func decodeDeleteFutureGameRequest(_ context.Context, r *http.Request) (interfac
 
 	idParam := chi.URLParam(r, "id")
 	if idParam == "" {
-		err := stderr.New(errors.EmptyParameterError)
+		err := errors.New(pkgerr.EmptyParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
 	id, err := strconv.ParseInt(idParam, 10, 64)
 	if err != nil {
-		err := stderr.New(errors.WrongParameterError)
+		err = errors.New(pkgerr.WrongParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
@@ -448,4 +418,301 @@ func decodeDeleteFutureGameRequest(_ context.Context, r *http.Request) (interfac
 	request.ID = id
 
 	return request, nil
+}
+
+func decodeCreateFutureTournamentGameRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	request := &entities.CreateFutureTournamentGameRequest{Creator: entities.User{Role: &entities.Role{}, Team: &entities.Team{}}}
+	buf := bytebufferpool.Get()
+	defer bytebufferpool.Put(buf)
+
+	reqCtx := r.Context()
+
+	userId, ok := reqCtx.Value(constant.UserIDContextKey).(int64)
+	if !ok || userId == 0 {
+		err := errors.New(pkgerr.ErrUserIdToken)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	request.Creator.ID = userId
+
+	role, ok := reqCtx.Value(constant.RoleNameContextKey).(string)
+	if !ok || role == "" {
+		err := errors.New(pkgerr.ErrRoleToken)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	request.Creator.Role.Name = role
+
+	teamId, ok := reqCtx.Value(constant.TeamIDContextKey).(int64)
+	request.Creator.Team.ID = teamId
+
+	_, err := io.Copy(buf, r.Body)
+	if err != nil {
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	err = json.Unmarshal(buf.Bytes(), &request)
+	if err != nil {
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	return request, nil
+}
+
+func decodeUpdateFutureTournamentGameRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	request := &entities.UpdateFutureTournamentGameRequest{Executor: entities.User{Role: &entities.Role{}, Team: &entities.Team{}}}
+	buf := bytebufferpool.Get()
+	defer bytebufferpool.Put(buf)
+
+	reqCtx := r.Context()
+
+	idParam := chi.URLParam(r, "id")
+	if idParam == "" {
+		err := errors.New(pkgerr.EmptyParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	id, err := strconv.ParseInt(idParam, 10, 64)
+	if err != nil {
+		err = errors.New(pkgerr.WrongParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	request.GameID = id
+
+	userId, ok := reqCtx.Value(constant.UserIDContextKey).(int64)
+	if !ok || userId == 0 {
+		err = errors.New(pkgerr.ErrUserIdToken)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	request.Executor.ID = userId
+
+	role, ok := reqCtx.Value(constant.RoleNameContextKey).(string)
+	if !ok || role == "" {
+		err := errors.New(pkgerr.ErrRoleToken)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	request.Executor.Role.Name = role
+
+	teamId, ok := reqCtx.Value(constant.TeamIDContextKey).(int64)
+	request.Executor.Team.ID = teamId
+
+	_, err = io.Copy(buf, r.Body)
+	if err != nil {
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	err = json.Unmarshal(buf.Bytes(), &request)
+	if err != nil {
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	return request, nil
+}
+
+func decodeDeleteFutureTournamentGameRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	request := &entities.DeleteFutureTournamentGameRequest{Executor: entities.User{Role: &entities.Role{}, Team: &entities.Team{}}}
+	buf := bytebufferpool.Get()
+	defer bytebufferpool.Put(buf)
+
+	reqCtx := r.Context()
+
+	idParam := chi.URLParam(r, "id")
+	if idParam == "" {
+		err := errors.New(pkgerr.EmptyParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	id, err := strconv.ParseInt(idParam, 10, 64)
+	if err != nil {
+		err = errors.New(pkgerr.WrongParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	request.GameID = id
+
+	userId, ok := reqCtx.Value(constant.UserIDContextKey).(int64)
+	if !ok || userId == 0 {
+		err = errors.New(pkgerr.ErrUserIdToken)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	request.Executor.ID = userId
+
+	role, ok := reqCtx.Value(constant.RoleNameContextKey).(string)
+	if !ok || role == "" {
+		err := errors.New(pkgerr.ErrRoleToken)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	request.Executor.Role.Name = role
+
+	teamId, ok := reqCtx.Value(constant.TeamIDContextKey).(int64)
+	request.Executor.Team.ID = teamId
+
+	_, err = io.Copy(buf, r.Body)
+	if err != nil {
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	err = json.Unmarshal(buf.Bytes(), &request)
+	if err != nil {
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	return request, nil
+}
+
+func decodeCreatePlayedTournamentGameRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	request := &entities.CreatePlayedTournamentGameRequest{Creator: entities.User{Role: &entities.Role{}, Team: &entities.Team{}}}
+	buf := bytebufferpool.Get()
+	defer bytebufferpool.Put(buf)
+
+	reqCtx := r.Context()
+
+	userId, ok := reqCtx.Value(constant.UserIDContextKey).(int64)
+	if !ok || userId == 0 {
+		err := errors.New(pkgerr.ErrUserIdToken)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	request.Creator.ID = userId
+
+	role, ok := reqCtx.Value(constant.RoleNameContextKey).(string)
+	if !ok || role == "" {
+		err := errors.New(pkgerr.ErrRoleToken)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	request.Creator.Role.Name = role
+
+	teamId, ok := reqCtx.Value(constant.TeamIDContextKey).(int64)
+	request.Creator.Team.ID = teamId
+
+	_, err := io.Copy(buf, r.Body)
+	if err != nil {
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	err = json.Unmarshal(buf.Bytes(), &request)
+	if err != nil {
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	return request, nil
+}
+
+func decodeUpdatePlayedTournamentGameRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	request := &entities.UpdatePlayedTournamentGameRequest{Executor: entities.User{Role: &entities.Role{}, Team: &entities.Team{}}}
+	buf := bytebufferpool.Get()
+	defer bytebufferpool.Put(buf)
+
+	reqCtx := r.Context()
+
+	idParam := chi.URLParam(r, "id")
+	if idParam == "" {
+		err := errors.New(pkgerr.EmptyParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	id, err := strconv.ParseInt(idParam, 10, 64)
+	if err != nil {
+		err = errors.New(pkgerr.WrongParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	request.GameID = id
+
+	userId, ok := reqCtx.Value(constant.UserIDContextKey).(int64)
+	if !ok || userId == 0 {
+		err = errors.New(pkgerr.ErrUserIdToken)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	request.Executor.ID = userId
+
+	role, ok := reqCtx.Value(constant.RoleNameContextKey).(string)
+	if !ok || role == "" {
+		err := errors.New(pkgerr.ErrRoleToken)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	request.Executor.Role.Name = role
+
+	teamId, ok := reqCtx.Value(constant.TeamIDContextKey).(int64)
+	request.Executor.Team.ID = teamId
+
+	_, err = io.Copy(buf, r.Body)
+	if err != nil {
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	err = json.Unmarshal(buf.Bytes(), &request)
+	if err != nil {
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	return request, nil
+}
+
+func decodeDeletePlayedTournamentGameRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	request := &entities.DeletePlayedTournamentGameRequest{Executor: entities.User{Role: &entities.Role{}, Team: &entities.Team{}}}
+	buf := bytebufferpool.Get()
+	defer bytebufferpool.Put(buf)
+
+	reqCtx := r.Context()
+
+	idParam := chi.URLParam(r, "id")
+	if idParam == "" {
+		err := errors.New(pkgerr.EmptyParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	id, err := strconv.ParseInt(idParam, 10, 64)
+	if err != nil {
+		err = errors.New(pkgerr.WrongParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	request.GameID = id
+
+	userId, ok := reqCtx.Value(constant.UserIDContextKey).(int64)
+	if !ok || userId == 0 {
+		err = errors.New(pkgerr.ErrUserIdToken)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	request.Executor.ID = userId
+
+	role, ok := reqCtx.Value(constant.RoleNameContextKey).(string)
+	if !ok || role == "" {
+		err := errors.New(pkgerr.ErrRoleToken)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	request.Executor.Role.Name = role
+
+	teamId, ok := reqCtx.Value(constant.TeamIDContextKey).(int64)
+	request.Executor.Team.ID = teamId
+
+	_, err = io.Copy(buf, r.Body)
+	if err != nil {
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	err = json.Unmarshal(buf.Bytes(), &request)
+	if err != nil {
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	return request, nil
+}
+
+/*local functions-helpers*/
+
+func parseIntParam(param string) (*int, error) {
+	val, err := strconv.Atoi(param)
+	if err != nil {
+		return nil, errors.New(pkgerr.WrongParameterError)
+	}
+	return &val, nil
+}
+
+func parseBoolParam(param string) (*bool, error) {
+	val, err := strconv.ParseBool(param)
+	if err != nil {
+		return nil, errors.New(pkgerr.WrongParameterError)
+	}
+	return &val, nil
+}
+
+func parseDateParam(param string) (*time.Time, error) {
+	// "2006-01-02" для формата YYYY-MM-DD
+	val, err := time.Parse("2006-01-02", param)
+	if err != nil {
+		return nil, errors.New(pkgerr.ErrWrongDate)
+	}
+	return &val, nil
 }

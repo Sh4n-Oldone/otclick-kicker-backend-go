@@ -137,9 +137,15 @@ func makeCreateTournamentMaster(s user.IService) endpoint.Endpoint {
 		reqID, ctx := middleware.GetRequestID(ctx)
 		serviceLogger := s.GetLogger().With().Str("Source", "makeCreateTournamentMaster").Logger()
 
-		err := helpers.ValidCreateTournamentMasterRequest(request.(*entities.CreateTournamentMasterRequest), s.GetValidator())
+		req, err := helpers.CastRequest[*entities.CreateTournamentMasterRequest](request)
 		if err != nil {
 			serviceLogger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).Msg(pkgerr.FailedValidateRequest)
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		err = s.GetValidator().Struct(req)
+		if err != nil {
+			serviceLogger.Error().Err(error_templates.ErrorDetailFromError(err)).Msg(pkgerr.FailedValidateRequest)
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
