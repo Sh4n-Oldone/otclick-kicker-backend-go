@@ -26,5 +26,5 @@ type DeleteSeasonRequest struct {
 }
 
 type GetSeasonResponse struct {
-	Season []Season `json:"season"`
+	SeasonList []Season `json:"seasonList"`
 }

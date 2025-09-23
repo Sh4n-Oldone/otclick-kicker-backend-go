@@ -721,13 +721,13 @@ func (s *Service) CreateFutureTournamentGame(ctx context.Context, request *entit
 		return 0, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
-	if tournament.Rules.Regular != nil && tournament.Rules.Regular.BestOf == bestOfOne {
-		err = checkCreateRegularBestOfOneTournamentGame(logger, request.IsTiebreak)
+	if tournament.TypeID == constant.RegularTournamentTypeID {
+		err = checkCreateRegularTournamentGame(logger, request.IsTiebreak)
 		if err != nil {
 			return 0, err
 		}
-
 	} else {
+		// todo другие типы турниров
 		return 0, errors.New("not implemented")
 	}
 
@@ -803,12 +803,13 @@ func (s *Service) UpdateFutureTournamentGame(ctx context.Context, request *entit
 		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
-	if tournament.Rules.Regular != nil && tournament.Rules.Regular.BestOf == bestOfOne {
-		err = checkUpdateRegularBestOfOneTournamentGame(logger, *updReq.Team1ID, *updReq.Team2ID, &game)
+	if tournament.TypeID == constant.RegularTournamentTypeID {
+		err = checkUpdateRegularTournamentGame(logger, *updReq.Team1ID, *updReq.Team2ID, &game)
 		if err != nil {
 			return err
 		}
 	} else {
+		// todo другие типы турниров
 		return errors.New("not implemented")
 	}
 
@@ -875,11 +876,12 @@ func (s *Service) DeleteFutureTournamentGame(ctx context.Context, request *entit
 	}
 
 	if tournament.Rules.Regular != nil && tournament.Rules.Regular.BestOf == bestOfOne {
-		err = checkDeleteRegularBestOfOneTournamentGame(logger, &game)
+		err = checkDeleteRegularTournamentGame(logger, &game)
 		if err != nil {
 			return err
 		}
 	} else {
+		// todo другие типы турниров
 		return errors.New("not implemented")
 	}
 
@@ -954,6 +956,16 @@ func (s *Service) CreatePlayedTournamentGame(ctx context.Context, request *entit
 		err = errors.New("нельзя присудить техническое поражение команде не участвующей в игре")
 		logger.Error().Err(err).Msg("techLooseTeamID not equal team1Id/team2Id")
 		return 0, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	if tournament.TypeID == constant.RegularTournamentTypeID {
+		err = checkCreateRegularTournamentGame(logger, request.IsTiebreak)
+		if err != nil {
+			return 0, err
+		}
+	} else {
+		// todo другие типы турниров
+		return 0, errors.New("not implemented")
 	}
 
 	// Map for keeping player ratings while going game calculation
@@ -1105,15 +1117,6 @@ func (s *Service) CreatePlayedTournamentGame(ctx context.Context, request *entit
 		request.Matches = matches
 	}
 
-	if tournament.Rules.Regular != nil && tournament.Rules.Regular.BestOf == bestOfOne {
-		err = checkCreateRegularBestOfOneTournamentGame(logger, request.IsTiebreak)
-		if err != nil {
-			return 0, err
-		}
-	} else {
-		return 0, errors.New("not implemented")
-	}
-
 	id, err := s.rwdbOperations.CreatePlayedTournamentGame(logger, ctx, request, &s.config.RWDB)
 	if err != nil {
 		return 0, err
@@ -1199,13 +1202,13 @@ func (s *Service) UpdatePlayedTournamentGame(ctx context.Context, request *entit
 		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
-	// проверка условий обновления для BestOfOne
-	if tournament.Rules.Regular != nil && tournament.Rules.Regular.BestOf == bestOfOne {
-		err = checkUpdateRegularBestOfOneTournamentGame(logger, request.Team1ID, request.Team2ID, &game)
+	if tournament.TypeID == constant.RegularTournamentTypeID {
+		err = checkUpdateRegularTournamentGame(logger, request.Team1ID, request.Team2ID, &game)
 		if err != nil {
 			return err
 		}
 	} else {
+		// todo другие типы турниров
 		return errors.New("not implemented")
 	}
 
@@ -1491,6 +1494,16 @@ func (s *Service) DeletePlayedTournamentGame(ctx context.Context, request *entit
 		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
+	if tournament.TypeID == constant.RegularTournamentTypeID {
+		err = checkDeleteRegularTournamentGame(logger, &game)
+		if err != nil {
+			return err
+		}
+	} else {
+		// todo другие типы турниров
+		return errors.New("not implemented")
+	}
+
 	matches, err := s.rdbOperations.GetMatchListByGameID(ctx, logger, request.GameID, &s.config.RDB)
 	if err != nil {
 		return err
@@ -1559,15 +1572,6 @@ func (s *Service) DeletePlayedTournamentGame(ctx context.Context, request *entit
 		if err != nil {
 			return err
 		}
-	}
-
-	if tournament.Rules.Regular != nil && tournament.Rules.Regular.BestOf == bestOfOne {
-		err = checkDeleteRegularBestOfOneTournamentGame(logger, &game)
-		if err != nil {
-			return err
-		}
-	} else {
-		return errors.New("not implemented")
 	}
 
 	err = s.rwdbOperations.DeleteGame(logger, ctx, request.GameID, &s.config.RWDB)
@@ -1694,8 +1698,8 @@ func buildNewRequest(request *entities.UpdateFutureTournamentGameRequest, game *
 	return nr
 }
 
-// checkUpdateRegularBestOfOneTournamentGame проверяет условия при которых обновления для игры турнира Regular.BestOfOne невозможны
-func checkUpdateRegularBestOfOneTournamentGame(logger zerolog.Logger, team1ID, team2ID int64, game *entities.TournamentGame) error {
+// checkUpdateRegularTournamentGame проверяет условия при которых обновления для игры турнира Regular.BestOfOne невозможны
+func checkUpdateRegularTournamentGame(logger zerolog.Logger, team1ID, team2ID int64, game *entities.TournamentGame) error {
 	if (team1ID != game.Team1ID && team1ID != game.Team2ID) || (team2ID != game.Team1ID && team2ID != game.Team2ID) {
 		err := errors.New("в игре турнира типа Regular.BestOfOne нельзя менять состав команд")
 		logger.Error().Err(err).Msg("change game teams pair Regular.BestOfOne")
@@ -1705,23 +1709,23 @@ func checkUpdateRegularBestOfOneTournamentGame(logger zerolog.Logger, team1ID, t
 	return nil
 }
 
-// checkDeleteRegularBestOfOneTournamentGame проверяет условия при которых удаление игры турнира Regular.BestOfOne невозможны
-func checkDeleteRegularBestOfOneTournamentGame(logger zerolog.Logger, game *entities.TournamentGame) error {
+// checkDeleteRegularTournamentGame проверяет условия при которых удаление игры турнира Regular.BestOfOne невозможны
+func checkDeleteRegularTournamentGame(logger zerolog.Logger, game *entities.TournamentGame) error {
 	if game.IsTiebreak == false {
-		err := errors.New("для регулярного турнира c одной игрой можно удалить только tiebreak игру")
-		logger.Error().Err(err).Msg("not tiebreak in Regular.BestOfOne")
+		err := errors.New("у регулярного турнира можно удалить только tiebreak игру")
+		logger.Error().Err(err).Msg("not tiebreak in create Regular")
 		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
 	return nil
 }
 
-// checkCreateRegularBestOfOneTournamentGame проверяет условия при которых создание игры турнира Regular.BestOfOne невозможны
-func checkCreateRegularBestOfOneTournamentGame(logger zerolog.Logger, isTiebreak bool) error {
+// checkCreateRegularTournamentGame проверяет условия при которых создание игры турнира Regular невозможны
+func checkCreateRegularTournamentGame(logger zerolog.Logger, isTiebreak bool) error {
 	// для этого типа турнира можно создать только Tiebreak, потому что при создании турнира вся турнирная сетка создается сразу
 	if isTiebreak != true {
 		err := errors.New("для регулярного турнира c одной игрой можно создать дополнительно только tiebreak игру")
-		logger.Error().Err(err).Msg("not tiebreak in Regular.BestOfOne")
+		logger.Error().Err(err).Msg("not tiebreak in Regular")
 		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 

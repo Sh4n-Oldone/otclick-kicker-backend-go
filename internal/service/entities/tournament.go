@@ -9,22 +9,24 @@ type GetTournamentTypeListRequest struct {
 type CreateTournamentRequest struct {
 	CityIDParam      string
 	CityID           int64
-	TournamentTypeID int64
+	TournamentTypeID int64          `json:"typeId" validate:"required,gt=0"`
 	SeasonID         int64          `json:"seasonId" validate:"required,gt=0"`
 	Name             string         `json:"name" validate:"required,min=1,max=128"`
-	TeamIDs          []int64        `json:"teamIds" validate:"required,min=2"`
+	TeamsIDs         []int64        `json:"teamsIds" validate:"omitempty,min=2"`
+	PlayersIDs       []int64        `json:"playersIds" validate:"omitempty,min=2"`
 	Rules            TournamentRule `json:"rules" validate:"required"`
 	Creator          User
 }
 
 type UpdateTournamentRequest struct {
-	ID               int64 `json:"id" validate:"required,gt=0"`
-	TournamentTypeID *int64
-	CityID           *int64  `json:"cityId" validate:"omitempty,gt=0"`
-	SeasonID         *int64  `json:"seasonId" validate:"omitempty,gt=0"`
-	Name             *string `json:"name" validate:"omitempty,min=1,max=128"`
-	TeamIDs          []int64 `json:"teamIds" validate:"omitempty,min=2"`
-	Rules            *TournamentRule
+	ID               int64           `json:"id" validate:"required,gt=0"`
+	CityID           *int64          `json:"cityId" validate:"omitempty,gt=0"`
+	SeasonID         *int64          `json:"seasonId" validate:"omitempty,gt=0"`
+	Name             *string         `json:"name" validate:"omitempty,min=1,max=128"`
+	TeamsIDs         []int64         `json:"teamsIds" validate:"omitempty,min=2"`
+	PlayersIDs       []int64         `json:"playersIds" validate:"omitempty,min=2"`
+	Rules            *TournamentRule `json:"rules"`
+	TournamentTypeID int64
 	Executor         User
 }
 
@@ -62,14 +64,14 @@ type TournamentRule struct {
 }
 
 type Regular struct {
-	BestOf int64 `json:"bestOf"`
+	BestOf int64 `json:"bestOf" validate:"required,gt=0"`
 }
 
 type PlayOff struct {
-	BestOf int64   `json:"bestOf"`
+	BestOf int64   `json:"bestOf" validate:"required,gt=0"`
 	Looser *Looser `json:"looser,omitempty"`
 }
 
 type Looser struct {
-	BestOf int64 `json:"bestOf"`
+	BestOf int64 `json:"bestOf" validate:"required,gt=0"`
 }

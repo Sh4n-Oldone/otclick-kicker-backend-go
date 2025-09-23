@@ -1065,8 +1065,7 @@ func (db *RWDBOperation) CreateFutureTournamentStageGames(logger zerolog.Logger,
 		return DecodeDatabaseError(err)
 	}
 
-	for i, _ := range team1IDs {
-
+	for i := range team1IDs {
 		_, err = tx.Exec(timeout, query, cityID, team1IDs[i], team2IDs[i], stageID)
 		if err != nil {
 			logger.Error().Err(err).Msg("failed tx.Exec postgresql.CreateTournamentStageGames")

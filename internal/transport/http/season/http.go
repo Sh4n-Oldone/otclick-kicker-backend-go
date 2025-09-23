@@ -28,7 +28,7 @@ func NewServer(endpoints season.Endpoints, options []kithttp.ServerOption, cfg *
 	r.Use(custom_middleware.HeaderHandler)
 
 	//Actual
-	r.Get("/seasons", kithttp.NewServer(endpoints.GetList, decodeGetRoleListRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.Get("/seasons", kithttp.NewServer(endpoints.GetList, decodeGetSeasonListRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
 		Post("/seasons", kithttp.NewServer(endpoints.Create, decodeCreateRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).

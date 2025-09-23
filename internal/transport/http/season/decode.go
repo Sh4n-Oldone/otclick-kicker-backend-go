@@ -17,7 +17,7 @@ import (
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 )
 
-func decodeGetRoleListRequest(ctx context.Context, r *http.Request) (interface{}, error) {
+func decodeGetSeasonListRequest(ctx context.Context, r *http.Request) (interface{}, error) {
 	return nil, nil
 }
 

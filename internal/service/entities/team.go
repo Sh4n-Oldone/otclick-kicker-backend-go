@@ -189,7 +189,10 @@ type GameFetch struct {
 	TechLooseTeamID *int64 `json:"techLooseTeamId"`
 }
 
-type TeamPair struct {
-	Team1ID int64
-	Team2ID int64
+type TournamentTeam struct {
+	ID        int64  `json:"id"`
+	Name      string `json:"name"`
+	ShortName string `json:"shortName"`
+	CityID    int64  `json:"cityId"`
+	Avatar    []byte `json:"avatar,omitempty"`
 }

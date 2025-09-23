@@ -22,7 +22,7 @@ func makeGetList(s season.IService) endpoint.Endpoint {
 		}
 
 		response := &entities.GetSeasonResponse{}
-		response.Season = seasons
+		response.SeasonList = seasons
 
 		return response, nil
 	}
