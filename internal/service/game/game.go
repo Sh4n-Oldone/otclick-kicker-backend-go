@@ -17,10 +17,6 @@ import (
 	pkgerr "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 )
 
-const (
-	bestOfOne int64 = 1
-)
-
 func (s *Service) Create(ctx context.Context, request entities.CreateGameRequest) (entities.CreateGameResponse, error) {
 	logger := s.logger.With().Str("service", "game.Create").Logger()
 	timeout, cancel := context.WithTimeout(ctx, s.config.RWDB.MaxIdleConnectionTimeout)
@@ -721,7 +717,7 @@ func (s *Service) CreateFutureTournamentGame(ctx context.Context, request *entit
 		return 0, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
-	if tournament.TypeID == constant.RegularTournamentTypeID {
+	if tournament.TypeID == constant.RegularTournamentTypeID || tournament.TypeID == constant.RegularOneVsOneTournamentTypeID {
 		err = checkCreateRegularTournamentGame(logger, request.IsTiebreak)
 		if err != nil {
 			return 0, err
@@ -803,7 +799,7 @@ func (s *Service) UpdateFutureTournamentGame(ctx context.Context, request *entit
 		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
-	if tournament.TypeID == constant.RegularTournamentTypeID {
+	if tournament.TypeID == constant.RegularTournamentTypeID || tournament.TypeID == constant.RegularOneVsOneTournamentTypeID {
 		err = checkUpdateRegularTournamentGame(logger, *updReq.Team1ID, *updReq.Team2ID, &game)
 		if err != nil {
 			return err
@@ -875,7 +871,7 @@ func (s *Service) DeleteFutureTournamentGame(ctx context.Context, request *entit
 		}
 	}
 
-	if tournament.Rules.Regular != nil && tournament.Rules.Regular.BestOf == bestOfOne {
+	if tournament.TypeID == constant.RegularTournamentTypeID || tournament.TypeID == constant.RegularOneVsOneTournamentTypeID {
 		err = checkDeleteRegularTournamentGame(logger, &game)
 		if err != nil {
 			return err
@@ -958,11 +954,40 @@ func (s *Service) CreatePlayedTournamentGame(ctx context.Context, request *entit
 		return 0, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
+	for _, m := range request.Matches {
+		if request.Team1ID != int64(m.Team1ID) || request.Team2ID != int64(m.Team2ID) {
+			err = errors.New("команда матча не учствует в игре")
+			logger.Error().Err(err).Msg("match team not equal game team")
+			return 0, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+
+		if m.Date.Year() != request.Date.Year() || m.Date.Month() != request.Date.Month() || m.Date.Day() != request.Date.Day() {
+			err = errors.New("даты игры и матча не совпадают")
+			logger.Error().Err(err).Msg("dates not equal")
+			return 0, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+	}
+
 	if tournament.TypeID == constant.RegularTournamentTypeID {
 		err = checkCreateRegularTournamentGame(logger, request.IsTiebreak)
 		if err != nil {
 			return 0, err
 		}
+
+	} else if tournament.TypeID == constant.RegularOneVsOneTournamentTypeID {
+		err = checkCreateRegularTournamentGame(logger, request.IsTiebreak)
+		if err != nil {
+			return 0, err
+		}
+
+		for _, m := range request.Matches {
+			if m.Player2Team1Id != nil || m.Player2Team2Id != nil {
+				err = errors.New("в турнире типа Regular.OneVsOne у команды не может быть второго игрока")
+				logger.Error().Err(err).Msg("two players in OneVsOne")
+				return 0, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+			}
+		}
+
 	} else {
 		// todo другие типы турниров
 		return 0, errors.New("not implemented")
@@ -1206,6 +1231,19 @@ func (s *Service) UpdatePlayedTournamentGame(ctx context.Context, request *entit
 		err = checkUpdateRegularTournamentGame(logger, request.Team1ID, request.Team2ID, &game)
 		if err != nil {
 			return err
+		}
+	} else if tournament.TypeID == constant.RegularOneVsOneTournamentTypeID {
+		err = checkUpdateRegularTournamentGame(logger, request.Team1ID, request.Team2ID, &game)
+		if err != nil {
+			return err
+		}
+
+		for _, m := range request.Matches {
+			if m.Player2Team1Id != nil || m.Player2Team2Id != nil {
+				err = errors.New("в турнире типа Regular.OneVsOne у команды не может быть второго игрока")
+				logger.Error().Err(err).Msg("two players in OneVsOne")
+				return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+			}
 		}
 	} else {
 		// todo другие типы турниров
@@ -1698,11 +1736,11 @@ func buildNewRequest(request *entities.UpdateFutureTournamentGameRequest, game *
 	return nr
 }
 
-// checkUpdateRegularTournamentGame проверяет условия при которых обновления для игры турнира Regular.BestOfOne невозможны
+// checkUpdateRegularTournamentGame проверяет условия при которых обновления для игры турнира Regular невозможны
 func checkUpdateRegularTournamentGame(logger zerolog.Logger, team1ID, team2ID int64, game *entities.TournamentGame) error {
 	if (team1ID != game.Team1ID && team1ID != game.Team2ID) || (team2ID != game.Team1ID && team2ID != game.Team2ID) {
-		err := errors.New("в игре турнира типа Regular.BestOfOne нельзя менять состав команд")
-		logger.Error().Err(err).Msg("change game teams pair Regular.BestOfOne")
+		err := errors.New("в игре турнира типа Regular нельзя менять состав команд")
+		logger.Error().Err(err).Msg("change game teams pair in update Regular")
 		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
