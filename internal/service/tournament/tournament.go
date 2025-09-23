@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"net/http"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/helpers/pointer"
 	"strconv"
 	"strings"
 	"time"
@@ -19,7 +20,6 @@ import (
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
 	pkgerr "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/helpers"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/helpers/pointer"
 )
 
 const (
@@ -174,7 +174,7 @@ func (s *Service) Update(ctx context.Context, request *entities.UpdateTournament
 		if haveFinishedStage(tournament.Stages) == true || haveStartedGames(games) == true || haveMatches == true {
 			if request.CityID != nil || request.Rules != nil || request.TeamsIDs != nil {
 				err = fmt.Errorf("турнир с завершенными или начатыми играми не могут обновляться поля: cityId, rules, teamIds")
-				logger.Error().Err(err).Msg("Failed tournament.Update: finished stage or started games")
+				logger.Error().Err(err).Msg("Failed tournament.Update: finished stage or started games	")
 				return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 			}
 
@@ -791,7 +791,7 @@ func validateRulesTypesIds(rules entities.TournamentRule, typeId int64, teamsIds
 	}
 
 	if len(playersIds) > 0 && len(teamsIds) > 0 {
-		err := errors.New("в запросе могут быть только игроки или только команды")
+		err := errors.New("в запросе могут только игроки или только команды")
 		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
