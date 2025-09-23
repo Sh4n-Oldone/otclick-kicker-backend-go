@@ -136,7 +136,7 @@ func (db *RDBOperation) GetTournamentStage(logger zerolog.Logger, ctx context.Co
 	return s, nil
 }
 
-func (db *RWDBOperation) CreateRegularTournament(logger zerolog.Logger, ctx context.Context, request *entities.CreateTournamentRequest, cfg *config.DBConfig) (int64, error) {
+func (db *RWDBOperation) CreateTournament(logger zerolog.Logger, ctx context.Context, request entities.CreateTournamentRequest, cfg *config.DBConfig) (int64, error) {
 	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 
@@ -175,7 +175,7 @@ func (db *RWDBOperation) CreateRegularTournament(logger zerolog.Logger, ctx cont
 		return 0, DecodeDatabaseError(err)
 	}
 
-	for _, t := range request.TeamIDs {
+	for _, t := range request.TeamsIDs {
 		_, err = tx.Exec(timeout, query2, t, id)
 		if err != nil {
 			logger.Error().Err(err).Msg("Failed tx.Exec postgresql.CreateTournament")
@@ -193,7 +193,7 @@ func (db *RWDBOperation) CreateRegularTournament(logger zerolog.Logger, ctx cont
 	return id, nil
 }
 
-func (db *RWDBOperation) UpdateTournament(logger zerolog.Logger, ctx context.Context, request *entities.UpdateTournamentRequest, cfg *config.DBConfig) error {
+func (db *RWDBOperation) UpdateTournament(logger zerolog.Logger, ctx context.Context, request entities.UpdateTournamentRequest, cfg *config.DBConfig) error {
 	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 
@@ -204,7 +204,8 @@ func (db *RWDBOperation) UpdateTournament(logger zerolog.Logger, ctx context.Con
 			name = COALESCE($3, name),
 			rules = COALESCE($4, rules),
 			city_id = COALESCE($5, city_id),
-			season_id = COALESCE($6, season_id)
+			season_id = COALESCE($6, season_id),
+			updated_at = NOW()
 		WHERE id = $1;`
 
 	var ruleJSON []byte = nil
@@ -367,20 +368,18 @@ func (db *RWDBOperation) DeleteTournamentGamesTeamLinks(logger zerolog.Logger, c
 		return DecodeDatabaseError(err)
 	}
 
-	//todo: что с рейтингами?
-
 	return nil
 }
 
-func (db *RWDBOperation) CreateTournamentStage(logger zerolog.Logger, ctx context.Context, tournamentID int64, isFinished bool, cfg *config.DBConfig) (int64, error) {
+func (db *RWDBOperation) CreateTournamentStage(logger zerolog.Logger, ctx context.Context, tournamentID int64, cfg *config.DBConfig) (int64, error) {
 	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 
-	const query string = `INSERT INTO tournament_stages(tournament_id, is_finished) VALUES ($1, $2) RETURNING id;`
+	const query string = `INSERT INTO tournament_stages(tournament_id, is_finished) VALUES ($1, FALSE) RETURNING id;`
 
 	var id int64
 
-	err := db.db.QueryRow(timeout, query, tournamentID, isFinished).Scan(&id)
+	err := db.db.QueryRow(timeout, query, tournamentID).Scan(&id)
 	if err != nil {
 		logger.Error().Err(err).Msg("Failed QueryRow postgresql.CreateTournamentStage")
 		return 0, DecodeDatabaseError(err)

@@ -340,15 +340,18 @@ func (db *RDBOperation) FetchPastGamesTiebreak(logger zerolog.Logger, ctx contex
 	return games, nil
 }
 
-func (db *RDBOperation) FetchMatches(logger zerolog.Logger, ctx context.Context, gameID int64) ([]entities.ShortMatch, error) {
+func (db *RDBOperation) FetchMatches(logger zerolog.Logger, ctx context.Context, gameID int64, cfg *config.DBConfig) ([]entities.ShortMatch, error) {
+	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
 	const query = `SELECT id, team1_id, team2_id, score_team1, score_team2 FROM matches
 					WHERE game_id = $1
 					ORDER BY id`
 
-	rows, err := db.db.Query(ctx, query, gameID)
-
+	rows, err := db.db.Query(timeout, query, gameID)
 	if err != nil {
-		return nil, err
+		logger.Error().Err(err).Msg("failed to postgresql.FetchMatches")
+		return nil, DecodeDatabaseError(err)
 	}
 	defer rows.Close()
 
@@ -362,7 +365,8 @@ func (db *RDBOperation) FetchMatches(logger zerolog.Logger, ctx context.Context,
 			&match.ScoreTeam1,
 			&match.ScoreTeam2)
 		if err != nil {
-			return nil, err
+			logger.Error().Err(err).Msg("failed to postgresql.FetchMatches")
+			return nil, DecodeDatabaseError(err)
 		}
 		matches = append(matches, match)
 	}
@@ -402,18 +406,21 @@ func (db *RDBOperation) TeamsHaveNoGames(logger zerolog.Logger, ctx context.Cont
 	return true, nil
 }
 
-func (db *RWDBOperation) CreateTeam(logger zerolog.Logger, ctx context.Context, team entities.CreateTeamRequest) (int64, error) {
+func (db *RWDBOperation) CreateTeam(logger zerolog.Logger, ctx context.Context, team entities.CreateTeamRequest, cfg *config.DBConfig) (int64, error) {
+	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
 	var teamId int64
 	const queryCreateTeam = `INSERT INTO teams (name, short_name, avatar, city_id) VALUES ($1, $2, $3, $4) RETURNING id`
 
-	tx, err := db.db.Begin(ctx)
+	tx, err := db.db.Begin(timeout)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.CreateTeam")
 		return 0, DecodeDatabaseError(errors.New(pkgerr.ErrCreateTeam))
 	}
 
 	// Вставка команды в таблицу `teams` и получение `id` новой команды
-	err = tx.QueryRow(ctx, queryCreateTeam,
+	err = tx.QueryRow(timeout, queryCreateTeam,
 		team.Name,
 		team.ShortName,
 		team.Avatar,
@@ -424,9 +431,9 @@ func (db *RWDBOperation) CreateTeam(logger zerolog.Logger, ctx context.Context, 
 		return 0, DecodeDatabaseError(err)
 	}
 
-	if err = tx.Commit(ctx); err != nil {
+	if err = tx.Commit(timeout); err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.CreateTeam")
-		_ = tx.Rollback(ctx)
+		_ = tx.Rollback(timeout)
 		return 0, DecodeDatabaseError(errors.New(pkgerr.ErrCreateTeam))
 	}
 
@@ -460,7 +467,9 @@ func (db *RWDBOperation) UpdateTeam(logger zerolog.Logger, ctx context.Context, 
 	return true, nil
 }
 
-func (db *RWDBOperation) DeleteTeam(logger zerolog.Logger, ctx context.Context, id int64) (bool, error) {
+func (db *RWDBOperation) DeleteTeam(logger zerolog.Logger, ctx context.Context, id int64, cfg *config.DBConfig) (bool, error) {
+	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+	defer cancel()
 	//games, matches, users : в этих таблицах тоже могут быть связи с командой (team_id)
 	// Запросы для удаления связанных данных
 	const queryDeleteFromPlayersTeamsLinks = `DELETE FROM players_teams_links WHERE team_id = $1`
@@ -468,33 +477,33 @@ func (db *RWDBOperation) DeleteTeam(logger zerolog.Logger, ctx context.Context, 
 	const queryDeleteTeam = `DELETE FROM teams WHERE id = $1`
 
 	// Начинаем транзакцию
-	tx, err := db.db.Begin(ctx)
+	tx, err := db.db.Begin(timeout)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to begin transaction in DeleteTeam")
 		return false, DecodeDatabaseError(errors.New(pkgerr.ErrDeleteTeam))
 	}
 
 	// Удаление из `players_teams_links`
-	_, err = tx.Exec(ctx, queryDeleteFromPlayersTeamsLinks, id)
+	_, err = tx.Exec(timeout, queryDeleteFromPlayersTeamsLinks, id)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to delete from players_teams_links")
-		_ = tx.Rollback(ctx)
+		_ = tx.Rollback(timeout)
 		return false, DecodeDatabaseError(err)
 	}
 
 	// Удаление из `teams_leagues_links`
-	_, err = tx.Exec(ctx, queryDeleteFromTeamsLeaguesLinks, id)
+	_, err = tx.Exec(timeout, queryDeleteFromTeamsLeaguesLinks, id)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to delete from teams_leagues_links")
-		_ = tx.Rollback(ctx)
+		_ = tx.Rollback(timeout)
 		return false, DecodeDatabaseError(err)
 	}
 
 	//Удаление самой команды
-	tag, err := tx.Exec(ctx, queryDeleteTeam, id)
+	tag, err := tx.Exec(timeout, queryDeleteTeam, id)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to delete from teams")
-		_ = tx.Rollback(ctx)
+		_ = tx.Rollback(timeout)
 		return false, DecodeDatabaseError(err)
 	}
 
@@ -502,14 +511,14 @@ func (db *RWDBOperation) DeleteTeam(logger zerolog.Logger, ctx context.Context, 
 	rowsAffected := tag.RowsAffected()
 	if rowsAffected == 0 {
 		logger.Warn().Msg("No team was deleted; it may not exist")
-		_ = tx.Rollback(ctx)
+		_ = tx.Rollback(timeout)
 		return false, errors.New("failed to delete team; it may not exist")
 	}
 
 	// Коммит транзакции
-	if err = tx.Commit(ctx); err != nil {
+	if err = tx.Commit(timeout); err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to commit transaction in DeleteTeam")
-		_ = tx.Rollback(ctx)
+		_ = tx.Rollback(timeout)
 		return false, DecodeDatabaseError(errors.New(pkgerr.ErrDeleteTeam))
 	}
 
@@ -883,4 +892,85 @@ func (db *RDBOperation) GetTeamGamesInLeague(logger zerolog.Logger, ctx context.
 	}
 
 	return games, nil
+}
+
+func (db *RDBOperation) GetTournamentTeamList(logger zerolog.Logger, ctx context.Context, tournamentID int64, cfg *config.DBConfig) ([]entities.TournamentTeam, error) {
+	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	const query string = `
+		SELECT t.id, t.name, t.short_name, t.city_id, t.avatar 
+		FROM teams AS t
+		JOIN tournaments_teams_link AS ttl ON t.id = ttl.team_id
+		WHERE ttl.tournament_id = $1;`
+
+	rows, err := db.db.Query(timeout, query, tournamentID)
+	if err != nil {
+		logger.Error().Stack().Err(err).Msg("failed to postgresql.GetTournamentTeamList")
+		return nil, DecodeDatabaseError(err)
+	}
+	defer rows.Close()
+
+	var tournamentTeams []entities.TournamentTeam
+
+	for rows.Next() {
+		tt := entities.TournamentTeam{}
+		err = rows.Scan(&tt.ID, &tt.Name, &tt.ShortName, &tt.CityID, &tt.Avatar)
+		if err != nil {
+			logger.Error().Stack().Err(err).Msg("failed to postgresql.GetTournamentTeamList")
+			return nil, DecodeDatabaseError(err)
+		}
+		tournamentTeams = append(tournamentTeams, tt)
+	}
+
+	return tournamentTeams, nil
+}
+
+func (db *RWDBOperation) DeleteTournamentTeamCascade(logger zerolog.Logger, ctx context.Context, id int64, cfg *config.DBConfig) error {
+	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	const queryDeleteFromPlayersTeamsLinks = `DELETE FROM players_teams_links WHERE team_id = $1`
+	const queryDeleteTournamentLinks = `DELETE FROM tournaments_teams_link WHERE team_id = $1`
+	const queryDeleteTeam = `DELETE FROM teams WHERE id = $1`
+
+	// Начинаем транзакцию
+	tx, err := db.db.Begin(timeout)
+	if err != nil {
+		logger.Error().Stack().Err(err).Msg("failed to begin transaction in DeleteTeam")
+		return DecodeDatabaseError(err)
+	}
+
+	// Удаление из `players_teams_links`
+	_, err = tx.Exec(timeout, queryDeleteFromPlayersTeamsLinks, id)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to delete from players_teams_links")
+		_ = tx.Rollback(timeout)
+		return DecodeDatabaseError(err)
+	}
+
+	// Удаление из `tournaments_teams_link`
+	_, err = tx.Exec(timeout, queryDeleteTournamentLinks, id)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to delete from tournaments_teams_link")
+		_ = tx.Rollback(timeout)
+		return DecodeDatabaseError(err)
+	}
+
+	//Удаление самой команды
+	_, err = tx.Exec(timeout, queryDeleteTeam, id)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to delete from teams")
+		_ = tx.Rollback(timeout)
+		return DecodeDatabaseError(err)
+	}
+
+	// Коммит транзакции
+	if err = tx.Commit(timeout); err != nil {
+		logger.Error().Stack().Err(err).Msg("failed to commit transaction in DeleteTeam")
+		_ = tx.Rollback(timeout)
+		return DecodeDatabaseError(errors.New(pkgerr.ErrDeleteTeam))
+	}
+
+	return nil
 }

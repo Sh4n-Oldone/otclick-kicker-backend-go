@@ -16,6 +16,7 @@ import (
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/convert"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
 	pkgerr "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/helpers/pointer"
 )
 
 func (s *Service) GetTeam(ctx context.Context, teamID int64) (entities.GetTeamResponseV2, error) {
@@ -356,7 +357,7 @@ func (s *Service) GetTeamVsTeamTable(ctx context.Context, cityID, seasonID int64
 						bodyItem.GamesPlayed += 1
 						bodyItem.GamesToPlay -= 1
 					} else {
-						gamesHomeMatches, err := s.rdbOperations.FetchMatches(logger, ctx, cell.Game1ID)
+						gamesHomeMatches, err := s.rdbOperations.FetchMatches(logger, ctx, cell.Game1ID, &s.config.RDB)
 						if err != nil {
 							logger.Error().Err(err).Msg("database error")
 							return entities.GetTeamVsTeamTableResponse{}, err
@@ -394,7 +395,7 @@ func (s *Service) GetTeamVsTeamTable(ctx context.Context, cityID, seasonID int64
 						bodyItem.GamesPlayed += 1
 						bodyItem.GamesToPlay -= 1
 					} else {
-						gamesOutMatches, err := s.rdbOperations.FetchMatches(logger, ctx, cell.Game2ID)
+						gamesOutMatches, err := s.rdbOperations.FetchMatches(logger, ctx, cell.Game2ID, &s.config.RDB)
 						if err != nil {
 							logger.Error().Err(err).Msg("database error")
 							return entities.GetTeamVsTeamTableResponse{}, err
@@ -503,7 +504,7 @@ func (s *Service) Create(ctx context.Context, request *entities.CreateTeamReques
 		request.CityId = cityId
 	}
 
-	id, err := s.rwdbOperations.CreateTeam(logger, ctx, *request)
+	id, err := s.rwdbOperations.CreateTeam(logger, ctx, *request, &s.config.RWDB)
 	if err != nil {
 		return 0, err
 	}
@@ -556,7 +557,7 @@ func (s *Service) Update(ctx context.Context, request *entities.UpdateTeamReques
 func (s *Service) Delete(ctx context.Context, id int64) (bool, error) {
 	logger := s.logger.With().Interface("service", "Delete").Logger()
 
-	res, err := s.rwdbOperations.DeleteTeam(logger, ctx, id)
+	res, err := s.rwdbOperations.DeleteTeam(logger, ctx, id, &s.config.RWDB)
 	if err != nil {
 		return res, err
 	}
@@ -567,18 +568,23 @@ func (s *Service) Delete(ctx context.Context, id int64) (bool, error) {
 func (s *Service) AddPlayerIntoTeam(ctx context.Context, req *entities.MovingPlayerTeam) (bool, error) {
 	logger := s.logger.With().Str("service", "AddPlayerIntoTeam").Logger()
 
+	player, err := s.rdbOperations.GetPlayerByID(logger, ctx, int(req.PlayerID), &s.config.RDB)
+	if err != nil {
+		return false, err
+	}
+
+	team, err := s.rdbOperations.GetTeamById(logger, ctx, req.TeamID, &s.config.RDB)
+	if err != nil {
+		return false, err
+	}
+
+	if int64(pointer.GetValue(player.CityID)) != pointer.GetValue(team.CityId) {
+		err = fmt.Errorf("город(id:%d) игрока %s не равен городу(id:%d) команды %s", pointer.GetValue(player.CityID), pointer.GetValue(player.Name), pointer.GetValue(team.CityId), team.Name)
+		return false, err
+	}
+
 	if req.Executor.Role != nil && req.Executor.Role.Name == constant.TournamentMaster {
 		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, req.Executor.ID, &s.config.RDB)
-		if err != nil {
-			return false, err
-		}
-
-		player, err := s.rdbOperations.GetPlayerByID(logger, ctx, int(req.PlayerID), &s.config.RDB)
-		if err != nil {
-			return false, err
-		}
-
-		team, err := s.rdbOperations.GetTeamById(logger, ctx, req.TeamID, &s.config.RDB)
 		if err != nil {
 			return false, err
 		}
