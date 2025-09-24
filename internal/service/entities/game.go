@@ -270,10 +270,10 @@ type CreatePlayedTournamentGameRequest struct {
 
 type UpdatePlayedTournamentGameRequest struct {
 	GameID          int64      `validate:"required,gt=0"`
-	Date            time.Time  `json:"date" validate:"omitempty,valid-date"`
-	PlaceID         int64      `json:"placeId" validate:"omitempty,gt=0"`
-	Team1ID         int64      `json:"team1Id" validate:"omitempty,gt=0"`
-	Team2ID         int64      `json:"team2Id" validate:"omitempty,gt=0"`
+	Date            time.Time  `json:"date" validate:"required,valid-date"`
+	PlaceID         int64      `json:"placeId" validate:"required,gt=0"`
+	Team1ID         int64      `json:"team1Id" validate:"required,gt=0"`
+	Team2ID         int64      `json:"team2Id" validate:"required,gt=0"`
 	TechLooseTeamID *int64     `json:"techLooseTeamId" validate:"omitempty,gt=0"`
 	Matches         []NewMatch `json:"matches" validate:"omitempty,dive"`
 	StageID         int64
