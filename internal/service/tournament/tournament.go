@@ -281,6 +281,8 @@ func (s *Service) createRegular(ctx context.Context, request entities.CreateTour
 func (s *Service) createRegularOneVsOne(ctx context.Context, request entities.CreateTournamentRequest, logger zerolog.Logger) (int64, error) {
 	teamIds := make([]int64, 0, len(request.TeamsIDs))
 
+	players := make([]entities.Player, 0, len(request.PlayersIDs))
+
 	for _, pId := range request.PlayersIDs {
 
 		player, err := s.rdbOperations.GetPlayerByID(logger, ctx, int(pId), &s.config.RWDB)
@@ -293,12 +295,16 @@ func (s *Service) createRegularOneVsOne(ctx context.Context, request entities.Cr
 			return 0, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 		}
 
+		players = append(players, player)
+	}
+
+	for _, p := range players {
 		suffix, err := s.rdbOperations.GetSuffix(logger, ctx, &s.config.RDB)
 		if err != nil {
 			return 0, err
 		}
 
-		name, shortName := buildTeamName(player, suffix)
+		name, shortName := buildTeamName(p, suffix)
 
 		teamId, err := s.rwdbOperations.CreateTeam(logger, ctx, entities.CreateTeamRequest{
 			Name:      name,
@@ -309,7 +315,7 @@ func (s *Service) createRegularOneVsOne(ctx context.Context, request entities.Cr
 			return 0, err
 		}
 
-		_, err = s.rwdbOperations.AddPlayerIntoTeam(logger, ctx, int64(player.ID), teamId, &s.config.RWDB)
+		_, err = s.rwdbOperations.AddPlayerIntoTeam(logger, ctx, int64(p.ID), teamId, &s.config.RWDB)
 		if err != nil {
 			return 0, err
 		}
