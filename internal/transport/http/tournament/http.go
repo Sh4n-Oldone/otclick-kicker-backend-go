@@ -35,5 +35,8 @@ func NewServer(endpoints tournament.Endpoints, options []kithttp.ServerOption, c
 	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
 		Delete("/tournaments/{id}", kithttp.NewServer(endpoints.Delete, decodeDeleteRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 
+	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdminTournamentMaster()).
+		Post("/tournaments/stages/{id}", kithttp.NewServer(endpoints.FinishStage, decodeFinishStageRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+
 	return r
 }

@@ -387,3 +387,68 @@ func (db *RWDBOperation) CreateTournamentStage(logger zerolog.Logger, ctx contex
 
 	return id, nil
 }
+
+func (db *RDBOperation) GetTournamentStageGames(logger zerolog.Logger, ctx context.Context, stageId int64, cfg *config.DBConfig) ([]entities.TournamentGame, error) {
+	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	const query string = `
+		SELECT 
+			id, 
+			city_id, 
+			place_id,
+			date,
+			team1_id,
+			team2_id,
+			tech_loose_team_id,
+			is_tiebreak,
+			stage_id
+		FROM games WHERE stage_id = $1;`
+
+	var games []entities.TournamentGame
+
+	rows, err := db.db.Query(timeout, query, stageId)
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed Query postgresql.GetStageGames")
+		return nil, DecodeDatabaseError(err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var g entities.TournamentGame
+		err = rows.Scan(&g.ID, &g.CityID, &g.PlaceID, &g.Date, &g.Team1ID, &g.Team2ID, &g.TechLooseTeamID, &g.IsTiebreak, &g.StageID)
+		if err != nil {
+			logger.Error().Err(err).Msg("Failed rows.Scan")
+			return nil, DecodeDatabaseError(err)
+		}
+
+		games = append(games, g)
+	}
+
+	return games, nil
+}
+
+func (db *RWDBOperation) UpdateTournamentStage(logger zerolog.Logger, ctx context.Context, stage entities.NullableStage, cfg *config.DBConfig) error {
+	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	const query string = `UPDATE tournament_stages
+		SET
+			tournament_id = COALESCE($2, tournament_id),
+			is_finished = COALESCE($3, is_finished)
+		WHERE id = $1;`
+
+	tag, err := db.db.Exec(timeout, query, stage.ID, stage.TournamentID, stage.IsFinished)
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed tx.Exec postgresql.UpdateTournamentStage")
+		return DecodeDatabaseError(err)
+	}
+
+	if tag.RowsAffected() == 0 {
+		err = pgx.ErrNoRows
+		logger.Error().Err(err).Msg("Failed tx.Exec postgresql.UpdateTournamentStage")
+		return DecodeDatabaseError(err)
+	}
+
+	return nil
+}

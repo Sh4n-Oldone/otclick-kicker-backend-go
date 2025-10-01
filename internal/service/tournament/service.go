@@ -15,6 +15,7 @@ type IService interface {
 	Create(ctx context.Context, request *entities.CreateTournamentRequest) (int64, error)
 	Update(ctx context.Context, request *entities.UpdateTournamentRequest) error
 	Delete(ctx context.Context, id int64) error
+	FinishStage(ctx context.Context, request *entities.FinishStageRequest) error
 
 	GetLogger() *zerolog.Logger
 	GetValidator() *validator.Validate

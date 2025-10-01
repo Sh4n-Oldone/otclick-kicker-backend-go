@@ -90,6 +90,7 @@ type RWDBOperationer interface {
 	DeleteTournamentCascade(logger zerolog.Logger, ctx context.Context, id int64, cfg *config.DBConfig) error
 	DeleteTournamentGamesTeamLinks(logger zerolog.Logger, ctx context.Context, tournamentId int64, cfg *config.DBConfig) error
 	CreateTournamentStage(logger zerolog.Logger, ctx context.Context, tournamentID int64, cfg *config.DBConfig) (int64, error)
+	UpdateTournamentStage(logger zerolog.Logger, ctx context.Context, stage entities.NullableStage, cfg *config.DBConfig) error
 }
 
 // RDBOperationer is the interface that implemented by the RDBOperation structure.
@@ -138,6 +139,7 @@ type RDBOperationer interface {
 	GetTeamGames(logger zerolog.Logger, ctx context.Context, teamID int) ([]entities.TeamGame, error)
 	GetTournamentGameList(logger zerolog.Logger, ctx context.Context, tournamentID int64, cfg *config.DBConfig) ([]entities.TournamentGame, error)
 	GetTournamentGame(logger zerolog.Logger, ctx context.Context, gameID int64, cfg *config.DBConfig) (entities.TournamentGame, error)
+	GetTournamentStageGames(logger zerolog.Logger, ctx context.Context, stageId int64, cfg *config.DBConfig) ([]entities.TournamentGame, error)
 
 	GetTeam(logger zerolog.Logger, ctx context.Context, teamID int64, cfg *config.DBConfig) (entities.GetTeamResponse, error)
 	GetTeams(logger zerolog.Logger, ctx context.Context, cityId int64, onlyFree bool) ([]entities.TeamShort, error)

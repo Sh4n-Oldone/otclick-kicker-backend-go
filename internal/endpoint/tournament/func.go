@@ -132,3 +132,36 @@ func makeDelete(s tournament.IService) endpoint.Endpoint {
 		}, nil
 	}
 }
+
+func makeFinishStage(s tournament.IService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "makeFinishStage").Str("request_id", reqID).Logger()
+
+		req, err := helpers.CastRequest[*entities.FinishStageRequest](request)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed to cast request")
+			return nil, error_templates.WrapErrorEndpoint(
+				error_templates.New(pkgerr.FailedCastRequest, err, codes.InvalidArgument, http.StatusBadRequest), reqID)
+		}
+
+		err = s.GetValidator().Struct(req)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed validation in makeFinishStage")
+			return nil, error_templates.WrapErrorEndpoint(
+				error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest), reqID)
+		}
+
+		err = s.FinishStage(ctx, req)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed s.FinishStage")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		return struct {
+			Id int64 `json:"finishedStageId"`
+		}{
+			Id: req.ID,
+		}, nil
+	}
+}

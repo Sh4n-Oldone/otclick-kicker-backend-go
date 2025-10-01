@@ -284,3 +284,9 @@ type DeletePlayedTournamentGameRequest struct {
 	GameID   int64 `validate:"required,gt=0"`
 	Executor User
 }
+
+type NullableStage struct {
+	ID           int64
+	TournamentID *int64
+	IsFinished   *bool
+}
