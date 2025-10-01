@@ -11,6 +11,7 @@ type Endpoints struct {
 	Create                endpoint.Endpoint
 	Update                endpoint.Endpoint
 	Delete                endpoint.Endpoint
+	FinishStage           endpoint.Endpoint
 }
 
 func MakeEndpoints(s tournament.IService) Endpoints {
@@ -19,5 +20,6 @@ func MakeEndpoints(s tournament.IService) Endpoints {
 		Create:                makeCreate(s),
 		Update:                makeUpdate(s),
 		Delete:                makeDelete(s),
+		FinishStage:           makeFinishStage(s),
 	}
 }

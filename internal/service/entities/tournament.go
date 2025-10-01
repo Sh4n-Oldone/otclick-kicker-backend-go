@@ -75,3 +75,8 @@ type PlayOff struct {
 type Looser struct {
 	BestOf int64 `json:"bestOf" validate:"required,gt=0"`
 }
+
+type FinishStageRequest struct {
+	ID       int64 `validate:"required,gt=0"`
+	Finisher User
+}

@@ -255,6 +255,89 @@ func (s *Service) Delete(ctx context.Context, id int64) error {
 	return nil
 }
 
+func (s *Service) FinishStage(ctx context.Context, request *entities.FinishStageRequest) error {
+	logger := s.logger.With().Str("service", "FinishStage").Logger()
+
+	stage, err := s.rdbOperations.GetTournamentStage(logger, ctx, request.ID, &s.config.RDB)
+	if err != nil {
+		return err
+	}
+
+	if stage.IsFinished == true {
+		err = errors.New("этап уже завершён")
+		logger.Error().Err(err).Msg("stage already finished")
+		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	tournament, err := s.rdbOperations.GetTournamentById(logger, ctx, stage.TournamentID, &s.config.RDB)
+	if err != nil {
+		return err
+	}
+
+	games, err := s.rdbOperations.GetTournamentStageGames(logger, ctx, request.ID, &s.config.RDB)
+	if err != nil {
+		return err
+	}
+
+	// проверка соответствия города у мастера
+	if request.Finisher.Role.Name == constant.TournamentMaster {
+		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, request.Finisher.ID, &s.config.RDB)
+		if err != nil {
+			return err
+		}
+
+		if master.City.ID != tournament.CityID {
+			err = errors.New("город турнира и город мастера по турнирам не совпадают")
+			logger.Error().Err(err).Msg("master city not equal tournament city")
+			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+	}
+
+	if tournament.TypeID == constant.RegularTournamentTypeID || tournament.TypeID == constant.RegularOneVsOneTournamentTypeID {
+
+		for _, g := range games {
+			// игра не должна быть позже времени финиша этапа
+			if g.Date.After(time.Now()) {
+				err = errors.New("дата игры позже текущей даты")
+				logger.Error().Err(err).Msg("game date after now")
+				return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+			}
+
+			// сыгранная игра не может быть без матчей
+			matches, err := s.rdbOperations.FetchMatches(logger, ctx, g.ID, &s.config.RDB)
+			if err != nil {
+				return err
+			}
+			if len(matches) == 0 {
+				err = errors.New("этап с игрой без матчей не может быть завершен")
+				logger.Error().Err(err).Msg("game without matches")
+				return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+			}
+		}
+
+		// игр должно быть определенное кол-во, которое задается при создании турнира в зависимости от параметра bestOf
+		teams1ids, _ := helpers.GeneratePairs(tournament.TeamIDs, int(tournament.Rules.Regular.BestOf))
+		if len(games) < len(teams1ids) {
+			err = errors.New("в этапе турнирной сетке ожидается больше игр")
+			logger.Error().Err(err).Msg("not enough games")
+			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+
+		err = s.rwdbOperations.UpdateTournamentStage(logger, ctx, entities.NullableStage{
+			ID:           request.ID,
+			TournamentID: nil,
+			IsFinished:   pointer.GetPointer(true),
+		}, &s.config.RDB)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	return errors.New("tournament types 2, 3, 4 not implemented")
+}
+
 /*local methods*/
 
 func (s *Service) createRegular(ctx context.Context, request entities.CreateTournamentRequest, logger zerolog.Logger) (int64, error) {

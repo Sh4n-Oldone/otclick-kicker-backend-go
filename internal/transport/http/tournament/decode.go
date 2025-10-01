@@ -127,3 +127,49 @@ func decodeDeleteRequest(_ context.Context, r *http.Request) (interface{}, error
 
 	return request, nil
 }
+
+func decodeFinishStageRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	request := &entities.FinishStageRequest{Finisher: entities.User{Role: &entities.Role{}}}
+	buf := bytebufferpool.Get()
+	defer bytebufferpool.Put(buf)
+
+	idParam := chi.URLParam(r, "id")
+	if idParam == "" {
+		err := errors.New(pkgerr.EmptyParameterError + ": id")
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	id, err := strconv.ParseInt(idParam, 10, 64)
+	if err != nil {
+		err = errors.New(pkgerr.WrongParameterError + ": id")
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	request.ID = id
+
+	userId, ok := r.Context().Value(constant.UserIDContextKey).(int64)
+	if !ok || userId == 0 {
+		err := errors.New(pkgerr.ErrUserIdToken)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	request.Finisher.ID = userId
+
+	role, ok := r.Context().Value(constant.RoleNameContextKey).(string)
+	if !ok || role == "" {
+		err := errors.New(pkgerr.ErrRoleToken)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	request.Finisher.Role.Name = role
+
+	_, err = io.Copy(buf, r.Body)
+	if err != nil {
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	err = json.Unmarshal(buf.Bytes(), &request)
+	if err != nil {
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	return request, nil
+}
