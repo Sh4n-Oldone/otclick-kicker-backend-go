@@ -285,14 +285,8 @@ type DeletePlayedTournamentGameRequest struct {
 	Executor User
 }
 
-type NullableTournamentGame struct {
-	TournamentID    int64
-	StageID         int64
-	CityID          *int64
-	PlaceID         *int64
-	Date            *time.Time
-	Team1ID         *int64
-	Team2ID         *int64
-	IsTiebreak      *bool
-	TechLooseTeamID *int64
+type FullTournamentGame struct {
+	Game  TournamentGame     `json:"game"`
+	Team1 FullTournamentTeam `json:"team1"`
+	Team2 FullTournamentTeam `json:"team2"`
 }

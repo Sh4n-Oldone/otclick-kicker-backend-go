@@ -27,6 +27,7 @@ type Endpoints struct {
 	CreatePlayedTournamentGame endpoint.Endpoint
 	UpdatePlayedTournamentGame endpoint.Endpoint
 	DeletePlayedTournamentGame endpoint.Endpoint
+	GetTournamentGameList      endpoint.Endpoint
 }
 
 func MakeEndpoints(s game.IService) Endpoints {
@@ -51,5 +52,6 @@ func MakeEndpoints(s game.IService) Endpoints {
 		CreatePlayedTournamentGame: makeCreatePlayedTournamentGame(s),
 		UpdatePlayedTournamentGame: makeUpdatePlayedTournamentGame(s),
 		DeletePlayedTournamentGame: makeDeletePlayedTournamentGame(s),
+		GetTournamentGameList:      makeGetTournamentGameList(s),
 	}
 }

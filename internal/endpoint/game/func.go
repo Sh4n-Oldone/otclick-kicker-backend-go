@@ -594,3 +594,31 @@ func makeDeletePlayedTournamentGame(s game.IService) endpoint.Endpoint {
 		}, nil
 	}
 }
+
+func makeGetTournamentGameList(s game.IService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "makeGetTournamentGameList").Str("request_id", reqID).Logger()
+
+		id, err := helpers.CastRequest[int64](request)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed to cast request")
+			return nil, error_templates.WrapErrorEndpoint(
+				error_templates.New(pkgerr.FailedCastRequest, err, codes.InvalidArgument, http.StatusBadRequest), reqID)
+		}
+
+		games, err := s.GetTournamentGameList(ctx, id)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed GetTournamentGameList")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		return struct {
+			Id    int64                         `json:"tournamentId"`
+			Games []entities.FullTournamentGame `json:"games"`
+		}{
+			Id:    id,
+			Games: games,
+		}, nil
+	}
+}
