@@ -18,7 +18,7 @@ import (
 	pkgerr "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 )
 
-func decodeGetListRequest(_ context.Context, r *http.Request) (interface{}, error) {
+func decodeGetTournamentTypeListRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	request := &entities.GetTournamentTypeListRequest{}
 
 	request.WithDeleted = r.URL.Query().Get("withDeleted") == "true"
@@ -161,15 +161,21 @@ func decodeFinishStageRequest(_ context.Context, r *http.Request) (interface{}, 
 	}
 	request.Finisher.Role.Name = role
 
-	_, err = io.Copy(buf, r.Body)
-	if err != nil {
-		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
-	}
-
-	err = json.Unmarshal(buf.Bytes(), &request)
-	if err != nil {
-		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
-	}
-
 	return request, nil
+}
+
+func decodeIdRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	tournamentIdParam := chi.URLParam(r, "id")
+	if tournamentIdParam == "" {
+		err := errors.New(pkgerr.EmptyParameterError + ": id")
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	tournamentId, err := strconv.ParseInt(tournamentIdParam, 10, 64)
+	if err != nil {
+		err = errors.New(pkgerr.WrongParameterError + ": id")
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	return tournamentId, nil
 }

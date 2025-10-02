@@ -2,11 +2,14 @@ package postgresql
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
 
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql/tx"
 )
 
 type RWDBOperationer interface {
@@ -64,6 +67,7 @@ type RWDBOperationer interface {
 	CreateGameWithRating(logger zerolog.Logger, ctx context.Context, request entities.CreateGameRequest, rates map[int]int, operator *string, leagueID int64) (entities.CreateGameResponse, error)
 	DeleteFutureGame(logger zerolog.Logger, ctx context.Context, gameID int64) error
 	CreateFutureTournamentStageGames(logger zerolog.Logger, ctx context.Context, stageID, cityID int64, team1IDs, team2IDs []int64, cfg *config.DBConfig) error
+	CreateFutureTournamentStageGamesTx(logger zerolog.Logger, ctx context.Context, stageID, cityID int64, team1IDs, team2IDs []int64, tx tx.ITx) error
 	CreateFutureTournamentGame(logger zerolog.Logger, ctx context.Context, request *entities.CreateFutureTournamentGameRequest, cfg *config.DBConfig) (int64, error)
 	UpdateFutureTournamentGame(logger zerolog.Logger, ctx context.Context, request *entities.UpdateFutureTournamentGameRequest, cfg *config.DBConfig) error
 	CreatePlayedTournamentGame(logger zerolog.Logger, ctx context.Context, request *entities.CreatePlayedTournamentGameRequest, cfg *config.DBConfig) (int64, error)
@@ -85,12 +89,17 @@ type RWDBOperationer interface {
 	DeleteSeason(logger zerolog.Logger, ctx context.Context, id int64) (bool, error)
 
 	CreateTournament(logger zerolog.Logger, ctx context.Context, request entities.CreateTournamentRequest, cfg *config.DBConfig) (id int64, err error)
+	CreateTournamentTx(logger zerolog.Logger, ctx context.Context, request entities.CreateTournamentRequest, tx tx.ITx) (int64, error)
 	UpdateTournament(logger zerolog.Logger, ctx context.Context, request entities.UpdateTournamentRequest, cfg *config.DBConfig) error
 	UpdateTournamentTeamsLinks(logger zerolog.Logger, ctx context.Context, teamIDs []int64, tournamentId int64, cfg *config.DBConfig) error
+	AddTeamsToTournamentTx(logger zerolog.Logger, ctx context.Context, teams []int64, tournamentId int64, tx tx.ITx) error
 	DeleteTournamentCascade(logger zerolog.Logger, ctx context.Context, id int64, cfg *config.DBConfig) error
 	DeleteTournamentGamesTeamLinks(logger zerolog.Logger, ctx context.Context, tournamentId int64, cfg *config.DBConfig) error
 	CreateTournamentStage(logger zerolog.Logger, ctx context.Context, tournamentID int64, cfg *config.DBConfig) (int64, error)
+	CreateTournamentStageTx(logger zerolog.Logger, ctx context.Context, tournamentID int64, tx tx.ITx) (int64, error)
 	UpdateTournamentStage(logger zerolog.Logger, ctx context.Context, stage entities.NullableStage, cfg *config.DBConfig) error
+
+	BeginTx(ctx context.Context, logger zerolog.Logger) (tx.ITx, error)
 }
 
 // RDBOperationer is the interface that implemented by the RDBOperation structure.
@@ -176,12 +185,14 @@ type RDBOperationer interface {
 	GetTournamentTypeList(logger zerolog.Logger, ctx context.Context, withDeleted bool, cfg *config.DBConfig) ([]entities.TournamentType, error)
 	GetTournamentById(logger zerolog.Logger, ctx context.Context, tournamentId int64, cfg *config.DBConfig) (entities.Tournament, error)
 	GetTournamentStage(logger zerolog.Logger, ctx context.Context, stageId int64, cfg *config.DBConfig) (entities.TournamentStage, error)
+	GetTournamentStageList(logger zerolog.Logger, ctx context.Context, tournamentId int64) ([]entities.TournamentStage, error)
 
 	GetSuffix(logger zerolog.Logger, ctx context.Context, cfg *config.DBConfig) (string, error)
 }
 
 type dbp struct {
-	db *pgxpool.Pool
+	db  *pgxpool.Pool
+	cfg *config.DBConfig
 }
 
 // RWDBOperation is a structure that implements the RWDBOperationer interface.
@@ -190,6 +201,63 @@ type RWDBOperation dbp
 // RDBOperation is a structure that implements the RDBOperationer interface.
 type RDBOperation dbp
 
-func NewOperationer(rwConn *pgxpool.Pool, rConn *pgxpool.Pool) (RWDBOperationer, RDBOperationer) {
-	return &RWDBOperation{rwConn}, &RDBOperation{rConn}
+func NewOperationer(rwConn *pgxpool.Pool, rConn *pgxpool.Pool, cfg *config.Configuration) (RWDBOperationer, RDBOperationer) {
+	return &RWDBOperation{rwConn, &cfg.RWDB}, &RDBOperation{rConn, &cfg.RDB}
+}
+
+func poolOrTx(pg tx.IExecutor, tx tx.ITx) tx.IExecutor {
+	if tx != nil {
+		return tx.Executor()
+	}
+
+	return pg
+}
+
+type Tx struct {
+	tx     pgx.Tx
+	pg     *pgxpool.Pool
+	logger zerolog.Logger
+}
+
+func (db *RWDBOperation) BeginTx(ctx context.Context, logger zerolog.Logger) (tx.ITx, error) {
+	tx, err := db.db.Begin(ctx)
+	if err != nil {
+		logger.Error().Err(err).Msg("BeginRW")
+		return nil, DecodeDatabaseError(err)
+	}
+
+	return &Tx{
+		tx:     tx,
+		pg:     db.db,
+		logger: logger,
+	}, nil
+}
+
+//func (db *RDBOperation) BeginR(ctx context.Context, logger zerolog.Logger) (tx.ITx, error) {
+//	tx, err := db.db.Begin(ctx)
+//	if err != nil {
+//		logger.Error().Err(err).Msg("BeginR")
+//		return nil, DecodeDatabaseError(err)
+//	}
+//
+//	return &Tx{
+//		tx: tx,
+//		pg: db.db,
+//	}, nil
+//}
+
+func (t *Tx) Commit(ctx context.Context) error {
+	return t.tx.Commit(ctx)
+}
+
+func (t *Tx) Rollback(ctx context.Context) {
+	logger := t.logger.With().Str("transaction", "Rollback").Logger()
+	err := t.tx.Rollback(ctx)
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed tx.Rollback")
+	}
+}
+
+func (t *Tx) Executor() tx.IExecutor {
+	return t.tx
 }

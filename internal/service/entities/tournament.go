@@ -80,3 +80,14 @@ type FinishStageRequest struct {
 	ID       int64 `validate:"required,gt=0"`
 	Finisher User
 }
+
+type NullableStage struct {
+	ID           int64
+	TournamentID *int64
+	IsFinished   *bool
+}
+
+type TournamentStageItem struct {
+	Stage TournamentStage  `json:"stage"`
+	Games []TournamentGame `json:"games"`
+}

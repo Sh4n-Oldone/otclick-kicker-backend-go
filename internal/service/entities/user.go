@@ -23,7 +23,7 @@ type CreateUserRequest struct {
 type CreateTournamentMasterRequest struct {
 	Email    string `json:"email" validate:"required,email"`
 	Password string `json:"password" validate:"required,gte=6,lte=64"`
-	RoleName string `json:"roleName" validate:"required,eq=tournament-master"`
+	RoleName string `json:"roleName" validate:"required"`
 	CityID   int64  `json:"cityId" validate:"required,gt=0"`
 }
 

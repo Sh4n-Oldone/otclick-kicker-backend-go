@@ -3,13 +3,15 @@ package postgresql
 import (
 	"context"
 	"encoding/json"
+	"net/http"
+
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog"
 	"google.golang.org/grpc/codes"
-	"net/http"
 
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql/tx"
 	errtmpl "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
 )
 
@@ -172,6 +174,7 @@ func (db *RWDBOperation) CreateTournament(logger zerolog.Logger, ctx context.Con
 	).Scan(&id)
 	if err != nil {
 		logger.Error().Err(err).Msg("Failed Scan postgresql.CreateTournament")
+		_ = tx.Rollback(timeout)
 		return 0, DecodeDatabaseError(err)
 	}
 
@@ -451,4 +454,109 @@ func (db *RWDBOperation) UpdateTournamentStage(logger zerolog.Logger, ctx contex
 	}
 
 	return nil
+}
+
+func (db *RDBOperation) GetTournamentStageList(logger zerolog.Logger, ctx context.Context, tournamentId int64) ([]entities.TournamentStage, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	const query string = `SELECT id, tournament_id, is_finished FROM tournament_stages WHERE tournament_id = $1;`
+
+	var stages []entities.TournamentStage
+
+	rows, err := db.db.Query(timeout, query, tournamentId)
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed tx.Exec postgresql.GetTournamentStageList")
+		return nil, DecodeDatabaseError(err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var s entities.TournamentStage
+		err = rows.Scan(&s.ID, &s.TournamentID, &s.IsFinished)
+		if err != nil {
+			logger.Error().Err(err).Msg("Failed rows.Scan")
+			return nil, DecodeDatabaseError(err)
+		}
+
+		stages = append(stages, s)
+	}
+
+	return stages, nil
+}
+
+// транзакционные методы
+
+func (db *RWDBOperation) CreateTournamentTx(logger zerolog.Logger, ctx context.Context, request entities.CreateTournamentRequest, tx tx.ITx) (int64, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	exec := poolOrTx(db.db, tx)
+
+	const query1 string = `
+		INSERT INTO tournaments (type_id, name, rules, city_id, season_id)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id;`
+
+	ruleJSON, err := json.Marshal(request.Rules)
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed json.Marshal postgresql.CreateTournamentTx")
+		return 0, errtmpl.New(err.Error(), err, codes.Internal, http.StatusInternalServerError)
+	}
+
+	var id int64
+
+	err = exec.QueryRow(timeout, query1,
+		request.TournamentTypeID,
+		request.Name,
+		ruleJSON,
+		request.CityID,
+		request.SeasonID,
+	).Scan(&id)
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed Scan postgresql.CreateTournamentTx")
+		return 0, DecodeDatabaseError(err)
+	}
+
+	return id, nil
+}
+
+func (db *RWDBOperation) AddTeamsToTournamentTx(logger zerolog.Logger, ctx context.Context, teams []int64, tournamentId int64, tx tx.ITx) error {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	exec := poolOrTx(db.db, tx)
+
+	const query2 string = `
+		INSERT INTO tournaments_teams_link (team_id, tournament_id)
+		VALUES ($1, $2);`
+
+	for _, t := range teams {
+		_, err := exec.Exec(timeout, query2, t, tournamentId)
+		if err != nil {
+			logger.Error().Err(err).Msg("Failed tx.Exec postgresql.AddTeamsToTournamentTx")
+			return DecodeDatabaseError(err)
+		}
+	}
+
+	return nil
+}
+
+func (db *RWDBOperation) CreateTournamentStageTx(logger zerolog.Logger, ctx context.Context, tournamentID int64, tx tx.ITx) (int64, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	const query string = `INSERT INTO tournament_stages(tournament_id, is_finished) VALUES ($1, FALSE) RETURNING id;`
+
+	var id int64
+
+	exec := poolOrTx(db.db, tx)
+
+	err := exec.QueryRow(timeout, query, tournamentID).Scan(&id)
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed QueryRow postgresql.CreateTournamentStageTx")
+		return 0, DecodeDatabaseError(err)
+	}
+
+	return id, nil
 }

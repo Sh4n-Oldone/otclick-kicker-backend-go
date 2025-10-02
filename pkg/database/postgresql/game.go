@@ -10,6 +10,7 @@ import (
 
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql/tx"
 	pkgerr "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 )
 
@@ -1214,6 +1215,27 @@ func (db *RWDBOperation) UpdatePlayedTournamentGame(logger zerolog.Logger, ctx c
 		err = pgx.ErrNoRows
 		logger.Error().Stack().Err(err).Msg("no rows updated")
 		return DecodeDatabaseError(err)
+	}
+
+	return nil
+}
+
+func (db *RWDBOperation) CreateFutureTournamentStageGamesTx(logger zerolog.Logger, ctx context.Context, stageID, cityID int64, team1IDs, team2IDs []int64, tx tx.ITx) error {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	const query string = `
+        INSERT INTO games (city_id, team1_id, team2_id, stage_id)
+        VALUES ($1, $2, $3, $4);`
+
+	exec := poolOrTx(db.db, tx)
+
+	for i := range team1IDs {
+		_, err := exec.Exec(timeout, query, cityID, team1IDs[i], team2IDs[i], stageID)
+		if err != nil {
+			logger.Error().Err(err).Msg("exec.Exec postgresql.CreateFutureTournamentStageGamesTx")
+			return DecodeDatabaseError(err)
+		}
 	}
 
 	return nil

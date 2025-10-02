@@ -1,14 +1,14 @@
 package helpers
 
-func GeneratePairs(teamIDs []int64, bestOf int) (team1IDs, team2IDs []int64) {
+func GeneratePairs[T int64 | int | int32 | int16](teamIDs []T, bestOf int) (team1IDs, team2IDs []T) {
 	size := len(teamIDs)
 	if size < 2 || bestOf < 1 {
-		return []int64{}, []int64{}
+		return []T{}, []T{}
 	}
 
 	pairCount := size * (size - 1) / 2 * bestOf
-	team1IDs = make([]int64, 0, pairCount)
-	team2IDs = make([]int64, 0, pairCount)
+	team1IDs = make([]T, 0, pairCount)
+	team2IDs = make([]T, 0, pairCount)
 
 	for round := 0; round < bestOf; round++ {
 		for i := 0; i < size; i++ {
@@ -26,4 +26,45 @@ func GeneratePairs(teamIDs []int64, bestOf int) (team1IDs, team2IDs []int64) {
 	}
 
 	return team1IDs, team2IDs
+}
+
+func GeneratePlayoffPairs[T int64 | int | int32 | int16](teamIDs []T, bestOf int) (team1IDs, team2IDs []T) {
+	if len(teamIDs) < 2 {
+		return team1IDs, team2IDs
+	}
+
+	pairCount := len(teamIDs) / 2
+
+	team1IDs = make([]T, 0, pairCount*bestOf)
+	team2IDs = make([]T, 0, pairCount*bestOf)
+
+	homeTeams := make([]T, pairCount)
+	awayTeams := make([]T, pairCount)
+
+	for i := 0; i < pairCount; i++ {
+		homeTeams[i] = teamIDs[i*2]
+		awayTeams[i] = teamIDs[i*2+1]
+	}
+
+	// чередуем домашние и гостевые игры
+	for round := 0; round < bestOf; round++ {
+		if round%2 == 0 {
+			// четный раунд: домашние команды заполняются
+			team1IDs = append(team1IDs, homeTeams...)
+			team2IDs = append(team2IDs, awayTeams...)
+		} else {
+			// нечетный раунд: команды меняются местами
+			team1IDs = append(team1IDs, awayTeams...)
+			team2IDs = append(team2IDs, homeTeams...)
+		}
+	}
+
+	return team1IDs, team2IDs
+}
+
+func IsPowTwo[T int64 | int | int32 | int16 | int8 | uint64 | uint | uint32 | uint16 | uint8](n T) bool {
+	if n <= 0 {
+		return false
+	}
+	return n&(n-1) == 0
 }

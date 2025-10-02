@@ -217,15 +217,15 @@ type ComingGame struct {
 }
 
 type TournamentGame struct {
-	ID              int64
-	CityID          int64
-	PlaceID         *int64
-	Date            *time.Time
-	Team1ID         int64
-	Team2ID         int64
-	TechLooseTeamID *int64
-	IsTiebreak      bool
-	StageID         int64
+	ID              int64      `json:"id"`
+	CityID          int64      `json:"cityId"`
+	PlaceID         *int64     `json:"placeId,omitempty"`
+	Date            *time.Time `json:"date,omitempty"`
+	Team1ID         int64      `json:"team1Id"`
+	Team2ID         int64      `json:"team2Id"`
+	TechLooseTeamID *int64     `json:"techLooseTeamId,omitempty"`
+	IsTiebreak      bool       `json:"isTiebreak"`
+	StageID         int64      `json:"stageId"`
 }
 
 type CreateFutureTournamentGameRequest struct {
@@ -285,8 +285,14 @@ type DeletePlayedTournamentGameRequest struct {
 	Executor User
 }
 
-type NullableStage struct {
-	ID           int64
-	TournamentID *int64
-	IsFinished   *bool
+type NullableTournamentGame struct {
+	TournamentID    int64
+	StageID         int64
+	CityID          *int64
+	PlaceID         *int64
+	Date            *time.Time
+	Team1ID         *int64
+	Team2ID         *int64
+	IsTiebreak      *bool
+	TechLooseTeamID *int64
 }

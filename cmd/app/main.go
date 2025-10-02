@@ -89,7 +89,7 @@ func main() {
 	}
 	defer rdb.Close()
 
-	rwdbOperationer, rdbOperationer := postgresql.NewOperationer(rwdb, rdb)
+	rwdbOperationer, rdbOperationer := postgresql.NewOperationer(rwdb, rdb, appConfig)
 
 	validation := helpers.NewCustomValidator()
 
