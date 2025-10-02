@@ -128,6 +128,14 @@ func (s *Service) Create(ctx context.Context, request *entities.CreateTournament
 
 		return tournamentID, nil
 
+	} else if request.TournamentTypeID == constant.PlayoffTournamentTypeID {
+		tournamentID, err := s.createPlayoff(ctx, *request, logger)
+		if err != nil {
+			return 0, err
+		}
+
+		return tournamentID, nil
+
 	} else { //временная ошибка, создание других турниров реализуется позже
 		return 0, errors.New("not implemented")
 	}
@@ -318,7 +326,7 @@ func (s *Service) FinishStage(ctx context.Context, request *entities.FinishStage
 		// игр должно быть определенное кол-во, которое задается при создании турнира в зависимости от параметра bestOf
 		teams1ids, _ := helpers.GeneratePairs(tournament.TeamIDs, int(tournament.Rules.Regular.BestOf))
 		if len(games) < len(teams1ids) {
-			err = errors.New("в этапе турнирной сетке ожидается больше игр")
+			err = errors.New("в этапе турнирной сетки ожидается больше игр")
 			logger.Error().Err(err).Msg("not enough games")
 			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 		}
@@ -336,6 +344,31 @@ func (s *Service) FinishStage(ctx context.Context, request *entities.FinishStage
 	}
 
 	return errors.New("tournament types 2, 3, 4 not implemented")
+}
+
+func (s *Service) GetTournamentStageList(ctx context.Context, id int64) ([]entities.TournamentStageItem, error) {
+	logger := s.logger.With().Str("service", "GetTournamentStageList").Logger()
+
+	stages, err := s.rdbOperations.GetTournamentStageList(logger, ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	var stageItems []entities.TournamentStageItem
+
+	for _, stage := range stages {
+		games, err := s.rdbOperations.GetTournamentStageGames(logger, ctx, stage.TournamentID, &s.config.RDB)
+		if err != nil {
+			return nil, err
+		}
+
+		stageItems = append(stageItems, entities.TournamentStageItem{
+			Stage: stage,
+			Games: games,
+		})
+	}
+
+	return stageItems, nil
 }
 
 /*local methods*/
@@ -426,6 +459,59 @@ func (s *Service) createRegularOneVsOne(ctx context.Context, request entities.Cr
 	}
 
 	return id, nil
+}
+
+func (s *Service) createPlayoff(ctx context.Context, request entities.CreateTournamentRequest, logger zerolog.Logger) (int64, error) {
+	tx, err := s.rwdbOperations.BeginTx(ctx, logger)
+	if err != nil {
+		return 0, err
+	}
+
+	tournamentId, err := s.rwdbOperations.CreateTournamentTx(logger, ctx, request, tx)
+	if err != nil {
+		tx.Rollback(ctx)
+		return 0, err
+	}
+
+	if err = s.rwdbOperations.AddTeamsToTournamentTx(logger, ctx, request.TeamsIDs, tournamentId, tx); err != nil {
+		tx.Rollback(ctx)
+		return 0, err
+	}
+
+	// создаем первый этап
+	stageId, err := s.rwdbOperations.CreateTournamentStageTx(logger, ctx, tournamentId, tx)
+	if err != nil {
+		tx.Rollback(ctx)
+		return 0, err
+	}
+
+	// расставляем пары для первого этапа
+	teams1Ids, teams2Ids := helpers.GeneratePlayoffPairs(request.TeamsIDs, int(request.Rules.PlayOff.BestOf))
+
+	// создаем игры первого этапа
+	if err = s.rwdbOperations.CreateFutureTournamentStageGamesTx(logger, ctx, stageId, request.CityID, teams1Ids, teams2Ids, tx); err != nil {
+		tx.Rollback(ctx)
+		return 0, err
+	}
+
+	// Т.к. кол-во команд равно степени двойки, то можем вычислить кол-во этапов общее.
+	// Создаем второй и последующие этапов, без игр, т.к. победителей заранее знать не можем.
+	// Делим команды на два пока их не остнется две (финальный этап между финалистами)
+	for numGames := len(teams1Ids) / 2; numGames > 1; numGames = numGames / 2 {
+		_, err = s.rwdbOperations.CreateTournamentStageTx(logger, ctx, tournamentId, tx)
+		if err != nil {
+			tx.Rollback(ctx)
+			return 0, err
+		}
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		logger.Error().Err(err).Msg("failed tx.Commit")
+		tx.Rollback(ctx)
+		return 0, err
+	}
+
+	return tournamentId, nil
 }
 
 func (s *Service) updateRegular(ctx context.Context, logger zerolog.Logger, req entities.UpdateTournamentRequest, tournament entities.Tournament) error {
@@ -922,7 +1008,31 @@ func validateRulesTypesIds(rules entities.TournamentRule, typeId int64, teamsIds
 		return nil
 	}
 
-	return errors.New("для остальных типов функционал пока не реализоан")
+	if typeId == constant.PlayoffTournamentTypeID {
+		if len(teamsIds) == 0 || len(playersIds) > 0 {
+			err := errors.New("для турнира типа Playoff команды обязательны а игроков быть не должно")
+			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+
+		if playOff == nil {
+			err := errors.New("правила для турнира типа Playoff не заполнены")
+			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		} else {
+			if helpers.IsPowTwo(len(teamsIds)) == false {
+				err := errors.New("в турнире типа Playoff команд должно быть 2^N штук")
+				return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+			}
+		}
+
+		if regular != nil {
+			err := errors.New("для турнира типа Playoff поле \"regular\" не должно быть заполнено")
+			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+	} else {
+		return errors.New("для типов 3, 4 функционал пока не реализоан")
+	}
+
+	return nil
 }
 
 func haveFinishedStage(stages []entities.TournamentStage) bool {

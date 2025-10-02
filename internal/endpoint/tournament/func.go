@@ -165,3 +165,29 @@ func makeFinishStage(s tournament.IService) endpoint.Endpoint {
 		}, nil
 	}
 }
+
+func makeGetTournamentStageList(s tournament.IService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "makeGetTournamentStageList").Str("request_id", reqID).Logger()
+
+		id, err := helpers.CastRequest[int64](request)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed to cast request")
+			return nil, error_templates.WrapErrorEndpoint(
+				error_templates.New(pkgerr.FailedCastRequest, err, codes.InvalidArgument, http.StatusBadRequest), reqID)
+		}
+
+		stages, err := s.GetTournamentStageList(ctx, id)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed s.GetTournamentStageList")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		return struct {
+			Stages []entities.TournamentStageItem `json:"stages"`
+		}{
+			Stages: stages,
+		}, nil
+	}
+}
