@@ -196,3 +196,8 @@ type TournamentTeam struct {
 	CityID    int64  `json:"cityId"`
 	Avatar    []byte `json:"avatar,omitempty"`
 }
+
+type FullTournamentTeam struct {
+	TournamentTeam `json:"team"`
+	Players        []Player `json:"players"`
+}

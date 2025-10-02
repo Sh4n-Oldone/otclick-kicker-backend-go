@@ -690,6 +690,22 @@ func decodeDeletePlayedTournamentGameRequest(_ context.Context, r *http.Request)
 	return request, nil
 }
 
+func decodeGetTournamentGameListRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	tournamentIdParam := chi.URLParam(r, "id")
+	if tournamentIdParam == "" {
+		err := errors.New(pkgerr.EmptyParameterError + ": id")
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	tournamentId, err := strconv.ParseInt(tournamentIdParam, 10, 64)
+	if err != nil {
+		err = errors.New(pkgerr.WrongParameterError + ": id")
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	return tournamentId, nil
+}
+
 /*local functions-helpers*/
 
 func parseIntParam(param string) (*int, error) {

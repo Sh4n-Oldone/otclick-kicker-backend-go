@@ -15,6 +15,7 @@ import (
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/calculator"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
 	pkgerr "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/helpers/pointer"
 )
 
 func (s *Service) Create(ctx context.Context, request entities.CreateGameRequest) (entities.CreateGameResponse, error) {
@@ -1618,6 +1619,70 @@ func (s *Service) DeletePlayedTournamentGame(ctx context.Context, request *entit
 	}
 
 	return nil
+}
+
+func (s *Service) GetTournamentGameList(ctx context.Context, tournamentId int64) ([]entities.FullTournamentGame, error) {
+	logger := s.GetLogger().With().Str("service", "GetTournamentGameList").Logger()
+
+	fullGames := make([]entities.FullTournamentGame, 0)
+
+	games, err := s.rdbOperations.GetTournamentGameList(logger, ctx, tournamentId, &s.config.RDB)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, game := range games {
+		fullTeam1, fullTeam2 := entities.FullTournamentTeam{}, entities.FullTournamentTeam{}
+
+		playersTeam1, playersTeam2 := make([]entities.Player, 0), make([]entities.Player, 0)
+
+		// первая команда
+		team1, err := s.rdbOperations.GetTeamById(logger, ctx, game.Team1ID, &s.config.RDB)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, pId := range team1.PlayersIds {
+			// ее игроки
+			player, err := s.rdbOperations.GetPlayerByID(logger, ctx, int(pId), &s.config.RDB)
+			if err != nil {
+				return nil, err
+			}
+			playersTeam1 = append(playersTeam1, player)
+		}
+		fullTeam1.ID = team1.Id
+		fullTeam1.Name = team1.Name
+		fullTeam1.ShortName = team1.ShortName
+		fullTeam1.CityID = pointer.GetValue(team1.CityId)
+		fullTeam1.Players = playersTeam1
+
+		// вторая команда
+		team2, err := s.rdbOperations.GetTeamById(logger, ctx, game.Team2ID, &s.config.RDB)
+		if err != nil {
+			return nil, err
+		}
+		for _, pId := range team2.PlayersIds {
+			// ее игроки
+			player, err := s.rdbOperations.GetPlayerByID(logger, ctx, int(pId), &s.config.RDB)
+			if err != nil {
+				return nil, err
+			}
+			playersTeam2 = append(playersTeam2, player)
+		}
+		fullTeam2.ID = team2.Id
+		fullTeam2.Name = team2.Name
+		fullTeam2.ShortName = team2.ShortName
+		fullTeam2.CityID = pointer.GetValue(team2.CityId)
+		fullTeam2.Players = playersTeam2
+
+		fullGames = append(fullGames, entities.FullTournamentGame{
+			Game:  game,
+			Team1: fullTeam1,
+			Team2: fullTeam2,
+		})
+	}
+
+	return fullGames, nil
 }
 
 /*local methods*/
