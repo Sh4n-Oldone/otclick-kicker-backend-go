@@ -36,7 +36,7 @@ func (s *Service) GetTeam(ctx context.Context, teamID int64) (entities.GetTeamRe
 
 	g.Go(func() error {
 		var err error
-		team, err = s.rdbOperations.GetTeamById(logger, timeout, teamID, &s.config.RDB)
+		team, err = s.rdbOperations.GetTeamById(logger, timeout, teamID, nil)
 		return err
 	})
 
@@ -504,7 +504,7 @@ func (s *Service) Create(ctx context.Context, request *entities.CreateTeamReques
 		request.CityId = cityId
 	}
 
-	id, err := s.rwdbOperations.CreateTeam(logger, ctx, *request, &s.config.RWDB)
+	id, err := s.rwdbOperations.CreateTeam(logger, ctx, *request, nil)
 	if err != nil {
 		return 0, err
 	}
@@ -516,7 +516,7 @@ func (s *Service) Update(ctx context.Context, request *entities.UpdateTeamReques
 	logger := s.logger.With().Str("service", "Update").Logger()
 
 	if request.Updater.Role != nil && request.Updater.Role.Name == constant.TournamentMaster {
-		team, err := s.rdbOperations.GetTeamById(logger, ctx, request.ID, &s.config.RDB)
+		team, err := s.rdbOperations.GetTeamById(logger, ctx, request.ID, nil)
 		if err != nil {
 			return false, err
 		}
@@ -568,12 +568,12 @@ func (s *Service) Delete(ctx context.Context, id int64) (bool, error) {
 func (s *Service) AddPlayerIntoTeam(ctx context.Context, req *entities.MovingPlayerTeam) (bool, error) {
 	logger := s.logger.With().Str("service", "AddPlayerIntoTeam").Logger()
 
-	player, err := s.rdbOperations.GetPlayerByID(logger, ctx, int(req.PlayerID), &s.config.RDB)
+	player, err := s.rdbOperations.GetPlayerByID(logger, ctx, int(req.PlayerID), nil)
 	if err != nil {
 		return false, err
 	}
 
-	team, err := s.rdbOperations.GetTeamById(logger, ctx, req.TeamID, &s.config.RDB)
+	team, err := s.rdbOperations.GetTeamById(logger, ctx, req.TeamID, nil)
 	if err != nil {
 		return false, err
 	}
@@ -610,7 +610,7 @@ func (s *Service) AddPlayerIntoTeam(ctx context.Context, req *entities.MovingPla
 		}
 	}
 
-	res, err := s.rwdbOperations.AddPlayerIntoTeam(logger, ctx, req.PlayerID, req.TeamID, &s.config.RWDB)
+	res, err := s.rwdbOperations.AddPlayerIntoTeam(logger, ctx, req.PlayerID, req.TeamID, nil)
 	if err != nil {
 		return false, err
 	}
@@ -627,12 +627,12 @@ func (s *Service) RemovePlayerFromTeam(ctx context.Context, req *entities.Moving
 			return false, err
 		}
 
-		player, err := s.rdbOperations.GetPlayerByID(logger, ctx, int(req.PlayerID), &s.config.RDB)
+		player, err := s.rdbOperations.GetPlayerByID(logger, ctx, int(req.PlayerID), nil)
 		if err != nil {
 			return false, err
 		}
 
-		team, err := s.rdbOperations.GetTeamById(logger, ctx, req.TeamID, &s.config.RDB)
+		team, err := s.rdbOperations.GetTeamById(logger, ctx, req.TeamID, nil)
 		if err != nil {
 			return false, err
 		}

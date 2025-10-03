@@ -157,6 +157,10 @@ func (db *RWDBOperation) DeleteGame(logger zerolog.Logger, ctx context.Context, 
 	return nil
 }
 
+func (db *RWDBOperation) DeleteGameTx(logger zerolog.Logger, ctx context.Context, gameID int64, tx tx.ITx) {
+
+}
+
 func (db *RDBOperation) GetGame(logger zerolog.Logger, ctx context.Context, gameID int) (entities.GetGameResponse, error) {
 	const query string = `
 	SELECT 
@@ -1052,33 +1056,22 @@ func (db *RDBOperation) GetTournamentGameList(logger zerolog.Logger, ctx context
 	return games, nil
 }
 
-func (db *RWDBOperation) CreateFutureTournamentStageGames(logger zerolog.Logger, ctx context.Context, stageID, cityID int64, team1IDs, team2IDs []int64, cfg *config.DBConfig) error {
-	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+func (db *RWDBOperation) CreateFutureTournamentStageGames(logger zerolog.Logger, ctx context.Context, stageID, cityID int64, team1IDs, team2IDs []int64, tx tx.ITx) error {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 
 	const query string = `
         INSERT INTO games (city_id, team1_id, team2_id, stage_id)
         VALUES ($1, $2, $3, $4);`
 
-	tx, err := db.db.Begin(timeout)
-	if err != nil {
-		logger.Error().Err(err).Msg("failed Begin postgresql.CreateTournamentStageGames")
-		return DecodeDatabaseError(err)
-	}
+	exec := poolOrTx(db.db, tx)
 
 	for i := range team1IDs {
-		_, err = tx.Exec(timeout, query, cityID, team1IDs[i], team2IDs[i], stageID)
+		_, err := exec.Exec(timeout, query, cityID, team1IDs[i], team2IDs[i], stageID)
 		if err != nil {
 			logger.Error().Err(err).Msg("failed tx.Exec postgresql.CreateTournamentStageGames")
-			_ = tx.Rollback(ctx)
 			return DecodeDatabaseError(err)
 		}
-	}
-
-	err = tx.Commit(timeout)
-	if err != nil {
-		logger.Error().Err(err).Msg("failed Commit postgresql.CreateTournamentStageGames")
-		return DecodeDatabaseError(err)
 	}
 
 	return nil
@@ -1215,27 +1208,6 @@ func (db *RWDBOperation) UpdatePlayedTournamentGame(logger zerolog.Logger, ctx c
 		err = pgx.ErrNoRows
 		logger.Error().Stack().Err(err).Msg("no rows updated")
 		return DecodeDatabaseError(err)
-	}
-
-	return nil
-}
-
-func (db *RWDBOperation) CreateFutureTournamentStageGamesTx(logger zerolog.Logger, ctx context.Context, stageID, cityID int64, team1IDs, team2IDs []int64, tx tx.ITx) error {
-	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
-	defer cancel()
-
-	const query string = `
-        INSERT INTO games (city_id, team1_id, team2_id, stage_id)
-        VALUES ($1, $2, $3, $4);`
-
-	exec := poolOrTx(db.db, tx)
-
-	for i := range team1IDs {
-		_, err := exec.Exec(timeout, query, cityID, team1IDs[i], team2IDs[i], stageID)
-		if err != nil {
-			logger.Error().Err(err).Msg("exec.Exec postgresql.CreateFutureTournamentStageGamesTx")
-			return DecodeDatabaseError(err)
-		}
 	}
 
 	return nil

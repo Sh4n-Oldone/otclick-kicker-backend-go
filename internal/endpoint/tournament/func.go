@@ -2,15 +2,16 @@ package tournament
 
 import (
 	"context"
+	"net/http"
+
 	"github.com/go-kit/kit/endpoint"
 	"google.golang.org/grpc/codes"
-	"net/http"
-	pkgerr "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/tournament"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/middleware"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
+	pkgerr "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/helpers"
 )
 

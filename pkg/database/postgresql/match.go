@@ -3,6 +3,7 @@ package postgresql
 import (
 	"context"
 	"errors"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql/tx"
 
 	"github.com/rs/zerolog"
 
@@ -470,6 +471,27 @@ func (db *RWDBOperation) DeleteGameMatches(logger zerolog.Logger, ctx context.Co
 	_, err := db.db.Exec(timeout, query, gameId)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to delete match in postgresql.DeleteMatches")
+		return DecodeDatabaseError(err)
+	}
+
+	return nil
+}
+
+func (db *RWDBOperation) DeleteTournamentMatches(logger zerolog.Logger, ctx context.Context, tournamentId int64, tx tx.ITx) error {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	const query string = `
+		DELETE FROM matches 
+		WHERE game_id IN (
+			SELECT g.id 
+				FROM games g
+				JOIN tournament_stages ts ON g.stage_id = ts.id
+			WHERE ts.tournament_id = $1);`
+
+	_, err := poolOrTx(db.db, tx).Exec(timeout, query, tournamentId)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed Exec DeleteTournamentMatches")
 		return DecodeDatabaseError(err)
 	}
 

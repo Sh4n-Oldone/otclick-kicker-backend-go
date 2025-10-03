@@ -2,6 +2,7 @@ package postgresql
 
 import (
 	"context"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql/tx"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog"
@@ -137,13 +138,13 @@ func (db *RDBOperation) GetPlayerRatingByTournamentId(logger zerolog.Logger, ctx
 	return rate, nil
 }
 
-func (db *RWDBOperation) DeleteTournamentRating(logger zerolog.Logger, ctx context.Context, tournamentId int64, cfg *config.DBConfig) error {
-	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+func (db *RWDBOperation) DeleteTournamentRating(logger zerolog.Logger, ctx context.Context, tournamentId int64, tx tx.ITx) error {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 
 	const query string = `DELETE FROM tournament_rating WHERE tournament_id = $1;`
 
-	_, err := db.db.Exec(timeout, query, tournamentId)
+	_, err := poolOrTx(db.db, tx).Exec(timeout, query, tournamentId)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to postgresql.DeleteTournamentRating")
 		return DecodeDatabaseError(err)
