@@ -13,6 +13,7 @@ type Endpoints struct {
 	Delete                 endpoint.Endpoint
 	FinishStage            endpoint.Endpoint
 	GetTournamentStageList endpoint.Endpoint
+	GetTournamentList      endpoint.Endpoint
 }
 
 func MakeEndpoints(s tournament.IService) Endpoints {
@@ -23,5 +24,6 @@ func MakeEndpoints(s tournament.IService) Endpoints {
 		Delete:                 makeDelete(s),
 		FinishStage:            makeFinishStage(s),
 		GetTournamentStageList: makeGetTournamentStageList(s),
+		GetTournamentList:      makeGetTournamentList(s),
 	}
 }

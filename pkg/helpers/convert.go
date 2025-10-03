@@ -18,20 +18,6 @@ func ConvertUpdateCityRequestToCity(request *entities.UpdateCityRequest) *entiti
 	}
 }
 
-func ConvertCreateUserRequestToUser(request *entities.CreateUserRequest) *entities.User {
-	return &entities.User{
-		Email:    request.Email,
-		Password: []byte(request.Password),
-	}
-}
-
-func ConvertLoginUserRequestToUser(request *entities.LoginUserRequest) *entities.User {
-	return &entities.User{
-		Email:    request.Email,
-		Password: []byte(request.Password),
-	}
-}
-
 func ConvertCreateMatchRequestToMatch(request *entities.CreateMatchRequest) *entities.Match {
 	return &entities.Match{
 		Date:           request.Date,

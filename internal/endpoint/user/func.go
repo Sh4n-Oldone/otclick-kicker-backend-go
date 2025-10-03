@@ -42,28 +42,26 @@ func makeCreate(s user.IService) endpoint.Endpoint {
 
 func makeLogin(s user.IService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		// reqID, ctx := middleware.GetRequestID(ctx)
-		serviceLogger := s.GetLogger().With().Str("Source", "makeLogin").Logger()
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "makeLogin").Str("request_id", reqID).Logger()
 
 		req, err := helpers.CastRequest[*entities.LoginUserRequest](request)
 		if err != nil {
 			serviceLogger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).Msg(pkgerr.FailedValidateRequest)
-			return nil, err
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
-		user := helpers.ConvertLoginUserRequestToUser(req)
-
-		uID, uRole, uTeamID, token, err := s.Login(ctx, *user)
+		uID, uRole, uTeamID, token, cityId, err := s.Login(ctx, req)
 		if err != nil {
-			return nil, err
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
 		response := &entities.LoginUserResponse{
-			Message: "Access Granted",
-			ID:      *uID,
-			Token:   *token,
-			Role:    *uRole,
-			TeamID:  *uTeamID,
+			ID:     *uID,
+			Token:  *token,
+			Role:   *uRole,
+			TeamID: uTeamID,
+			CityID: cityId,
 		}
 
 		return response, nil

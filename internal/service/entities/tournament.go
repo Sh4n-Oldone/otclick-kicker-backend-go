@@ -7,8 +7,7 @@ type GetTournamentTypeListRequest struct {
 }
 
 type CreateTournamentRequest struct {
-	CityIDParam      string
-	CityID           int64
+	CityID           *int64         `json:"cityId" validate:"omitempty,gt=0"`
 	TournamentTypeID int64          `json:"typeId" validate:"required,gt=0"`
 	SeasonID         int64          `json:"seasonId" validate:"required,gt=0"`
 	Name             string         `json:"name" validate:"required,min=1,max=128"`
@@ -43,6 +42,15 @@ type Tournament struct {
 	SeasonID int64             `json:"seasonId"`
 	Stages   []TournamentStage `json:"stages"`
 	TeamIDs  []int64           `json:"teamIds"`
+}
+
+type TournamentShort struct {
+	ID       int64          `json:"id"`
+	TypeID   int64          `json:"typeId"`
+	Name     string         `json:"name"`
+	Rules    TournamentRule `json:"rules"`
+	CityID   int64          `json:"cityId"`
+	SeasonID int64          `json:"seasonId"`
 }
 
 type TournamentStage struct {
@@ -90,4 +98,11 @@ type NullableStage struct {
 type TournamentStageItem struct {
 	Stage TournamentStage  `json:"stage"`
 	Games []TournamentGame `json:"games"`
+}
+
+type GetTournamentListRequest struct {
+	CityID           *int64 `validate:"omitempty,gt=0"`
+	SeasonID         *int64 `validate:"omitempty,gt=0"`
+	TournamentID     *int64 `validate:"omitempty,gt=0"`
+	TournamentTypeID *int64 `validate:"omitempty,gt=0"`
 }

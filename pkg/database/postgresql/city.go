@@ -103,3 +103,41 @@ func (db *RWDBOperation) DeleteCity(logger zerolog.Logger, ctx context.Context, 
 
 	return nil
 }
+
+func (db *RDBOperation) GetCityById(logger zerolog.Logger, ctx context.Context, cityID int64) (entities.City, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	var city entities.City
+
+	const query string = `SELECT id, name, ru, deleted_at WHERE id = $1;`
+
+	err := db.db.QueryRow(timeout, query, cityID).Scan(&city.ID, &city.Name, &city.Ru, &city.DeletedAt)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed GetCityById")
+		return entities.City{}, DecodeDatabaseError(err)
+	}
+
+	return city, nil
+}
+
+func (db *RDBOperation) GetUserCity(logger zerolog.Logger, ctx context.Context, userId int64) (entities.City, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	var city entities.City
+
+	const query string = `
+		SELECT c.id, c.name, c.ru, c.deleted_at
+		FROM cities c
+		LEFT JOIN users_cities_links ucl ON c.id = ucl.city_id
+		WHERE ucl.user_id = $1;`
+
+	err := db.db.QueryRow(timeout, query, userId).Scan(&city.ID, &city.Name, &city.Ru, &city.DeletedAt)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed GetCityById")
+		return entities.City{}, DecodeDatabaseError(err)
+	}
+
+	return city, nil
+}
