@@ -111,12 +111,23 @@ func (s *Service) ChangePassword(ctx context.Context, userOld, userNew entities.
 	return nil
 }
 
-func (s *Service) CheckAuth(ctx context.Context, userID int64, token string) (*bool, *string, *int64, error) {
+func (s *Service) CheckAuth(ctx context.Context, userID int64, token string) (*bool, *string, *int64, *int64, error) {
 	logger := s.logger.With().Interface("service", "CheckAuth").Logger()
 
 	user, err := s.rdbOperations.GetUser(logger, ctx, &userID, nil, &s.config.RDB)
 	if err != nil {
-		return nil, nil, nil, errTmpl.New(pkgerr.FailedGetUserData, err, codes.InvalidArgument, http.StatusBadRequest)
+		return nil, nil, nil, nil, errTmpl.New(pkgerr.FailedGetUserData, err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	var cityId *int64
+
+	if user.Role != nil && user.Role.Name == cnst.TournamentMaster {
+		city, err := s.rdbOperations.GetUserCity(logger, ctx, user.ID)
+		if err != nil {
+			return nil, nil, nil, nil, errTmpl.New(pkgerr.FailedGetUserData, err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+
+		cityId = &city.ID
 	}
 
 	_token, err := jwtV5.Parse(token, func(token *jwtV5.Token) (interface{}, error) {
@@ -126,7 +137,7 @@ func (s *Service) CheckAuth(ctx context.Context, userID int64, token string) (*b
 		return []byte(s.config.Secret.Key), nil
 	})
 	if err != nil {
-		return nil, nil, nil, errTmpl.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		return nil, nil, nil, nil, errTmpl.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
 	if claims, ok := _token.Claims.(jwtV5.MapClaims); ok && _token.Valid {
@@ -135,47 +146,47 @@ func (s *Service) CheckAuth(ctx context.Context, userID int64, token string) (*b
 		// error if Access-Token is expired
 		expired, ok2 := claims[cnst.JwtClaimsAttrTokenExpire].(float64)
 		if !ok2 {
-			return nil, nil, nil, err
+			return nil, nil, nil, nil, err
 		}
 		if expired < float64(time.Now().Unix()) {
-			return nil, nil, nil, err
+			return nil, nil, nil, nil, err
 		}
 
 		// get user ID
 		userID, ok2 := claims[cnst.JwtClaimsAttrUserID].(float64)
 		if !ok2 {
-			return nil, nil, nil, err
+			return nil, nil, nil, nil, err
 		}
 
 		// get user Email
 		ok2 = false
 		userEmail, ok2 := claims[cnst.JwtClaimsAttrUserEmail]
 		if !ok2 {
-			return nil, nil, nil, err
+			return nil, nil, nil, nil, err
 		}
 
 		// get user Role name
 		ok2 = false
 		role, ok2 := claims[cnst.JwtClaimsAttrRoleName]
 		if !ok2 {
-			return nil, nil, nil, err
+			return nil, nil, nil, nil, err
 		}
 
 		// get user team ID
 		ok2 = false
 		teamID, ok2 := claims[cnst.JwtClaimsAttrTeamID].(float64)
 		if !ok2 {
-			return nil, nil, nil, err
+			return nil, nil, nil, nil, err
 		}
 
 		if user.ID != int64(userID) || user.Email != userEmail || user.Role.Name != role || user.Team.ID != int64(teamID) {
-			return nil, nil, nil, err
+			return nil, nil, nil, nil, err
 		}
 	}
 
 	auth := true
 
-	return &auth, &user.Role.Name, &user.Team.ID, nil
+	return &auth, &user.Role.Name, &user.Team.ID, cityId, nil
 }
 
 func (s *Service) GetUser(ctx context.Context, userID int64) (*entities.User, error) {

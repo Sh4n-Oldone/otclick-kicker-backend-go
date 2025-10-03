@@ -69,4 +69,5 @@ type CheckAuthResponse struct {
 	IsAuthenticated bool   `json:"isAuthenticated"`
 	Role            string `json:"role"`
 	TeamID          int64  `json:"teamId"`
+	CityID          *int64 `json:"cityId,omitempty"`
 }

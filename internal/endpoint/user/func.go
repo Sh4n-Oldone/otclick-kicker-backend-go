@@ -115,7 +115,7 @@ func makeCheckAuth(s user.IService) endpoint.Endpoint {
 			return nil, err
 		}
 
-		isAuth, role, teamID, err := s.CheckAuth(ctx, req.UserID, req.Token)
+		isAuth, role, teamID, cityId, err := s.CheckAuth(ctx, req.UserID, req.Token)
 		if err != nil {
 			return nil, err
 		}
@@ -124,6 +124,7 @@ func makeCheckAuth(s user.IService) endpoint.Endpoint {
 			IsAuthenticated: *isAuth,
 			Role:            *role,
 			TeamID:          *teamID,
+			CityID:          cityId,
 		}
 
 		return response, nil
