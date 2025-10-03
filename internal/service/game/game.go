@@ -1637,14 +1637,14 @@ func (s *Service) GetTournamentGameList(ctx context.Context, tournamentId int64)
 		playersTeam1, playersTeam2 := make([]entities.Player, 0), make([]entities.Player, 0)
 
 		// первая команда
-		team1, err := s.rdbOperations.GetTeamById(logger, ctx, game.Team1ID, &s.config.RDB)
+		team1, err := s.rdbOperations.GetTeamById(logger, ctx, game.Team1ID, nil)
 		if err != nil {
 			return nil, err
 		}
 
 		for _, pId := range team1.PlayersIds {
 			// ее игроки
-			player, err := s.rdbOperations.GetPlayerByID(logger, ctx, int(pId), &s.config.RDB)
+			player, err := s.rdbOperations.GetPlayerByID(logger, ctx, int(pId), nil)
 			if err != nil {
 				return nil, err
 			}
@@ -1657,13 +1657,13 @@ func (s *Service) GetTournamentGameList(ctx context.Context, tournamentId int64)
 		fullTeam1.Players = playersTeam1
 
 		// вторая команда
-		team2, err := s.rdbOperations.GetTeamById(logger, ctx, game.Team2ID, &s.config.RDB)
+		team2, err := s.rdbOperations.GetTeamById(logger, ctx, game.Team2ID, nil)
 		if err != nil {
 			return nil, err
 		}
 		for _, pId := range team2.PlayersIds {
 			// ее игроки
-			player, err := s.rdbOperations.GetPlayerByID(logger, ctx, int(pId), &s.config.RDB)
+			player, err := s.rdbOperations.GetPlayerByID(logger, ctx, int(pId), nil)
 			if err != nil {
 				return nil, err
 			}

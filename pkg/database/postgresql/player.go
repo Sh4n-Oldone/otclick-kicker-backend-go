@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/rs/zerolog"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql/tx"
 
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/constant"
@@ -123,8 +124,8 @@ func (db *RWDBOperation) UpdatePlayer(logger zerolog.Logger, ctx context.Context
 	return nil
 }
 
-func (db *RDBOperation) GetPlayerByID(logger zerolog.Logger, ctx context.Context, playerID int, cfg *config.DBConfig) (entities.Player, error) {
-	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+func (db *RDBOperation) GetPlayerByID(logger zerolog.Logger, ctx context.Context, playerID int, tx tx.ITx) (entities.Player, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 
 	const query string = `
@@ -145,12 +146,11 @@ func (db *RDBOperation) GetPlayerByID(logger zerolog.Logger, ctx context.Context
     LEFT JOIN public.players_teams_links ptl ON p.id = ptl.player_id
     LEFT JOIN public.teams t ON t.id = ptl.team_id
     LEFT JOIN public.cities c ON p.city_id = c.id
-    WHERE p.id = $1;
-	`
+    WHERE p.id = $1;`
 
 	var p entities.Player
 
-	err := db.db.QueryRow(timeout, query, playerID).
+	err := poolOrTx(db.db, tx).QueryRow(timeout, query, playerID).
 		Scan(&p.ID, &p.Name, &p.SecondName, &p.LastName, &p.ActivePlayer, &p.DeletedAt, &p.Avatar, &p.CityID, &p.CityName, &p.TeamID, &p.TeamName, &p.TeamShortName)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.GetPlayerByID")
@@ -160,7 +160,10 @@ func (db *RDBOperation) GetPlayerByID(logger zerolog.Logger, ctx context.Context
 	return p, nil
 }
 
-func (db *RDBOperation) GetPlayersByTeamID(logger zerolog.Logger, ctx context.Context, teamID int) ([]entities.Player, error) {
+func (db *RDBOperation) GetPlayersByTeamID(logger zerolog.Logger, ctx context.Context, teamID int, tx tx.ITx) ([]entities.Player, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
 	const query string = `
 		SELECT p.id, p.name, p.second_name, p.last_name, p.active_player, p.deleted_at, p.avatar, p.city_id, t.id, t.name, t.short_name
 		FROM players p
@@ -171,7 +174,7 @@ func (db *RDBOperation) GetPlayersByTeamID(logger zerolog.Logger, ctx context.Co
 
 	var players []entities.Player
 
-	rows, err := db.db.Query(ctx, query, teamID)
+	rows, err := poolOrTx(db.db, tx).Query(timeout, query, teamID)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.GetPlayersByTeamID")
 		return nil, DecodeDatabaseError(errors.New(pkgerr.ErrGetPlayerList))

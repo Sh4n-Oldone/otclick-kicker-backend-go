@@ -3,18 +3,18 @@ package postgresql
 import (
 	"context"
 	"github.com/rs/zerolog"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql/tx"
 )
 
-func (db *RDBOperation) GetSuffix(logger zerolog.Logger, ctx context.Context, cfg *config.DBConfig) (string, error) {
-	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+func (db *RDBOperation) GetSuffix(logger zerolog.Logger, ctx context.Context, tx tx.ITx) (string, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 
 	var suffix string
 
 	const query string = "SELECT * FROM get_next_name_suffix()"
 
-	err := db.db.QueryRow(timeout, query).Scan(&suffix)
+	err := poolOrTx(db.db, tx).QueryRow(timeout, query).Scan(&suffix)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed GetSuffix")
 		return suffix, DecodeDatabaseError(err)

@@ -165,7 +165,7 @@ func (s *Service) Find(ctx context.Context, player entities.FindPlayersRequest) 
 
 		g.Go(func() error {
 			var err error
-			teams, err = s.rdbOperations.GetTeamsByPlayerID(logger, ctx, p.ID)
+			teams, err = s.rdbOperations.GetTeamsByPlayerID(logger, ctx, p.ID, nil)
 			return err
 		})
 
@@ -210,7 +210,7 @@ func (s *Service) Get(ctx context.Context, id int) (entities.FullPlayerV2, error
 
 	g.Go(func() error {
 		var err error
-		player, err = s.rdbOperations.GetPlayerByID(logger, timeout, id, &s.config.RDB)
+		player, err = s.rdbOperations.GetPlayerByID(logger, timeout, id, nil)
 		return err
 	})
 
@@ -228,7 +228,7 @@ func (s *Service) Get(ctx context.Context, id int) (entities.FullPlayerV2, error
 
 	g.Go(func() error {
 		var err error
-		teams, err = s.rdbOperations.GetTeamsByPlayerID(logger, ctx, id)
+		teams, err = s.rdbOperations.GetTeamsByPlayerID(logger, ctx, id, nil)
 		return err
 	})
 
@@ -253,11 +253,11 @@ func (s *Service) Get(ctx context.Context, id int) (entities.FullPlayerV2, error
 }
 
 func (s *Service) GetByTeamID(ctx context.Context, teamID int) ([]entities.Player, error) {
-	logger := s.logger.With().Interface("service", "player.GetByTeamID").Logger()
+	logger := s.logger.With().Str("service", "player.GetByTeamID").Logger()
 	timeout, cancel := context.WithTimeout(ctx, s.config.RDB.MaxIdleConnectionTimeout)
 	defer cancel()
 
-	players, err := s.rdbOperations.GetPlayersByTeamID(logger, timeout, teamID)
+	players, err := s.rdbOperations.GetPlayersByTeamID(logger, timeout, teamID, nil)
 	if err != nil {
 		return nil, err
 	}

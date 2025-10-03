@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql/tx"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
@@ -406,21 +407,15 @@ func (db *RDBOperation) TeamsHaveNoGames(logger zerolog.Logger, ctx context.Cont
 	return true, nil
 }
 
-func (db *RWDBOperation) CreateTeam(logger zerolog.Logger, ctx context.Context, team entities.CreateTeamRequest, cfg *config.DBConfig) (int64, error) {
-	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+func (db *RWDBOperation) CreateTeam(logger zerolog.Logger, ctx context.Context, team entities.CreateTeamRequest, tx tx.ITx) (int64, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 
 	var teamId int64
 	const queryCreateTeam = `INSERT INTO teams (name, short_name, avatar, city_id) VALUES ($1, $2, $3, $4) RETURNING id`
 
-	tx, err := db.db.Begin(timeout)
-	if err != nil {
-		logger.Error().Stack().Err(err).Msg("failed to postgresql.CreateTeam")
-		return 0, DecodeDatabaseError(errors.New(pkgerr.ErrCreateTeam))
-	}
-
 	// Вставка команды в таблицу `teams` и получение `id` новой команды
-	err = tx.QueryRow(timeout, queryCreateTeam,
+	err := poolOrTx(db.db, tx).QueryRow(timeout, queryCreateTeam,
 		team.Name,
 		team.ShortName,
 		team.Avatar,
@@ -429,12 +424,6 @@ func (db *RWDBOperation) CreateTeam(logger zerolog.Logger, ctx context.Context, 
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to create Team record")
 		return 0, DecodeDatabaseError(err)
-	}
-
-	if err = tx.Commit(timeout); err != nil {
-		logger.Error().Stack().Err(err).Msg("failed to postgresql.CreateTeam")
-		_ = tx.Rollback(timeout)
-		return 0, DecodeDatabaseError(errors.New(pkgerr.ErrCreateTeam))
 	}
 
 	return teamId, nil
@@ -525,15 +514,17 @@ func (db *RWDBOperation) DeleteTeam(logger zerolog.Logger, ctx context.Context, 
 	return true, nil
 }
 
-func (db *RWDBOperation) AddPlayerIntoTeam(logger zerolog.Logger, ctx context.Context, playerID, teamID int64, cfg *config.DBConfig) (bool, error) {
-	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+func (db *RWDBOperation) AddPlayerIntoTeam(logger zerolog.Logger, ctx context.Context, playerID, teamID int64, tx tx.ITx) (bool, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
+
+	exec := poolOrTx(db.db, tx)
 
 	var exists int
 
 	const query1 = "SELECT 1 FROM players_teams_links WHERE player_id = $1 AND team_id = $2"
 
-	err := db.db.QueryRow(timeout, query1, playerID, teamID).Scan(&exists)
+	err := exec.QueryRow(timeout, query1, playerID, teamID).Scan(&exists)
 	if err != nil && errors.Is(err, pgx.ErrNoRows) == false {
 		logger.Error().Err(err).Msg(err.Error())
 		return false, DecodeDatabaseError(err)
@@ -547,7 +538,7 @@ func (db *RWDBOperation) AddPlayerIntoTeam(logger zerolog.Logger, ctx context.Co
 
 	const query2 = "INSERT INTO players_teams_links(player_id, team_id) VALUES($1, $2)"
 
-	tag, err := db.db.Exec(timeout, query2, playerID, teamID)
+	tag, err := exec.Exec(timeout, query2, playerID, teamID)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to AddPlayerIntoTeam")
 		return false, DecodeDatabaseError(err)
@@ -595,7 +586,10 @@ func (db *RWDBOperation) RemovePlayerFromTeam(logger zerolog.Logger, ctx context
 	return true, nil
 }
 
-func (db *RDBOperation) GetTeamsByPlayerID(logger zerolog.Logger, ctx context.Context, playerID int) ([]entities.TeamItem, error) {
+func (db *RDBOperation) GetTeamsByPlayerID(logger zerolog.Logger, ctx context.Context, playerID int, tx tx.ITx) ([]entities.TeamItem, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
 	const query = `SELECT t.id, t.name, t.short_name, t.avatar, t.city_id,
 	COALESCE(
 		ARRAY_AGG(
@@ -607,7 +601,7 @@ func (db *RDBOperation) GetTeamsByPlayerID(logger zerolog.Logger, ctx context.Co
 	WHERE ptl.player_id = $1
 	GROUP BY t.id;`
 
-	rows, err := db.db.Query(ctx, query, playerID)
+	rows, err := poolOrTx(db.db, tx).Query(timeout, query, playerID)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to GetTeamsByPlayerID")
 		return nil, DecodeDatabaseError(err)
@@ -757,8 +751,8 @@ func (db *RDBOperation) GetExtraPointsById(logger zerolog.Logger, ctx context.Co
 	return extraPoints, nil
 }
 
-func (db *RDBOperation) GetTeamById(logger zerolog.Logger, ctx context.Context, teamID int64, cfg *config.DBConfig) (entities.TeamV2, error) {
-	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+func (db *RDBOperation) GetTeamById(logger zerolog.Logger, ctx context.Context, teamID int64, tx tx.ITx) (entities.TeamV2, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 
 	team := entities.TeamV2{}
@@ -776,7 +770,7 @@ func (db *RDBOperation) GetTeamById(logger zerolog.Logger, ctx context.Context, 
 	WHERE t.id = $1
 	GROUP BY t.id`
 
-	err := db.db.QueryRow(timeout, queryGetTeam, teamID).
+	err := poolOrTx(db.db, tx).QueryRow(timeout, queryGetTeam, teamID).
 		Scan(&team.Id, &team.Name, &team.ShortName, &team.CityId, &team.Avatar, &team.PlayersIds)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to postgresql.GetTeamById")
@@ -924,53 +918,4 @@ func (db *RDBOperation) GetTournamentTeamList(logger zerolog.Logger, ctx context
 	}
 
 	return tournamentTeams, nil
-}
-
-func (db *RWDBOperation) DeleteTournamentTeamCascade(logger zerolog.Logger, ctx context.Context, id int64, cfg *config.DBConfig) error {
-	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
-	defer cancel()
-
-	const queryDeleteFromPlayersTeamsLinks = `DELETE FROM players_teams_links WHERE team_id = $1`
-	const queryDeleteTournamentLinks = `DELETE FROM tournaments_teams_link WHERE team_id = $1`
-	const queryDeleteTeam = `DELETE FROM teams WHERE id = $1`
-
-	// Начинаем транзакцию
-	tx, err := db.db.Begin(timeout)
-	if err != nil {
-		logger.Error().Stack().Err(err).Msg("failed to begin transaction in DeleteTeam")
-		return DecodeDatabaseError(err)
-	}
-
-	// Удаление из `players_teams_links`
-	_, err = tx.Exec(timeout, queryDeleteFromPlayersTeamsLinks, id)
-	if err != nil {
-		logger.Error().Err(err).Msg("failed to delete from players_teams_links")
-		_ = tx.Rollback(timeout)
-		return DecodeDatabaseError(err)
-	}
-
-	// Удаление из `tournaments_teams_link`
-	_, err = tx.Exec(timeout, queryDeleteTournamentLinks, id)
-	if err != nil {
-		logger.Error().Err(err).Msg("failed to delete from tournaments_teams_link")
-		_ = tx.Rollback(timeout)
-		return DecodeDatabaseError(err)
-	}
-
-	//Удаление самой команды
-	_, err = tx.Exec(timeout, queryDeleteTeam, id)
-	if err != nil {
-		logger.Error().Err(err).Msg("failed to delete from teams")
-		_ = tx.Rollback(timeout)
-		return DecodeDatabaseError(err)
-	}
-
-	// Коммит транзакции
-	if err = tx.Commit(timeout); err != nil {
-		logger.Error().Stack().Err(err).Msg("failed to commit transaction in DeleteTeam")
-		_ = tx.Rollback(timeout)
-		return DecodeDatabaseError(errors.New(pkgerr.ErrDeleteTeam))
-	}
-
-	return nil
 }

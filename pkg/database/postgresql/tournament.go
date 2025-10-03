@@ -138,8 +138,8 @@ func (db *RDBOperation) GetTournamentStage(logger zerolog.Logger, ctx context.Co
 	return s, nil
 }
 
-func (db *RWDBOperation) CreateTournament(logger zerolog.Logger, ctx context.Context, request entities.CreateTournamentRequest, cfg *config.DBConfig) (int64, error) {
-	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+func (db *RWDBOperation) CreateTournament(logger zerolog.Logger, ctx context.Context, request entities.CreateTournamentRequest, tx tx.ITx) (int64, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 
 	const query1 string = `
@@ -159,13 +159,9 @@ func (db *RWDBOperation) CreateTournament(logger zerolog.Logger, ctx context.Con
 
 	var id int64
 
-	tx, err := db.db.Begin(timeout)
-	if err != nil {
-		logger.Error().Stack().Err(err).Msg("failed to create tx")
-		return 0, DecodeDatabaseError(err)
-	}
+	exec := poolOrTx(db.db, tx)
 
-	err = tx.QueryRow(timeout, query1,
+	err = exec.QueryRow(timeout, query1,
 		request.TournamentTypeID,
 		request.Name,
 		ruleJSON,
@@ -174,31 +170,25 @@ func (db *RWDBOperation) CreateTournament(logger zerolog.Logger, ctx context.Con
 	).Scan(&id)
 	if err != nil {
 		logger.Error().Err(err).Msg("Failed Scan postgresql.CreateTournament")
-		_ = tx.Rollback(timeout)
 		return 0, DecodeDatabaseError(err)
 	}
 
 	for _, t := range request.TeamsIDs {
-		_, err = tx.Exec(timeout, query2, t, id)
+		_, err = exec.Exec(timeout, query2, t, id)
 		if err != nil {
 			logger.Error().Err(err).Msg("Failed tx.Exec postgresql.CreateTournament")
-			_ = tx.Rollback(timeout)
 			return 0, DecodeDatabaseError(err)
 		}
-	}
-
-	err = tx.Commit(timeout)
-	if err != nil {
-		logger.Error().Err(err).Msg("Failed tx.Commit postgresql.CreateTournament")
-		return 0, DecodeDatabaseError(err)
 	}
 
 	return id, nil
 }
 
-func (db *RWDBOperation) UpdateTournament(logger zerolog.Logger, ctx context.Context, request entities.UpdateTournamentRequest, cfg *config.DBConfig) error {
-	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+func (db *RWDBOperation) UpdateTournament(logger zerolog.Logger, ctx context.Context, request entities.UpdateTournamentRequest, tx tx.ITx) error {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
+
+	exec := poolOrTx(db.db, tx)
 
 	const query1 string = `
 		UPDATE tournaments
@@ -222,7 +212,7 @@ func (db *RWDBOperation) UpdateTournament(logger zerolog.Logger, ctx context.Con
 		}
 	}
 
-	_, err = db.db.Exec(timeout, query1,
+	_, err = exec.Exec(timeout, query1,
 		request.ID,
 		request.TournamentTypeID,
 		request.Name,
@@ -238,151 +228,82 @@ func (db *RWDBOperation) UpdateTournament(logger zerolog.Logger, ctx context.Con
 	return nil
 }
 
-func (db *RWDBOperation) UpdateTournamentTeamsLinks(logger zerolog.Logger, ctx context.Context, teamIDs []int64, tournamentId int64, cfg *config.DBConfig) error {
-	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+func (db *RWDBOperation) UpdateTournamentTeamsLinks(logger zerolog.Logger, ctx context.Context, teamIDs []int64, tournamentId int64, tx tx.ITx) error {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 
 	const query1 string = `DELETE FROM tournaments_teams_link WHERE tournament_id = $1;`
 	const query2 string = `INSERT INTO tournaments_teams_link (team_id, tournament_id) VALUES ($1, $2);`
 
-	tx, err := db.db.Begin(timeout)
-	if err != nil {
-		logger.Error().Stack().Err(err).Msg("failed to create tx")
-		return DecodeDatabaseError(err)
-	}
+	exec := poolOrTx(db.db, tx)
 
 	if teamIDs != nil {
-		_, err = tx.Exec(timeout, query1, tournamentId)
+		_, err := exec.Exec(timeout, query1, tournamentId)
 		if err != nil {
-			logger.Error().Err(err).Msg("Failed tx.Exec postgresql.UpdateTournament")
-			_ = tx.Rollback(timeout)
+			logger.Error().Err(err).Msg("Failed UpdateTournamentTeamsLinks")
 			return DecodeDatabaseError(err)
 		}
 
 		for _, id := range teamIDs {
-			_, err = tx.Exec(timeout, query2, id, tournamentId)
+			_, err = exec.Exec(timeout, query2, id, tournamentId)
 			if err != nil {
-				logger.Error().Err(err).Msg("Failed tx.Exec postgresql.UpdateTournament")
-				_ = tx.Rollback(timeout)
+				logger.Error().Err(err).Msg("Failed UpdateTournamentTeamsLinks")
 				return DecodeDatabaseError(err)
 			}
 		}
 	}
-	err = tx.Commit(timeout)
+
+	return nil
+}
+
+func (db *RWDBOperation) DeleteTournament(logger zerolog.Logger, ctx context.Context, tournamentId int64, tx tx.ITx) error {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	const query string = `DELETE FROM tournaments WHERE id = $1;`
+
+	_, err := poolOrTx(db.db, tx).Exec(timeout, query, tournamentId)
 	if err != nil {
-		logger.Error().Err(err).Msg("Failed tx.Commit postgresql.UpdateTournament")
-		_ = tx.Rollback(timeout)
+		logger.Error().Err(err).Msg("Exec postgresql.DeleteTournament")
 		return DecodeDatabaseError(err)
 	}
 
 	return nil
 }
 
-func (db *RWDBOperation) DeleteTournamentCascade(logger zerolog.Logger, ctx context.Context, id int64, cfg *config.DBConfig) error {
-	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+func (db *RWDBOperation) DeleteTournamentGamesTeamLinks(logger zerolog.Logger, ctx context.Context, tournamentId int64, tx tx.ITx) error {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 
-	const query1 string = `DELETE FROM tournaments_teams_link WHERE tournament_id = $1;`
-	const query2 string = `DELETE FROM games WHERE stage_id IN (SELECT id FROM tournament_stages WHERE tournament_id = $1);`
-	const query3 string = `DELETE FROM tournament_stages WHERE tournament_id = $1;`
-	const query4 string = `DELETE FROM tournaments WHERE id = $1;`
-
-	tx, err := db.db.Begin(timeout)
-	if err != nil {
-		logger.Error().Stack().Err(err).Msg("failed to create tx")
-		return DecodeDatabaseError(err)
-	}
-
-	_, err = tx.Exec(timeout, query1, id)
-	if err != nil {
-		logger.Error().Err(err).Msg("Failed tx.Exec postgresql.DeleteTournament")
-		_ = tx.Rollback(timeout)
-		return DecodeDatabaseError(err)
-	}
-
-	_, err = tx.Exec(timeout, query2, id)
-	if err != nil {
-		logger.Error().Err(err).Msg("Failed tx.Exec postgresql.DeleteTournament")
-		_ = tx.Rollback(timeout)
-		return DecodeDatabaseError(err)
-	}
-
-	_, err = tx.Exec(timeout, query3, id)
-	if err != nil {
-		logger.Error().Err(err).Msg("Failed tx.Exec postgresql.DeleteTournament")
-		_ = tx.Rollback(timeout)
-		return DecodeDatabaseError(err)
-	}
-
-	tag, err := tx.Exec(timeout, query4, id)
-	if err != nil {
-		logger.Error().Err(err).Msg("Failed tx.Exec postgresql.DeleteTournament")
-		_ = tx.Rollback(timeout)
-		return DecodeDatabaseError(err)
-	}
-
-	err = tx.Commit(timeout)
-	if err != nil {
-		logger.Error().Err(err).Msg("Failed tx.Commit postgresql.DeleteTournament")
-		_ = tx.Rollback(timeout)
-		return DecodeDatabaseError(err)
-	}
-
-	if tag.RowsAffected() == 0 {
-		err = pgx.ErrNoRows
-		logger.Error().Err(err).Msg("no rows affected postgresql.DeleteTournament")
-		return DecodeDatabaseError(err)
-	}
-
-	return nil
-}
-
-func (db *RWDBOperation) DeleteTournamentGamesTeamLinks(logger zerolog.Logger, ctx context.Context, tournamentId int64, cfg *config.DBConfig) error {
-	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
-	defer cancel()
+	exec := poolOrTx(db.db, tx)
 
 	const query1 string = `DELETE FROM tournaments_teams_link WHERE tournament_id = $1;`
 	const query2 string = `DELETE FROM games WHERE stage_id IN (SELECT id FROM tournament_stages WHERE tournament_id = $1);`
 
-	tx, err := db.db.Begin(timeout)
+	_, err := exec.Exec(timeout, query1, tournamentId)
 	if err != nil {
-		logger.Error().Stack().Err(err).Msg("failed to create tx")
+		logger.Error().Err(err).Msg("Failed DeleteTournamentGamesTeamLinks")
 		return DecodeDatabaseError(err)
 	}
 
-	_, err = tx.Exec(timeout, query1, tournamentId)
+	_, err = exec.Exec(timeout, query2, tournamentId)
 	if err != nil {
-		logger.Error().Err(err).Msg("Failed tx.Exec postgresql.DeleteTournament")
-		_ = tx.Rollback(timeout)
-		return DecodeDatabaseError(err)
-	}
-
-	_, err = tx.Exec(timeout, query2, tournamentId)
-	if err != nil {
-		logger.Error().Err(err).Msg("Failed tx.Exec postgresql.DeleteTournament")
-		_ = tx.Rollback(timeout)
-		return DecodeDatabaseError(err)
-	}
-
-	err = tx.Commit(timeout)
-	if err != nil {
-		logger.Error().Err(err).Msg("Failed tx.Commit postgresql.DeleteTournament")
-		_ = tx.Rollback(timeout)
+		logger.Error().Err(err).Msg("Failed DeleteTournamentGamesTeamLinks")
 		return DecodeDatabaseError(err)
 	}
 
 	return nil
 }
 
-func (db *RWDBOperation) CreateTournamentStage(logger zerolog.Logger, ctx context.Context, tournamentID int64, cfg *config.DBConfig) (int64, error) {
-	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+func (db *RWDBOperation) CreateTournamentStage(logger zerolog.Logger, ctx context.Context, tournamentID int64, tx tx.ITx) (int64, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 
 	const query string = `INSERT INTO tournament_stages(tournament_id, is_finished) VALUES ($1, FALSE) RETURNING id;`
 
 	var id int64
 
-	err := db.db.QueryRow(timeout, query, tournamentID).Scan(&id)
+	err := poolOrTx(db.db, tx).QueryRow(timeout, query, tournamentID).Scan(&id)
 	if err != nil {
 		logger.Error().Err(err).Msg("Failed QueryRow postgresql.CreateTournamentStage")
 		return 0, DecodeDatabaseError(err)
@@ -431,8 +352,8 @@ func (db *RDBOperation) GetTournamentStageGames(logger zerolog.Logger, ctx conte
 	return games, nil
 }
 
-func (db *RWDBOperation) UpdateTournamentStage(logger zerolog.Logger, ctx context.Context, stage entities.NullableStage, cfg *config.DBConfig) error {
-	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+func (db *RWDBOperation) UpdateTournamentStage(logger zerolog.Logger, ctx context.Context, stage entities.NullableStage) error {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 
 	const query string = `UPDATE tournament_stages
@@ -450,6 +371,53 @@ func (db *RWDBOperation) UpdateTournamentStage(logger zerolog.Logger, ctx contex
 	if tag.RowsAffected() == 0 {
 		err = pgx.ErrNoRows
 		logger.Error().Err(err).Msg("Failed tx.Exec postgresql.UpdateTournamentStage")
+		return DecodeDatabaseError(err)
+	}
+
+	return nil
+}
+
+func (db *RWDBOperation) UnlinkTeamsFromTournament(logger zerolog.Logger, ctx context.Context, tournamentID int64, tx tx.ITx) error {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	const query string = `DELETE FROM tournaments_teams_link WHERE tournament_id = $1;`
+
+	exec := poolOrTx(db.db, tx)
+
+	_, err := exec.Exec(timeout, query, tournamentID)
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed Exec UnlinkTeamsFromTournament")
+		return DecodeDatabaseError(err)
+	}
+
+	return nil
+}
+
+func (db *RWDBOperation) DeleteTournamentGames(logger zerolog.Logger, ctx context.Context, tournamentId int64, tx tx.ITx) error {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	const query string = `DELETE FROM games WHERE stage_id IN (SELECT id FROM tournament_stages WHERE tournament_id = $1);`
+
+	_, err := poolOrTx(db.db, tx).Exec(timeout, query, tournamentId)
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed Exec DeleteTournamentGames")
+		return DecodeDatabaseError(err)
+	}
+
+	return nil
+}
+
+func (db *RWDBOperation) DeleteTournamentStages(logger zerolog.Logger, ctx context.Context, tournamentID int64, tx tx.ITx) error {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	const query string = `DELETE FROM tournament_stages WHERE tournament_id = $1;`
+
+	_, err := poolOrTx(db.db, tx).Exec(timeout, query, tournamentID)
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed Exec DeleteTournamentStage")
 		return DecodeDatabaseError(err)
 	}
 
