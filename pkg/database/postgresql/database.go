@@ -109,6 +109,8 @@ type RDBOperationer interface {
 
 	GetCityList(logger zerolog.Logger, ctx context.Context, withDelete bool) ([]entities.City, error)
 	GetCityByBarId(logger zerolog.Logger, ctx context.Context, barID int64, cfg *config.DBConfig) (entities.City, error)
+	GetCityById(logger zerolog.Logger, ctx context.Context, cityID int64) (entities.City, error)
+	GetUserCity(logger zerolog.Logger, ctx context.Context, cityID int64) (entities.City, error)
 
 	GetUser(logger zerolog.Logger, ctx context.Context, id *int64, email *string, cfg *config.DBConfig) (*entities.User, error)
 	GetTournamentMasterByUserId(logger zerolog.Logger, ctx context.Context, userId int64, cfg *config.DBConfig) (entities.TournamentMaster, error)
@@ -186,6 +188,7 @@ type RDBOperationer interface {
 	GetTournamentById(logger zerolog.Logger, ctx context.Context, tournamentId int64, cfg *config.DBConfig) (entities.Tournament, error)
 	GetTournamentStage(logger zerolog.Logger, ctx context.Context, stageId int64, cfg *config.DBConfig) (entities.TournamentStage, error)
 	GetTournamentStageList(logger zerolog.Logger, ctx context.Context, tournamentId int64) ([]entities.TournamentStage, error)
+	GetTournamentList(logger zerolog.Logger, ctx context.Context, req entities.GetTournamentListRequest) ([]entities.TournamentShort, int64, error)
 
 	GetSuffix(logger zerolog.Logger, ctx context.Context, cfg *config.DBConfig) (string, error)
 }

@@ -3,6 +3,7 @@ package user
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -49,25 +50,37 @@ func (s *Service) Create(ctx context.Context, request entities.CreateUserRequest
 	return id, nil
 }
 
-func (s *Service) Login(ctx context.Context, user entities.User) (*int64, *string, *int64, *string, error) {
-	logger := s.logger.With().Interface("service", "Login").Logger()
+func (s *Service) Login(ctx context.Context, req *entities.LoginUserRequest) (*int64, *string, *int64, *string, *int64, error) {
+	logger := s.logger.With().Str("service", "Login").Logger()
 
-	_user, err := s.rdbOperations.GetUser(logger, ctx, nil, &user.Email, &s.config.RDB)
+	user, err := s.rdbOperations.GetUser(logger, ctx, nil, &req.Email, &s.config.RDB)
 	if err != nil {
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	}
 
-	err = crypt.ComparePasswordAndHash([]byte(user.Password), []byte(_user.Password), []byte(s.config.Secret.Salt))
-	if err != nil {
-		return nil, nil, nil, nil, err
+	var cityId *int64
+
+	// город можем получить пока толко у мастера, остальные роли в таблицу users_cities_links не заносятся
+	if user.Role != nil && user.Role.Name == cnst.TournamentMaster {
+		city, err := s.rdbOperations.GetUserCity(logger, ctx, user.ID)
+		if err != nil {
+			return nil, nil, nil, nil, nil, err
+		}
+
+		cityId = &city.ID
 	}
 
-	token, err := jwt.NewToken(*_user, s.config.Token.AccessTTL, s.config.Secret.Key)
+	err = crypt.ComparePasswordAndHash([]byte(req.Password), user.Password, []byte(s.config.Secret.Salt))
 	if err != nil {
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	}
 
-	return &_user.ID, &_user.Role.Name, &_user.Team.ID, &token, nil
+	token, err := jwt.NewToken(*user, s.config.Token.AccessTTL, s.config.Secret.Key)
+	if err != nil {
+		return nil, nil, nil, nil, nil, err
+	}
+
+	return &user.ID, &user.Role.Name, &user.Team.ID, &token, cityId, nil
 }
 
 func (s *Service) ChangePassword(ctx context.Context, userOld, userNew entities.User) error {
@@ -178,6 +191,15 @@ func (s *Service) GetUser(ctx context.Context, userID int64) (*entities.User, er
 
 func (s *Service) CreateTournamentMaster(ctx context.Context, request entities.CreateTournamentMasterRequest) (int64, error) {
 	logger := s.logger.With().Str("service", "CreateTournamentMaster").Logger()
+
+	// не даем создать мастера с удалённым городом
+	city, err := s.rdbOperations.GetCityById(logger, ctx, request.CityID)
+	if err != nil {
+		return 0, err
+	}
+	if city.DeletedAt != nil {
+		err = fmt.Errorf("город мастера \"%s\" удалён %v", city.Ru, city.DeletedAt.Format(time.DateOnly))
+	}
 
 	role, err := s.rdbOperations.GetRole(logger, ctx, nil, &request.RoleName)
 	if err != nil {

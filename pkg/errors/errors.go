@@ -19,7 +19,7 @@ const (
 	WrongPlaceIdError               = "некорректный id места игры"
 	ErrUserIdToken                  = "не удалось получить идентификатор пользователя из токена"
 	ErrRoleToken                    = "не удалось получить роли из токена"
-	ErrCityIdNotEqualMasterCityId   = "cityId должен быть равен cityId мастера по турнирам или не должен быть указан"
+	ErrCityIdNotEqualMasterCityId   = "cityId должен быть равен cityId мастера по турнирам"
 	ErrBarNotInMasterCity           = "бар находится не в городе мастера по турнирам"
 )
 

@@ -47,11 +47,11 @@ type LoginUserRequest struct {
 }
 
 type LoginUserResponse struct {
-	Message string `json:"message"`
-	ID      int64  `json:"id"`
-	Token   string `json:"token"`
-	Role    string `json:"role"`
-	TeamID  int64  `json:"teamId"`
+	ID     int64  `json:"id"`
+	Token  string `json:"token"`
+	Role   string `json:"role"`
+	TeamID *int64 `json:"teamId,omitempty"`
+	CityID *int64 `json:"cityId,omitempty"`
 }
 
 type ChangePasswordRequest struct {

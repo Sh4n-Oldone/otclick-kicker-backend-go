@@ -28,6 +28,7 @@ func NewServer(endpoints tournament.Endpoints, options []kithttp.ServerOption, c
 
 	r.Get("/tournaments/types", kithttp.NewServer(endpoints.GetTournamentTypeList, decodeGetTournamentTypeListRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 	r.Get("/tournaments/{id}/stages", kithttp.NewServer(endpoints.GetTournamentStageList, decodeIdRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.Get("/tournaments", kithttp.NewServer(endpoints.GetTournamentList, decodeGetTournamentListRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 
 	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdminTournamentMaster()).
 		Post("/tournaments", kithttp.NewServer(endpoints.Create, decodeCreateRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)

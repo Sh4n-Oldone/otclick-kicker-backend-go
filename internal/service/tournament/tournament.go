@@ -7,7 +7,6 @@ import (
 	"math/rand/v2"
 	"net/http"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/helpers/pointer"
-	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -57,45 +56,25 @@ func (s *Service) Create(ctx context.Context, request *entities.CreateTournament
 			return 0, err
 		}
 
-		if request.CityIDParam == "" {
-
-			request.CityID = master.City.ID
-
-		} else {
-
-			cityId, err := strconv.ParseInt(request.CityIDParam, 10, 64)
-			if err != nil {
-				err = errors.New(pkgerr.WrongParameterError + ": " + "cityId")
-				logger.Error().Err(err).Msg("Failed strconv.ParseInt in tournament.Create")
-				return 0, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
-			}
-
-			if cityId != master.City.ID {
-				err = errors.New(pkgerr.ErrCityIdNotEqualMasterCityId)
-				logger.Error().Err(err).Msg("cityIdParam not equal masterCityId in tournament.Create")
-				return 0, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
-			}
-
-			request.CityID = cityId
+		if request.CityID != nil && *request.CityID != master.City.ID {
+			err = errors.New(pkgerr.ErrCityIdNotEqualMasterCityId)
+			logger.Error().Err(err).Msg("cityIdParam not equal masterCityId in tournament.Create")
+			return 0, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 		}
 
+		if request.CityID == nil {
+			request.CityID = &master.City.ID
+		}
 	} else {
-		// если это суперюзер или админ(мидлвэар так настроен) то валидируем город
-		// валидация перенесена в сервисный слой из-за мастера
-		if request.CityIDParam == "" {
-			err = errors.New(pkgerr.EmptyParameterError + ": " + "cityId")
-			logger.Error().Err(err).Msg("CityId is required in tournament.Create")
-			return 0, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		if request.CityID == nil {
+			err = errors.New(pkgerr.EmptyParameterError + ": cityId")
+			logger.Error().Err(err).Msg("cityId is nil")
+			return 0, err
 		}
-
-		cityId, err := strconv.ParseInt(request.CityIDParam, 10, 64)
-		if err != nil {
-			err = errors.New(pkgerr.WrongParameterError + ": " + "cityId")
-			logger.Error().Err(err).Msg("Failed strconv.ParseInt in tournament.Create")
-			return 0, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		if request.Creator.Role.Name != constant.SuperUserRole || request.Creator.Role.Name != constant.AdminRole {
+			logger.Error().Err(err).Msgf("forbidden for this role: %s", request.Creator.Role.Name)
+			return 0, error_templates.New(err.Error(), err, codes.Unauthenticated, http.StatusForbidden)
 		}
-
-		request.CityID = cityId
 	}
 
 	for _, tId := range request.TeamsIDs {
@@ -104,7 +83,7 @@ func (s *Service) Create(ctx context.Context, request *entities.CreateTournament
 			return 0, err
 		}
 
-		if pointer.GetValue(team.CityId) != request.CityID {
+		if pointer.GetValue(team.CityId) != pointer.GetValue(request.CityID) {
 			err = fmt.Errorf("id города команды %s(%d) не совпадает с id города турнира(%d)", team.Name, pointer.GetValue(team.CityId), request.CityID)
 			return 0, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 		}
@@ -180,8 +159,8 @@ func (s *Service) Update(ctx context.Context, request *entities.UpdateTournament
 
 		// если это админы и турнир начат можно обновить минимальную инфу без перетасовки команд и изменения типа и сетки турнира
 		if haveFinishedStage(tournament.Stages) == true || haveStartedGames(games) == true || haveMatches == true {
-			if request.CityID != nil || request.Rules != nil || request.TeamsIDs != nil {
-				err = fmt.Errorf("турнир с завершенными или начатыми играми не могут обновляться поля: cityId, rules, teamIds")
+			if request.CityID != nil || request.Rules != nil || request.TeamsIDs != nil || request.PlayersIDs != nil {
+				err = fmt.Errorf("турнир с завершенными или начатыми играми не могут обновляться поля: cityId, rules, teamIds, playersIds")
 				logger.Error().Err(err).Msg("Failed tournament.Update: finished stage or started games	")
 				return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 			}
@@ -371,6 +350,17 @@ func (s *Service) GetTournamentStageList(ctx context.Context, id int64) ([]entit
 	return stageItems, nil
 }
 
+func (s *Service) GetTournamentList(ctx context.Context, request *entities.GetTournamentListRequest) ([]entities.TournamentShort, int64, error) {
+	logger := s.logger.With().Str("service", "GetTournamentList").Logger()
+
+	list, count, err := s.rdbOperations.GetTournamentList(logger, ctx, *request)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return list, count, nil
+}
+
 /*local methods*/
 
 func (s *Service) createRegular(ctx context.Context, request entities.CreateTournamentRequest, logger zerolog.Logger) (int64, error) {
@@ -386,7 +376,7 @@ func (s *Service) createRegular(ctx context.Context, request entities.CreateTour
 
 	team1IDs, team2IDs := helpers.GeneratePairs(request.TeamsIDs, int(request.Rules.Regular.BestOf))
 
-	err = s.rwdbOperations.CreateFutureTournamentStageGames(logger, ctx, stageId, request.CityID, team1IDs, team2IDs, &s.config.RWDB)
+	err = s.rwdbOperations.CreateFutureTournamentStageGames(logger, ctx, stageId, *request.CityID, team1IDs, team2IDs, &s.config.RWDB)
 	if err != nil {
 		return 0, err
 	}
@@ -406,7 +396,7 @@ func (s *Service) createRegularOneVsOne(ctx context.Context, request entities.Cr
 			return 0, err
 		}
 
-		if int64(pointer.GetValue(player.CityID)) != request.CityID {
+		if int64(pointer.GetValue(player.CityID)) != pointer.GetValue(request.CityID) {
 			err = fmt.Errorf("id города игрока %s(%d) не совпадает с id города турнира(%d)", pointer.GetValue(player.Name), pointer.GetValue(player.CityID), request.CityID)
 			return 0, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 		}
@@ -425,7 +415,7 @@ func (s *Service) createRegularOneVsOne(ctx context.Context, request entities.Cr
 		teamId, err := s.rwdbOperations.CreateTeam(logger, ctx, entities.CreateTeamRequest{
 			Name:      name,
 			ShortName: shortName,
-			CityId:    request.CityID,
+			CityId:    *request.CityID,
 		}, &s.config.RWDB)
 		if err != nil {
 			return 0, err
@@ -453,7 +443,7 @@ func (s *Service) createRegularOneVsOne(ctx context.Context, request entities.Cr
 
 	team1IDs, team2IDs := helpers.GeneratePairs(request.TeamsIDs, int(request.Rules.Regular.BestOf))
 
-	err = s.rwdbOperations.CreateFutureTournamentStageGames(logger, ctx, stageId, request.CityID, team1IDs, team2IDs, &s.config.RWDB)
+	err = s.rwdbOperations.CreateFutureTournamentStageGames(logger, ctx, stageId, *request.CityID, team1IDs, team2IDs, &s.config.RWDB)
 	if err != nil {
 		return 0, err
 	}
@@ -489,7 +479,7 @@ func (s *Service) createPlayoff(ctx context.Context, request entities.CreateTour
 	teams1Ids, teams2Ids := helpers.GeneratePlayoffPairs(request.TeamsIDs, int(request.Rules.PlayOff.BestOf))
 
 	// создаем игры первого этапа
-	if err = s.rwdbOperations.CreateFutureTournamentStageGamesTx(logger, ctx, stageId, request.CityID, teams1Ids, teams2Ids, tx); err != nil {
+	if err = s.rwdbOperations.CreateFutureTournamentStageGamesTx(logger, ctx, stageId, *request.CityID, teams1Ids, teams2Ids, tx); err != nil {
 		tx.Rollback(ctx)
 		return 0, err
 	}

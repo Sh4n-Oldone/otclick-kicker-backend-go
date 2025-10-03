@@ -45,8 +45,6 @@ func decodeCreateRequest(_ context.Context, r *http.Request) (interface{}, error
 	}
 	request.Creator.Role.Name = role
 
-	request.CityIDParam = r.URL.Query().Get("cityId")
-
 	_, err := io.Copy(buf, r.Body)
 	if err != nil {
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
@@ -178,4 +176,58 @@ func decodeIdRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	}
 
 	return tournamentId, nil
+}
+
+func decodeGetTournamentListRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	request := &entities.GetTournamentListRequest{}
+	buf := bytebufferpool.Get()
+	defer bytebufferpool.Put(buf)
+
+	queryParams := r.URL.Query()
+
+	cityIdParam := queryParams.Get("cityId")
+	if cityIdParam != "" {
+		cityId, err := strconv.ParseInt(cityIdParam, 10, 64)
+		if err != nil {
+			err = errors.New(pkgerr.WrongParameterError + ": cityId")
+			return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+
+		request.CityID = &cityId
+	}
+
+	seasonIdParam := queryParams.Get("seasonId")
+	if seasonIdParam != "" {
+		seasonId, err := strconv.ParseInt(seasonIdParam, 10, 64)
+		if err != nil {
+			err = errors.New(pkgerr.WrongParameterError + ": seasonId")
+			return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+
+		request.SeasonID = &seasonId
+	}
+
+	tournamentIdParam := queryParams.Get("id")
+	if tournamentIdParam != "" {
+		tournamentId, err := strconv.ParseInt(tournamentIdParam, 10, 64)
+		if err != nil {
+			err = errors.New(pkgerr.WrongParameterError + ": id")
+			return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+
+		request.TournamentID = &tournamentId
+	}
+
+	tournamentTypeIdParam := queryParams.Get("typeId")
+	if tournamentTypeIdParam != "" {
+		tournamentTypeId, err := strconv.ParseInt(tournamentTypeIdParam, 10, 64)
+		if err != nil {
+			err = errors.New(pkgerr.WrongParameterError + ": typeId")
+			return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+
+		request.TournamentTypeID = &tournamentTypeId
+	}
+
+	return request, nil
 }

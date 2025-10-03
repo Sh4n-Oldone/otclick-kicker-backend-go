@@ -55,7 +55,7 @@ func makeCreate(s tournament.IService) endpoint.Endpoint {
 
 		err = s.GetValidator().Struct(req)
 		if err != nil {
-			serviceLogger.Error().Err(err).Msg("Failed validation in team.makeCreate")
+			serviceLogger.Error().Err(err).Msg("Failed validation in makeCreate")
 			return nil, error_templates.WrapErrorEndpoint(
 				error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest), reqID)
 		}
@@ -88,7 +88,7 @@ func makeUpdate(s tournament.IService) endpoint.Endpoint {
 
 		err = s.GetValidator().Struct(req)
 		if err != nil {
-			serviceLogger.Error().Err(err).Msg("Failed validation in team.makeUpdate")
+			serviceLogger.Error().Err(err).Msg("Failed validation in makeUpdate")
 			return nil, error_templates.WrapErrorEndpoint(
 				error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest), reqID)
 		}
@@ -188,6 +188,44 @@ func makeGetTournamentStageList(s tournament.IService) endpoint.Endpoint {
 			Stages []entities.TournamentStageItem `json:"stages"`
 		}{
 			Stages: stages,
+		}, nil
+	}
+}
+
+func makeGetTournamentList(s tournament.IService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "makeGetTournamentList").Str("request_id", reqID).Logger()
+
+		req, err := helpers.CastRequest[*entities.GetTournamentListRequest](request)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed to cast request")
+			return nil, error_templates.WrapErrorEndpoint(
+				error_templates.New(pkgerr.FailedCastRequest, err, codes.InvalidArgument, http.StatusBadRequest), reqID)
+		}
+
+		err = s.GetValidator().Struct(req)
+		if err != nil {
+			if err != nil {
+				serviceLogger.Error().Err(err).Msg("Failed validation in makeGetTournamentList")
+				return nil, error_templates.WrapErrorEndpoint(
+					error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest), reqID)
+			}
+		}
+
+		tournaments, count, err := s.GetTournamentList(ctx, req)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed validation in makeGetTournamentList")
+			return nil, error_templates.WrapErrorEndpoint(
+				error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest), reqID)
+		}
+
+		return struct {
+			Count       int64                      `json:"count"`
+			Tournaments []entities.TournamentShort `json:"tournaments"`
+		}{
+			Count:       count,
+			Tournaments: tournaments,
 		}, nil
 	}
 }

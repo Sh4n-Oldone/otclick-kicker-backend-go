@@ -485,8 +485,6 @@ func (db *RDBOperation) GetTournamentStageList(logger zerolog.Logger, ctx contex
 	return stages, nil
 }
 
-// транзакционные методы
-
 func (db *RWDBOperation) CreateTournamentTx(logger zerolog.Logger, ctx context.Context, request entities.CreateTournamentRequest, tx tx.ITx) (int64, error) {
 	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
@@ -559,4 +557,47 @@ func (db *RWDBOperation) CreateTournamentStageTx(logger zerolog.Logger, ctx cont
 	}
 
 	return id, nil
+}
+
+func (db *RDBOperation) GetTournamentList(logger zerolog.Logger, ctx context.Context, req entities.GetTournamentListRequest) ([]entities.TournamentShort, int64, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	const query string = `
+		WITH filtered_tournaments AS (
+			SELECT t.id, t.type_id, t.name, t.rules, t.city_id, t.season_id,
+				   COUNT(*) OVER() as total_count
+			FROM tournaments t
+			WHERE 
+				($1::INTEGER IS NULL OR t.id = $1) AND
+				($2::INTEGER IS NULL OR t.city_id = $2) AND
+				($3::INTEGER IS NULL OR t.type_id = $3) AND
+				($4::INTEGER IS NULL OR t.season_id = $4)
+			ORDER BY t.id DESC
+		)
+		SELECT id, type_id, name, rules, city_id, season_id, total_count FROM filtered_tournaments;`
+
+	rows, err := db.db.Query(timeout, query, req.TournamentID, req.CityID, req.TournamentTypeID, req.SeasonID)
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed GetTournamentList")
+		return nil, 0, DecodeDatabaseError(err)
+	}
+	defer rows.Close()
+
+	var tournaments []entities.TournamentShort
+	var totalCount int64
+
+	for rows.Next() {
+		var t entities.TournamentShort
+
+		err = rows.Scan(&t.ID, &t.TypeID, &t.Name, &t.Rules, &t.CityID, &t.SeasonID, &totalCount)
+		if err != nil {
+			logger.Error().Err(err).Msg("Failed GetTournamentList")
+			return nil, 0, DecodeDatabaseError(err)
+		}
+
+		tournaments = append(tournaments, t)
+	}
+
+	return tournaments, totalCount, nil
 }
