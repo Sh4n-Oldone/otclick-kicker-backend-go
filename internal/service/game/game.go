@@ -1025,7 +1025,7 @@ func (s *Service) CreatePlayedTournamentGame(ctx context.Context, request *entit
 			if ok {
 				player1team1rate = value
 			} else {
-				resp, err := s.rdbOperations.GetPlayerRatingByTournamentId(logger, ctx, int64(player1team1ID), tournament.ID, &s.config.RDB)
+				resp, err := s.rdbOperations.GetPlayerRatingByTournamentId(logger, ctx, int64(player1team1ID), tournament.ID)
 				if err != nil {
 					var outputError *error_templates.OutputError
 					if errors.As(err, &outputError) {
@@ -1045,7 +1045,7 @@ func (s *Service) CreatePlayedTournamentGame(ctx context.Context, request *entit
 			if ok {
 				player1team2rate = value
 			} else {
-				resp, err := s.rdbOperations.GetPlayerRatingByTournamentId(logger, ctx, int64(player1team2ID), tournament.ID, &s.config.RDB)
+				resp, err := s.rdbOperations.GetPlayerRatingByTournamentId(logger, ctx, int64(player1team2ID), tournament.ID)
 				if err != nil {
 					var outputError *error_templates.OutputError
 					if errors.As(err, &outputError) {
@@ -1067,7 +1067,7 @@ func (s *Service) CreatePlayedTournamentGame(ctx context.Context, request *entit
 					if ok {
 						player2team1rate = value
 					} else {
-						resp, err := s.rdbOperations.GetPlayerRatingByTournamentId(logger, ctx, int64(player2team1ID), tournament.ID, &s.config.RDB)
+						resp, err := s.rdbOperations.GetPlayerRatingByTournamentId(logger, ctx, int64(player2team1ID), tournament.ID)
 						if err != nil {
 							var outputError *error_templates.OutputError
 							if errors.As(err, &outputError) {
@@ -1091,7 +1091,7 @@ func (s *Service) CreatePlayedTournamentGame(ctx context.Context, request *entit
 					if ok {
 						player2team2rate = value
 					} else {
-						resp, err := s.rdbOperations.GetPlayerRatingByTournamentId(logger, ctx, int64(player2team2ID), tournament.ID, &s.config.RDB)
+						resp, err := s.rdbOperations.GetPlayerRatingByTournamentId(logger, ctx, int64(player2team2ID), tournament.ID)
 						if err != nil {
 							var outputError *error_templates.OutputError
 							if errors.As(err, &outputError) {
@@ -1301,7 +1301,7 @@ func (s *Service) UpdatePlayedTournamentGame(ctx context.Context, request *entit
 	}
 
 	for playerID, value := range oldRates {
-		rateValue, err := s.rdbOperations.GetPlayerRatingByTournamentId(logger, ctx, int64(playerID), tournament.ID, &s.config.RDB)
+		rateValue, err := s.rdbOperations.GetPlayerRatingByTournamentId(logger, ctx, int64(playerID), tournament.ID)
 		if err != nil {
 			return err
 		}
@@ -1323,7 +1323,7 @@ func (s *Service) UpdatePlayedTournamentGame(ctx context.Context, request *entit
 		if ok {
 			player1team1rate = val
 		} else {
-			resp, err := s.rdbOperations.GetPlayerRatingByTournamentId(logger, ctx, int64(player1team1ID), tournament.ID, &s.config.RDB)
+			resp, err := s.rdbOperations.GetPlayerRatingByTournamentId(logger, ctx, int64(player1team1ID), tournament.ID)
 			if err != nil {
 				var outputError *error_templates.OutputError
 				if errors.As(err, &outputError) {
@@ -1343,7 +1343,7 @@ func (s *Service) UpdatePlayedTournamentGame(ctx context.Context, request *entit
 		if ok {
 			player1team2rate = val
 		} else {
-			resp, err := s.rdbOperations.GetPlayerRatingByTournamentId(logger, ctx, int64(player1team2ID), tournament.ID, &s.config.RDB)
+			resp, err := s.rdbOperations.GetPlayerRatingByTournamentId(logger, ctx, int64(player1team2ID), tournament.ID)
 			if err != nil {
 				var outputError *error_templates.OutputError
 				if errors.As(err, &outputError) {
@@ -1365,7 +1365,7 @@ func (s *Service) UpdatePlayedTournamentGame(ctx context.Context, request *entit
 				if ok {
 					player2team1rate = val
 				} else {
-					resp, err := s.rdbOperations.GetPlayerRatingByTournamentId(logger, ctx, int64(player2team1ID), tournament.ID, &s.config.RDB)
+					resp, err := s.rdbOperations.GetPlayerRatingByTournamentId(logger, ctx, int64(player2team1ID), tournament.ID)
 					if err != nil {
 						var outputError *error_templates.OutputError
 						if errors.As(err, &outputError) {
@@ -1389,7 +1389,7 @@ func (s *Service) UpdatePlayedTournamentGame(ctx context.Context, request *entit
 				if ok {
 					player2team2rate = val
 				} else {
-					resp, err := s.rdbOperations.GetPlayerRatingByTournamentId(logger, ctx, int64(player2team2ID), tournament.ID, &s.config.RDB)
+					resp, err := s.rdbOperations.GetPlayerRatingByTournamentId(logger, ctx, int64(player2team2ID), tournament.ID)
 					if err != nil {
 						var outputError *error_templates.OutputError
 						if errors.As(err, &outputError) {
@@ -1600,7 +1600,7 @@ func (s *Service) DeletePlayedTournamentGame(ctx context.Context, request *entit
 	}
 
 	for playerID, value := range oldRate {
-		rateValue, err := s.rdbOperations.GetPlayerRatingByTournamentId(logger, ctx, int64(playerID), tournament.ID, &s.config.RWDB)
+		rateValue, err := s.rdbOperations.GetPlayerRatingByTournamentId(logger, ctx, int64(playerID), tournament.ID)
 		if err != nil {
 			return err
 		}

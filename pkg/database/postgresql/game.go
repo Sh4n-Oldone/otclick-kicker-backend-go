@@ -157,10 +157,6 @@ func (db *RWDBOperation) DeleteGame(logger zerolog.Logger, ctx context.Context, 
 	return nil
 }
 
-func (db *RWDBOperation) DeleteGameTx(logger zerolog.Logger, ctx context.Context, gameID int64, tx tx.ITx) {
-
-}
-
 func (db *RDBOperation) GetGame(logger zerolog.Logger, ctx context.Context, gameID int) (entities.GetGameResponse, error) {
 	const query string = `
 	SELECT 

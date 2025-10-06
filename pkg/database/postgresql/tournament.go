@@ -569,3 +569,41 @@ func (db *RDBOperation) GetTournamentList(logger zerolog.Logger, ctx context.Con
 
 	return tournaments, totalCount, nil
 }
+
+func (db *RDBOperation) GetTournamentListByPlayerID(logger zerolog.Logger, ctx context.Context, playerId int64) ([]entities.PlayersTournament, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	const query string = `
+		SELECT tts.id, tts.name, tts.city_id, r.value
+  		FROM public.players p
+  			JOIN public.players_teams_links ptl ON p.id = ptl.player_id
+  			JOIN public.teams t ON ptl.team_id = t.id
+  			JOIN public.tournaments_teams_link tll ON t.id = tll.team_id
+  			JOIN public.tournaments tts ON tll.tournament_id = tts.id
+  			LEFT JOIN public.tournament_rating r ON p.id = r.player_id AND r.tournament_id = tts.id 
+  		WHERE p.id = $1`
+
+	rows, err := db.db.Query(timeout, query, playerId)
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed GetTournamentListByPlayerID")
+		return nil, DecodeDatabaseError(err)
+	}
+	defer rows.Close()
+
+	var tournaments []entities.PlayersTournament
+
+	for rows.Next() {
+		var t entities.PlayersTournament
+
+		err = rows.Scan(&t.ID, &t.Name, &t.CityID, &t.Rating)
+		if err != nil {
+			logger.Error().Err(err).Msg("Failed GetTournamentListByPlayerID")
+			return nil, DecodeDatabaseError(err)
+		}
+
+		tournaments = append(tournaments, t)
+	}
+
+	return tournaments, nil
+}
