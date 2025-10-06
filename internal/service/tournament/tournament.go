@@ -1217,31 +1217,6 @@ func (s *Service) checkPlayersCityIds(ctx context.Context, logger zerolog.Logger
 	return nil
 }
 
-func (s *Service) rewriteGamesTeamsLinks(ctx context.Context, logger zerolog.Logger, newReq entities.UpdateTournamentRequest, tournament entities.Tournament, finalTeamIds []int64) error {
-	// удаляем связь турнира с командами и игры турнира
-	err := s.rwdbOperations.DeleteTournamentGamesTeamLinks(logger, ctx, newReq.ID, nil)
-	if err != nil {
-		return err
-	}
-
-	// делаем новые пары
-	team1IDs, team2IDs := helpers.GeneratePairs(finalTeamIds, int(newReq.Rules.Regular.BestOf))
-
-	// создаем новые игры
-	err = s.rwdbOperations.CreateFutureTournamentStageGames(logger, ctx, tournament.Stages[indexZero].ID, *newReq.CityID, team1IDs, team2IDs, nil)
-	if err != nil {
-		return err
-	}
-
-	// обновляем связи турнира и новых команд
-	err = s.rwdbOperations.UpdateTournamentTeamsLinks(logger, ctx, finalTeamIds, newReq.ID, nil)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 /*local functions*/
 
 func validateRulesTypesIds(rules entities.TournamentRule, typeId int64, teamsIds, playersIds []int64) error {

@@ -180,7 +180,7 @@ type RDBOperationer interface {
 	GetExtraPointsListByTeamAndLeagueId(logger zerolog.Logger, ctx context.Context, teamId, leagueId int64) ([]entities.ExtraPoints, error)
 	GetExtraPointsById(logger zerolog.Logger, ctx context.Context, extraPointsId int64) (entities.ExtraPoints, error)
 
-	GetSeasonList(logger zerolog.Logger, ctx context.Context) ([]entities.Season, error)
+	GetSeasonList(logger zerolog.Logger, ctx context.Context, req *entities.GetSeasonListRequest) ([]entities.Season, error)
 
 	GetTeamById(logger zerolog.Logger, ctx context.Context, teamID int64, tx tx.ITx) (entities.TeamV2, error)
 	GetLeagueListByTeamId(logger zerolog.Logger, ctx context.Context, teamID int64) ([]entities.LeagueShort, error)

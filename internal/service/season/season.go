@@ -6,10 +6,10 @@ import (
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 )
 
-func (s *Service) GetList(ctx context.Context) ([]entities.Season, error) {
-	logger := s.logger.With().Interface("service", "GetList").Logger()
+func (s *Service) GetList(ctx context.Context, req *entities.GetSeasonListRequest) ([]entities.Season, error) {
+	logger := s.logger.With().Str("service", "GetList").Logger()
 
-	seasons, err := s.rdbOperations.GetSeasonList(logger, ctx)
+	seasons, err := s.rdbOperations.GetSeasonList(logger, ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -18,7 +18,7 @@ func (s *Service) GetList(ctx context.Context) ([]entities.Season, error) {
 }
 
 func (s *Service) Create(ctx context.Context, entity entities.Season) (*int64, error) {
-	logger := s.logger.With().Interface("service", "Create").Logger()
+	logger := s.logger.With().Str("service", "Create").Logger()
 
 	id, err := s.rwdbOperations.CreateSeason(logger, ctx, entity)
 	if err != nil {
@@ -29,7 +29,7 @@ func (s *Service) Create(ctx context.Context, entity entities.Season) (*int64, e
 }
 
 func (s *Service) Update(ctx context.Context, entity entities.UpdateSeasonRequest) error {
-	logger := s.logger.With().Interface("service", "Update").Logger()
+	logger := s.logger.With().Str("service", "Update").Logger()
 
 	err := s.rwdbOperations.UpdateSeason(logger, ctx, entity)
 	if err != nil {
@@ -40,7 +40,7 @@ func (s *Service) Update(ctx context.Context, entity entities.UpdateSeasonReques
 }
 
 func (s *Service) Delete(ctx context.Context, id int64) (bool, error) {
-	logger := s.logger.With().Interface("service", "DeleteSeason").Logger()
+	logger := s.logger.With().Str("service", "Delete").Logger()
 
 	res, err := s.rwdbOperations.DeleteSeason(logger, ctx, id)
 	if err != nil {
