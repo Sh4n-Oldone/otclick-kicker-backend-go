@@ -117,7 +117,7 @@ func (s *Service) Update(ctx context.Context, player entities.UpdatePlayerReques
 }
 
 func (s *Service) Find(ctx context.Context, player entities.FindPlayersRequest) (entities.FindPlayersResponse, error) {
-	logger := s.logger.With().Interface("service", "player.Find").Logger()
+	logger := s.logger.With().Str("service", "player.Find").Logger()
 	timeout, cancel := context.WithTimeout(ctx, s.config.RDB.MaxIdleConnectionTimeout)
 	defer cancel()
 
@@ -278,8 +278,11 @@ func buildFullPlayer(player entities.Player, pastMatches []entities.MatchV2, lea
 	for _, match := range pastMatches {
 		var stat leagueStat
 		stat.playersGames = make(map[int]bool)
-		if entry, ok := leagueStats[*match.LeagueID]; ok {
-			stat = entry
+
+		if match.LeagueID != nil {
+			if entry, ok := leagueStats[*match.LeagueID]; ok {
+				stat = entry
+			}
 		}
 
 		// заполняем игры игрока
@@ -303,11 +306,13 @@ func buildFullPlayer(player entities.Player, pastMatches []entities.MatchV2, lea
 	leaguePlayedGames := make(map[int]int)
 	for _, game := range pastGames {
 		games := 0
-		if entry, ok := leaguePlayedGames[*game.LeagueID]; ok {
-			games = entry
+		if game.LeagueID != nil {
+			if entry, ok := leaguePlayedGames[*game.LeagueID]; ok {
+				games = entry
+			}
+			games++
+			leaguePlayedGames[*game.LeagueID] = games
 		}
-		games++
-		leaguePlayedGames[*game.LeagueID] = games
 	}
 
 	leagueItems := make([]entities.LeagueItem, len(leagues))

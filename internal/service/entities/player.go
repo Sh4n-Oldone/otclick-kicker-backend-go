@@ -22,6 +22,13 @@ type PlayersLeague struct {
 	Rating *int
 }
 
+type PlayersTournament struct {
+	ID     int64
+	Name   string
+	CityID int64
+	Rating *int64
+}
+
 type CreatePlayerRequest struct {
 	Name         *string `json:"name,omitempty" validate:"omitempty,min=1,max=64"`
 	SecondName   *string `json:"secondName,omitempty" validate:"omitempty,min=1,max=64"`
