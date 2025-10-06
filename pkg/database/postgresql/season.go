@@ -2,7 +2,7 @@ package postgresql
 
 import (
 	"context"
-	stderr "errors"
+	"errors"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog"
@@ -10,8 +10,11 @@ import (
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 )
 
-func (db *RDBOperation) GetSeasonList(logger zerolog.Logger, ctx context.Context) ([]entities.Season, error) {
-	rows, err := db.db.Query(ctx, queryGetSeasonList)
+func (db *RDBOperation) GetSeasonList(logger zerolog.Logger, ctx context.Context, req *entities.GetSeasonListRequest) ([]entities.Season, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	rows, err := db.db.Query(timeout, queryGetSeasonList, req.ID, req.CityID)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to GetSeasonList")
 		return nil, DecodeDatabaseError(err)
@@ -36,9 +39,12 @@ func (db *RDBOperation) GetSeasonList(logger zerolog.Logger, ctx context.Context
 }
 
 func (db *RWDBOperation) CreateSeason(logger zerolog.Logger, ctx context.Context, season entities.Season) (*int64, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
 	var id int64
 
-	err := db.db.QueryRow(ctx, queryCreateSeason, season.Name, season.Description).Scan(&id)
+	err := db.db.QueryRow(timeout, queryCreateSeason, season.Name, season.Description).Scan(&id)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.CreateSeason")
 		return nil, DecodeDatabaseError(err)
@@ -48,7 +54,10 @@ func (db *RWDBOperation) CreateSeason(logger zerolog.Logger, ctx context.Context
 }
 
 func (db *RWDBOperation) UpdateSeason(logger zerolog.Logger, ctx context.Context, req entities.UpdateSeasonRequest) error {
-	res, err := db.db.Exec(ctx, queryUpdateSeason, req.ID, req.Name, req.Description)
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	res, err := db.db.Exec(timeout, queryUpdateSeason, req.ID, req.Name, req.Description)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.UpdateSeason")
 		return DecodeDatabaseError(err)
@@ -64,35 +73,40 @@ func (db *RWDBOperation) UpdateSeason(logger zerolog.Logger, ctx context.Context
 }
 
 func (db *RWDBOperation) DeleteSeason(logger zerolog.Logger, ctx context.Context, id int64) (bool, error) {
-	tx, err := db.db.Begin(ctx)
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	tx, err := db.db.Begin(timeout)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to delete season record")
 		return false, DecodeDatabaseError(err)
 	}
 
 	// убираем сезон из таблицы лиг
-	_, err = db.db.Exec(ctx, queryDeleteLeagueSeasonId, id)
+	_, err = db.db.Exec(timeout, queryDeleteLeagueSeasonId, id)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to delete season id from leagues")
-		_ = tx.Rollback(ctx)
+		_ = tx.Rollback(timeout)
 		return false, DecodeDatabaseError(err)
 	}
 
-	result, err := db.db.Exec(ctx, queryDeleteSeason, id)
+	result, err := db.db.Exec(timeout, queryDeleteSeason, id)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to delete season record")
+		_ = tx.Rollback(timeout)
 		return false, DecodeDatabaseError(err)
 	}
 
 	if result.RowsAffected() == 0 {
 		logger.Error().Err(err).Msg("failed to get affected rows")
-		return false, stderr.New("Failed to delete season, it does not exist")
+		_ = tx.Rollback(timeout)
+		return false, errors.New("failed to delete season, it does not exist")
 	}
 
-	err = tx.Commit(ctx)
+	err = tx.Commit(timeout)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to delete season record")
-		_ = tx.Rollback(ctx)
+		_ = tx.Rollback(timeout)
 		return false, DecodeDatabaseError(err)
 	}
 

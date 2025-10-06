@@ -11,7 +11,7 @@ import (
 )
 
 type IService interface {
-	GetList(ctx context.Context) ([]entities.Season, error)
+	GetList(ctx context.Context, req *entities.GetSeasonListRequest) ([]entities.Season, error)
 	Create(ctx context.Context, entity entities.Season) (*int64, error)
 	Update(ctx context.Context, entity entities.UpdateSeasonRequest) error
 	Delete(ctx context.Context, id int64) (bool, error)

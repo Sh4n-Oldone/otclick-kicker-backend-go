@@ -28,3 +28,8 @@ type DeleteSeasonRequest struct {
 type GetSeasonResponse struct {
 	SeasonList []Season `json:"seasonList"`
 }
+
+type GetSeasonListRequest struct {
+	ID     *int64 `json:"id"`
+	CityID *int64 `json:"cityId"`
+}

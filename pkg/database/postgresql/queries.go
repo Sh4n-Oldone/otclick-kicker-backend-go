@@ -565,7 +565,22 @@ const (
 		    season_id = null
 		WHERE season_id = $1;`
 
-	queryGetSeasonList string = `SELECT id, name, description FROM seasons;`
+	queryGetSeasonList string = `
+		SELECT DISTINCT s.id, s.name, s.description 
+		FROM seasons s
+		WHERE 
+			($1::INT IS NULL OR s.id = $1::INT)
+			AND (
+				$2::INT IS NULL 
+				OR EXISTS (
+					SELECT 1 FROM tournaments t 
+					WHERE t.season_id = s.id AND t.city_id = $2::INT
+				)
+				OR EXISTS (
+					SELECT 1 FROM leagues l 
+					WHERE l.season_id = s.id AND l.city_id = $2::INT
+				)
+			);`
 
 	queryDeleteFutureGame string = `DELETE FROM public.games WHERE id = $1 AND date > NOW();`
 )

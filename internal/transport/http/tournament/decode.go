@@ -180,8 +180,6 @@ func decodeIdRequest(_ context.Context, r *http.Request) (interface{}, error) {
 
 func decodeGetTournamentListRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	request := &entities.GetTournamentListRequest{}
-	buf := bytebufferpool.Get()
-	defer bytebufferpool.Put(buf)
 
 	queryParams := r.URL.Query()
 
