@@ -1,5 +1,11 @@
 package helpers
 
+import (
+	"strconv"
+	"strings"
+	"unicode"
+)
+
 func GeneratePairs[T int64 | int | int32 | int16](teamIDs []T, bestOf int) (team1IDs, team2IDs []T) {
 	size := len(teamIDs)
 	if size < 2 || bestOf < 1 {
@@ -67,4 +73,41 @@ func IsPowTwo[T int64 | int | int32 | int16 | int8 | uint64 | uint | uint32 | ui
 		return false
 	}
 	return n&(n-1) == 0
+}
+
+func BuildTeamName(name, secondName *string, lastName string, id int64) (string, string) {
+	firstRune := func(s string) string {
+		var rr rune
+		for _, r := range s {
+			if unicode.IsLetter(r) {
+				rr = r
+				return string(unicode.ToUpper(rr))
+			} else {
+				rr = r
+				return string(rr)
+			}
+		}
+		return string(rr)
+	}
+
+	var nameArr []string
+	var letters []string
+
+	if name != nil {
+		nameArr = append(nameArr, *name)
+		letters = append(letters, firstRune(*name))
+	}
+
+	if secondName != nil {
+		nameArr = append(nameArr, *secondName)
+		letters = append(letters, firstRune(*secondName))
+	}
+
+	nameArr = append(nameArr, lastName)
+	letters = append(letters, firstRune(lastName))
+
+	fullName := strings.Join(nameArr, " ") + "+" + strconv.FormatInt(id, 10)
+	short := strings.Join(letters, "") + "+" + strconv.FormatInt(id, 10)
+
+	return fullName, short
 }

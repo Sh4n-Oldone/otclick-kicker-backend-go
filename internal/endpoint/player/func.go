@@ -2,6 +2,8 @@ package player
 
 import (
 	"context"
+	"google.golang.org/grpc/codes"
+	"net/http"
 
 	"github.com/go-kit/kit/endpoint"
 
@@ -174,5 +176,31 @@ func makeFindPlayers(s player.IService) endpoint.Endpoint {
 		}
 
 		return playersResponse, nil
+	}
+}
+
+func makeGetTournamentPlayerList(s player.IService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "player.makeFindPlayers").Str("request_id", reqID).Logger()
+
+		req, err := helpers.CastRequest[*entities.GetTournamentPlayerListRequest](request)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed to cast request")
+			return nil, error_templates.WrapErrorEndpoint(
+				error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest), reqID)
+		}
+
+		tournamentPlayers, err := s.GetTournamentPlayerList(ctx, req)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed to player.GetTournamentPlayerList")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		return struct {
+			Players []entities.TournamentPlayerItem `json:"players"`
+		}{
+			Players: tournamentPlayers,
+		}, nil
 	}
 }

@@ -19,6 +19,7 @@ type IService interface {
 	Find(ctx context.Context, player entities.FindPlayersRequest) (entities.FindPlayersResponse, error)
 	Get(ctx context.Context, id int) (entities.FullPlayerV2, error)
 	GetByTeamID(ctx context.Context, teamID int) ([]entities.Player, error)
+	GetTournamentPlayerList(ctx context.Context, req *entities.GetTournamentPlayerListRequest) ([]entities.TournamentPlayerItem, error)
 
 	GetLogger() *zerolog.Logger
 	GetValidator() *validator.Validate

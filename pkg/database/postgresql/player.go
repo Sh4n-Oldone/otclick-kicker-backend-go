@@ -4,11 +4,10 @@ import (
 	"context"
 	"errors"
 	"github.com/rs/zerolog"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql/tx"
-
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/constant"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql/tx"
 	pkgerr "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/helpers/pointer"
 )
@@ -311,4 +310,42 @@ func (db *RDBOperation) GetPlayerIDsByLeagueID(logger zerolog.Logger, ctx contex
 	}
 
 	return iDs, nil
+}
+
+func (db *RDBOperation) GetTournamentPlayers(ctx context.Context, logger zerolog.Logger, tournamentId int64, withDeleted bool, tx tx.ITx) ([]entities.TournamentPlayer, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	const query string = `
+		SELECT p.id, p.name, p.second_name, p.last_name, p.active_player, p.avatar, p.city_id 
+		FROM public.players p
+			JOIN public.players_teams_links ptl ON p.id = ptl.player_id 
+			JOIN public.teams t ON ptl.team_id = t.id
+			JOIN public.tournaments_teams_link ttl ON t.id = ttl.team_id
+			JOIN public.tournaments tt ON tt.id = ttl.tournament_id
+		WHERE tt.id = $1 
+		    AND ($2::BOOLEAN = true OR p.deleted_at IS NULL);`
+
+	rows, err := poolOrTx(db.db, tx).Query(timeout, query, tournamentId, withDeleted)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to postgresql.GetTournamentPlayers")
+		return nil, DecodeDatabaseError(err)
+	}
+	defer rows.Close()
+
+	var players []entities.TournamentPlayer
+
+	for rows.Next() {
+		var p entities.TournamentPlayer
+
+		err = rows.Scan(&p.ID, &p.Name, &p.SecondName, &p.LastName, &p.IsActive, &p.Avatar, &p.CityID)
+		if err != nil {
+			logger.Error().Err(err).Msg("failed to postgresql.GetTournamentPlayers")
+			return nil, DecodeDatabaseError(err)
+		}
+
+		players = append(players, p)
+	}
+
+	return players, nil
 }

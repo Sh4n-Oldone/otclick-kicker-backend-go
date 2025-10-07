@@ -28,6 +28,7 @@ func NewServer(endpoints player.Endpoints, options []kithttp.ServerOption, cfg *
 
 	//Actual
 	r.Get("/players/find", kithttp.NewServer(endpoints.FindPlayers, decodeFindPlayersRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.Get("/tournaments/{id}/players", kithttp.NewServer(endpoints.GetTournamentPlayerList, decodeGetTournamentPlayerListRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 	r.Get("/players/{id}", kithttp.NewServer(endpoints.Get, decodeGetRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 	r.Get("/players/team/{teamId}", kithttp.NewServer(endpoints.GetByTeam, decodeGetByTeamIDRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 

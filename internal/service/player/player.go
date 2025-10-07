@@ -3,12 +3,12 @@ package player
 import (
 	"context"
 	"errors"
-	"net/http"
-	"slices"
-	"strconv"
-
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
+	"net/http"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/helpers"
+	"slices"
+	"strconv"
 
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/constant"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
@@ -263,6 +263,64 @@ func (s *Service) GetByTeamID(ctx context.Context, teamID int) ([]entities.Playe
 	}
 
 	return players, nil
+}
+
+func (s *Service) GetTournamentPlayerList(ctx context.Context, req *entities.GetTournamentPlayerListRequest) ([]entities.TournamentPlayerItem, error) {
+	logger := s.logger.With().Str("service", "player.GetTournamentPlayerList").Logger()
+
+	items := make([]entities.TournamentPlayerItem, 0, 8)
+
+	players, err := s.rdbOperations.GetTournamentPlayers(ctx, logger, req.TournamentID, req.WithDeleted, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, p := range players {
+
+		var selfTeam *entities.TournamentTeam
+		otherTeams := make([]entities.TournamentTeam, 0)
+
+		selfTeamName, _ := helpers.BuildTeamName(p.Name, p.SecondName, p.LastName, p.ID)
+
+		teams, err := s.rdbOperations.GetTeamsByPlayerID(logger, ctx, int(p.ID), nil)
+		if err != nil {
+			return nil, err
+		}
+
+		haveSelfTeam := false
+
+		for _, team := range teams {
+			if team.Name == selfTeamName && !haveSelfTeam {
+
+				selfTeam = &entities.TournamentTeam{
+					ID:        int64(team.ID),
+					Name:      team.Name,
+					ShortName: team.ShortName,
+					CityID:    int64(team.CityID),
+					Avatar:    team.Avatar,
+				}
+
+				haveSelfTeam = true
+
+			} else {
+				otherTeams = append(otherTeams, entities.TournamentTeam{
+					ID:        int64(team.ID),
+					Name:      team.Name,
+					ShortName: team.ShortName,
+					CityID:    int64(team.CityID),
+					Avatar:    team.Avatar,
+				})
+			}
+		}
+
+		items = append(items, entities.TournamentPlayerItem{
+			Player:     p,
+			SelfTeam:   selfTeam,
+			OtherTeams: otherTeams,
+		})
+	}
+
+	return items, nil
 }
 
 func buildFullPlayer(player entities.Player, pastMatches []entities.MatchV2, leagues []entities.PlayersLeague, teams []entities.TeamItem, pastGames []entities.GameShort) entities.FullPlayerV2 {
