@@ -247,3 +247,25 @@ func decodeGetByTeamIDRequest(_ context.Context, r *http.Request) (interface{}, 
 
 	return request, nil
 }
+
+func decodeGetTournamentPlayerListRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	req := &entities.GetTournamentPlayerListRequest{}
+
+	idParam := chi.URLParam(r, "id")
+	if idParam == "" {
+		err := errors.New(pkgerr.EmptyParameterError + ": id")
+		return nil, error_templates.New(err.Error(), err, http.StatusBadRequest, http.StatusBadRequest)
+	}
+
+	id, err := strconv.ParseInt(idParam, 10, 64)
+	if err != nil || id <= 0 {
+		err = errors.New(pkgerr.WrongParameterError + ": id")
+		return nil, error_templates.New(err.Error(), err, http.StatusBadRequest, http.StatusBadRequest)
+	}
+
+	req.TournamentID = id
+
+	req.WithDeleted = r.URL.Query().Get("withDeleted") == "true"
+
+	return req, nil
+}

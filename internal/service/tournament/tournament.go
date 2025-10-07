@@ -4,11 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math/rand/v2"
 	"net/http"
 	"strings"
 	"time"
-	"unicode"
 
 	"github.com/rs/zerolog"
 	"google.golang.org/grpc/codes"
@@ -402,6 +400,11 @@ func (s *Service) createRegular(ctx context.Context, request entities.CreateTour
 }
 
 func (s *Service) createRegularOneVsOne(ctx context.Context, request entities.CreateTournamentRequest, logger zerolog.Logger) (int64, error) {
+	if len(request.PlayersIDs) == 0 {
+		err := errors.New("игроки обязательны")
+		return 0, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
 	teamIds := make([]int64, 0, len(request.TeamsIDs))
 
 	players := make([]entities.Player, 0, len(request.PlayersIDs))
@@ -441,9 +444,9 @@ func (s *Service) createRegularOneVsOne(ctx context.Context, request entities.Cr
 		// если среди всех команд есть с таким же названием как у игрока,
 		// то проверяем сколько игроков в ней, если 1 - то считаем что она подходит и используем ее не создавая новую
 		for _, team := range teams {
-			name, _ := buildTeamName(p, "")
+			name, _ := helpers.BuildTeamName(p.Name, p.SecondName, p.LastName, int64(p.ID))
 
-			if strings.Contains(team.Name, name) {
+			if team.Name == name {
 				playersLoc, err := s.rdbOperations.GetPlayersByTeamID(logger, ctx, team.ID, tx)
 				if err != nil {
 					tx.Rollback(ctx)
@@ -465,13 +468,7 @@ func (s *Service) createRegularOneVsOne(ctx context.Context, request entities.Cr
 			// если такой команды не нашлось, создаем новую по имени
 		} else {
 
-			suffix, err := s.rdbOperations.GetSuffix(logger, ctx, tx)
-			if err != nil {
-				tx.Rollback(ctx)
-				return 0, err
-			}
-
-			name, shortName := buildTeamName(p, suffix)
+			name, shortName := helpers.BuildTeamName(p.Name, p.SecondName, p.LastName, int64(p.ID))
 
 			teamId, err := s.rwdbOperations.CreateTeam(logger, ctx, entities.CreateTeamRequest{
 				Name:      name,
@@ -755,7 +752,7 @@ func (s *Service) updateRegularOneVsOne(ctx context.Context, logger zerolog.Logg
 			// если среди всех команд есть с таким же названием как у игрока,
 			// то проверяем сколько игроков в ней, если 1 - то считаем что она подходит и используем ее не создавая новую
 			for _, team := range teams {
-				name, _ := buildTeamName(p, "")
+				name, _ := helpers.BuildTeamName(p.Name, p.SecondName, p.LastName, int64(p.ID))
 
 				if strings.Contains(team.Name, name) {
 					playersLoc, err := s.rdbOperations.GetPlayersByTeamID(logger, ctx, team.ID, tx)
@@ -778,18 +775,13 @@ func (s *Service) updateRegularOneVsOne(ctx context.Context, logger zerolog.Logg
 
 				// если такой команды не нашлось, создаем новую по имени
 			} else {
-				suffix, err := s.rdbOperations.GetSuffix(logger, ctx, tx)
-				if err != nil {
-					tx.Rollback(ctx)
-					return err
-				}
 
-				name, shortName := buildTeamName(p, suffix)
+				name, shortName := helpers.BuildTeamName(p.Name, p.SecondName, p.LastName, int64(p.ID))
 
 				teamId, err := s.rwdbOperations.CreateTeam(logger, ctx, entities.CreateTeamRequest{
 					Name:      name,
 					ShortName: shortName,
-					CityId:    *req.CityID,
+					CityId:    *newReq.CityID,
 				}, tx)
 				if err != nil {
 					tx.Rollback(ctx)
@@ -1314,40 +1306,4 @@ func haveStartedGames(games []entities.TournamentGame) bool {
 		}
 	}
 	return false
-}
-
-func buildTeamName(player entities.Player, suffix string) (string, string) {
-	firstRune := func(s string) string {
-		bukvy := []rune{'Й', 'Ы', 'Ъ', 'Ь'}
-
-		for _, r := range s {
-			if unicode.IsLetter(r) {
-				return string(unicode.ToUpper(r))
-			} else {
-				return string(bukvy[rand.IntN(len(bukvy))])
-			}
-		}
-		return string(bukvy[rand.IntN(len(bukvy))])
-	}
-
-	var nameArr []string
-	var letters []string
-
-	if player.Name != nil {
-		nameArr = append(nameArr, *player.Name)
-		letters = append(letters, firstRune(*player.Name))
-	}
-
-	if player.SecondName != nil {
-		nameArr = append(nameArr, *player.SecondName)
-		letters = append(letters, firstRune(*player.SecondName))
-	}
-
-	nameArr = append(nameArr, player.LastName)
-	letters = append(letters, firstRune(player.LastName))
-
-	name := strings.Join(append(nameArr, suffix), " ")
-	short := strings.Join(append(letters, suffix), "")
-
-	return name, short
 }

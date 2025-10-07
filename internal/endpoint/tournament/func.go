@@ -206,12 +206,11 @@ func makeGetTournamentList(s tournament.IService) endpoint.Endpoint {
 		}
 
 		err = s.GetValidator().Struct(req)
+
 		if err != nil {
-			if err != nil {
-				serviceLogger.Error().Err(err).Msg("Failed validation in makeGetTournamentList")
-				return nil, error_templates.WrapErrorEndpoint(
-					error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest), reqID)
-			}
+			serviceLogger.Error().Err(err).Msg("Failed validation in makeGetTournamentList")
+			return nil, error_templates.WrapErrorEndpoint(
+				error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest), reqID)
 		}
 
 		tournaments, count, err := s.GetTournamentList(ctx, req)

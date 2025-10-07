@@ -155,3 +155,24 @@ type TeamItemV2 struct {
 	CityID    int    `json:"city_id"`
 	Leagues   []int  `json:"leagues"`
 }
+
+type GetTournamentPlayerListRequest struct {
+	TournamentID int64
+	WithDeleted  bool
+}
+
+type TournamentPlayer struct {
+	ID         int64   `json:"id"`
+	Name       *string `json:"name,omitempty"`
+	SecondName *string `json:"secondName,omitempty"`
+	LastName   string  `json:"lastName"`
+	IsActive   bool    `json:"isActive"`
+	Avatar     []byte  `json:"avatar,omitempty"`
+	CityID     *int64  `json:"cityId,omitempty"`
+}
+
+type TournamentPlayerItem struct {
+	Player     TournamentPlayer `json:"player"`
+	SelfTeam   *TournamentTeam  `json:"selfTeam,omitempty"`
+	OtherTeams []TournamentTeam `json:"otherTeams,omitempty"`
+}
