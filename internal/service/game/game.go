@@ -1750,8 +1750,9 @@ func (s *Service) GetPlayedTournamentGameList(ctx context.Context, tournamentId 
 	for _, game := range games {
 
 		if game.Date != nil {
+			now := time.Now()
 			// если день игры позже или сегодня и этап незавршен
-			if time.Now().After(*game.Date) {
+			if now.After(*game.Date) || now.Equal(*game.Date) {
 				matches, err := s.rdbOperations.FetchMatches(logger, ctx, game.ID)
 				if err != nil {
 					return nil, err
