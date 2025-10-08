@@ -1714,14 +1714,8 @@ func (s *Service) GetFutureTournamentGameList(ctx context.Context, tournamentId 
 
 		} else if isFutureDate(game.Date, game.StageID) {
 
-			matches, err := s.rdbOperations.FetchMatches(logger, ctx, game.ID)
-			if err != nil {
-				return nil, err
-			}
 			// и если нет матчей, то добавляем в список будущих игр
-			if len(matches) == 0 {
-				futureGames = append(futureGames, game)
-			}
+			futureGames = append(futureGames, game)
 		}
 	}
 
@@ -1744,10 +1738,7 @@ func (s *Service) GetPlayedTournamentGameList(ctx context.Context, tournamentId 
 			now := time.Now()
 			// если день игры позже или сегодня и этап незавршен
 			if now.After(*game.Date) || now.Equal(*game.Date) {
-				matches, err := s.rdbOperations.FetchMatches(logger, ctx, game.ID)
-				if err != nil {
-					return nil, err
-				}
+				matches, _ := s.rdbOperations.FetchMatches(logger, ctx, game.ID)
 				// и если есть матчи, то добавляем в список будущих игр
 				playedGames = append(playedGames, entities.FullTournamentGame{
 					Game:    game,
