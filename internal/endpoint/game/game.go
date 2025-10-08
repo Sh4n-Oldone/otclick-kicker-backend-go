@@ -21,13 +21,15 @@ type Endpoints struct {
 	GetTeamGames     endpoint.Endpoint
 	DeleteFutureGame endpoint.Endpoint
 
-	CreateFutureTournamentGame endpoint.Endpoint
-	UpdateFutureTournamentGame endpoint.Endpoint
-	DeleteFutureTournamentGame endpoint.Endpoint
-	CreatePlayedTournamentGame endpoint.Endpoint
-	UpdatePlayedTournamentGame endpoint.Endpoint
-	DeletePlayedTournamentGame endpoint.Endpoint
-	GetTournamentGameList      endpoint.Endpoint
+	CreateFutureTournamentGame  endpoint.Endpoint
+	UpdateFutureTournamentGame  endpoint.Endpoint
+	DeleteFutureTournamentGame  endpoint.Endpoint
+	CreatePlayedTournamentGame  endpoint.Endpoint
+	UpdatePlayedTournamentGame  endpoint.Endpoint
+	DeletePlayedTournamentGame  endpoint.Endpoint
+	GetTournamentGameList       endpoint.Endpoint
+	GetPlayedTournamentGameList endpoint.Endpoint
+	GetFutureTournamentGameList endpoint.Endpoint
 }
 
 func MakeEndpoints(s game.IService) Endpoints {
@@ -46,12 +48,14 @@ func MakeEndpoints(s game.IService) Endpoints {
 		GetTeamGames:     makeGetTeamGames(s),
 		DeleteFutureGame: makeDeleteFutureGame(s),
 
-		CreateFutureTournamentGame: makeCreateFutureTournamentGame(s),
-		UpdateFutureTournamentGame: makeUpdateFutureTournamentGame(s),
-		DeleteFutureTournamentGame: makeDeleteFutureTournamentGame(s),
-		CreatePlayedTournamentGame: makeCreatePlayedTournamentGame(s),
-		UpdatePlayedTournamentGame: makeUpdatePlayedTournamentGame(s),
-		DeletePlayedTournamentGame: makeDeletePlayedTournamentGame(s),
-		GetTournamentGameList:      makeGetTournamentGameList(s),
+		CreateFutureTournamentGame:  makeCreateFutureTournamentGame(s),
+		UpdateFutureTournamentGame:  makeUpdateFutureTournamentGame(s),
+		DeleteFutureTournamentGame:  makeDeleteFutureTournamentGame(s),
+		CreatePlayedTournamentGame:  makeCreatePlayedTournamentGame(s),
+		UpdatePlayedTournamentGame:  makeUpdatePlayedTournamentGame(s),
+		DeletePlayedTournamentGame:  makeDeletePlayedTournamentGame(s),
+		GetTournamentGameList:       makeGetTournamentGameList(s),
+		GetPlayedTournamentGameList: makeGetPlayedTournamentGameList(s),
+		GetFutureTournamentGameList: makeGetFutureTournamentGameList(s),
 	}
 }

@@ -31,6 +31,8 @@ type IService interface {
 	CreatePlayedTournamentGame(ctx context.Context, request *entities.CreatePlayedTournamentGameRequest) (int64, error)
 	UpdatePlayedTournamentGame(ctx context.Context, request *entities.UpdatePlayedTournamentGameRequest) error
 	GetTournamentGameList(ctx context.Context, tournamentId int64) ([]entities.FullTournamentGame, error)
+	GetFutureTournamentGameList(ctx context.Context, tournamentId int64) ([]entities.TournamentGame, error)
+	GetPlayedTournamentGameList(ctx context.Context, tournamentId int64) ([]entities.FullTournamentGame, error)
 
 	GetLogger() *zerolog.Logger
 	GetValidator() *validator.Validate

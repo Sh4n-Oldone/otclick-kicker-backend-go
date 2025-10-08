@@ -622,3 +622,55 @@ func makeGetTournamentGameList(s game.IService) endpoint.Endpoint {
 		}, nil
 	}
 }
+
+func makeGetFutureTournamentGameList(s game.IService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "makeGetFutureTournamentGameList").Str("request_id", reqID).Logger()
+
+		id, err := helpers.CastRequest[int64](request)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed to cast request")
+			return nil, error_templates.WrapErrorEndpoint(
+				error_templates.New(pkgerr.FailedCastRequest, err, codes.InvalidArgument, http.StatusBadRequest), reqID)
+		}
+
+		games, err := s.GetFutureTournamentGameList(ctx, id)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed GetFutureTournamentGameList")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		return struct {
+			Games []entities.TournamentGame `json:"games"`
+		}{
+			Games: games,
+		}, nil
+	}
+}
+
+func makeGetPlayedTournamentGameList(s game.IService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "makeGetPlayedTournamentGameList").Str("request_id", reqID).Logger()
+
+		id, err := helpers.CastRequest[int64](request)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed to cast request")
+			return nil, error_templates.WrapErrorEndpoint(
+				error_templates.New(pkgerr.FailedCastRequest, err, codes.InvalidArgument, http.StatusBadRequest), reqID)
+		}
+
+		games, err := s.GetPlayedTournamentGameList(ctx, id)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed GetPlayedTournamentGameList")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		return struct {
+			Games []entities.FullTournamentGame `json:"games"`
+		}{
+			Games: games,
+		}, nil
+	}
+}

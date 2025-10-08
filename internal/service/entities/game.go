@@ -286,7 +286,8 @@ type DeletePlayedTournamentGameRequest struct {
 }
 
 type FullTournamentGame struct {
-	Game  TournamentGame     `json:"game"`
-	Team1 FullTournamentTeam `json:"team1"`
-	Team2 FullTournamentTeam `json:"team2"`
+	Game    TournamentGame      `json:"game"`
+	Team1   *FullTournamentTeam `json:"team1,omitempty"`
+	Team2   *FullTournamentTeam `json:"team2,omitempty"`
+	Matches []ShortMatch        `json:"matches,omitempty"`
 }

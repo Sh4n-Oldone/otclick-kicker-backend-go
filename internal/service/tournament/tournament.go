@@ -127,14 +127,14 @@ func (s *Service) Update(ctx context.Context, request *entities.UpdateTournament
 
 	request.TournamentTypeID = tournament.TypeID
 
-	games, err := s.rdbOperations.GetTournamentGameList(logger, ctx, tournament.ID, &s.config.RDB)
+	games, err := s.rdbOperations.GetTournamentGameList(logger, ctx, tournament.ID)
 	if err != nil {
 		return err
 	}
 
 	haveMatches := false
 	for _, game := range games {
-		matches, err := s.rdbOperations.FetchMatches(logger, ctx, game.ID, &s.config.RDB)
+		matches, err := s.rdbOperations.FetchMatches(logger, ctx, game.ID)
 		if err != nil {
 			return err
 		}
@@ -306,7 +306,7 @@ func (s *Service) FinishStage(ctx context.Context, request *entities.FinishStage
 			}
 
 			// сыгранная игра не может быть без матчей
-			matches, err := s.rdbOperations.FetchMatches(logger, ctx, g.ID, &s.config.RDB)
+			matches, err := s.rdbOperations.FetchMatches(logger, ctx, g.ID)
 			if err != nil {
 				return err
 			}

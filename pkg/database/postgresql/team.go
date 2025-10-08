@@ -341,8 +341,8 @@ func (db *RDBOperation) FetchPastGamesTiebreak(logger zerolog.Logger, ctx contex
 	return games, nil
 }
 
-func (db *RDBOperation) FetchMatches(logger zerolog.Logger, ctx context.Context, gameID int64, cfg *config.DBConfig) ([]entities.ShortMatch, error) {
-	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+func (db *RDBOperation) FetchMatches(logger zerolog.Logger, ctx context.Context, gameID int64) ([]entities.ShortMatch, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 
 	const query = `SELECT id, team1_id, team2_id, score_team1, score_team2 FROM matches

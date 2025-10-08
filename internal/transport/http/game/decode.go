@@ -62,24 +62,19 @@ func decodeCreateRequest(_ context.Context, r *http.Request) (interface{}, error
 }
 
 func decodeIdParamRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	gameIdParam := chi.URLParam(r, "id")
-	if gameIdParam == "" {
+	idParam := chi.URLParam(r, "id")
+	if idParam == "" {
 		err := errors.New(pkgerr.EmptyParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
-	gameId, err := strconv.Atoi(gameIdParam)
-	if err != nil {
+	id, err := strconv.ParseInt(idParam, 10, 64)
+	if err != nil || id < 1 {
 		err = errors.New(pkgerr.WrongParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
-	if gameId < 1 {
-		err = errors.New(pkgerr.WrongParameterError)
-		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
-	}
-
-	return gameId, nil
+	return id, nil
 }
 
 func decodeUpdateRequest(_ context.Context, r *http.Request) (interface{}, error) {
