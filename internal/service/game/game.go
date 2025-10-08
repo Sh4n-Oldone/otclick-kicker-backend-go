@@ -1758,12 +1758,10 @@ func (s *Service) GetPlayedTournamentGameList(ctx context.Context, tournamentId 
 					return nil, err
 				}
 				// и если есть матчи, то добавляем в список будущих игр
-				if len(matches) > 0 {
-					playedGames = append(playedGames, entities.FullTournamentGame{
-						Game:    game,
-						Matches: matches,
-					})
-				}
+				playedGames = append(playedGames, entities.FullTournamentGame{
+					Game:    game,
+					Matches: matches,
+				})
 			}
 		}
 	}
