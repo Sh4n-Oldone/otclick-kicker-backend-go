@@ -1019,8 +1019,8 @@ func (db *RWDBOperation) DeleteFutureGame(logger zerolog.Logger, ctx context.Con
 	return nil
 }
 
-func (db *RDBOperation) GetTournamentGameList(logger zerolog.Logger, ctx context.Context, tournamentID int64, cfg *config.DBConfig) ([]entities.TournamentGame, error) {
-	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+func (db *RDBOperation) GetTournamentGameList(logger zerolog.Logger, ctx context.Context, tournamentID int64) ([]entities.TournamentGame, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 
 	const query string = `

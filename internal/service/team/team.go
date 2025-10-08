@@ -357,7 +357,7 @@ func (s *Service) GetTeamVsTeamTable(ctx context.Context, cityID, seasonID int64
 						bodyItem.GamesPlayed += 1
 						bodyItem.GamesToPlay -= 1
 					} else {
-						gamesHomeMatches, err := s.rdbOperations.FetchMatches(logger, ctx, cell.Game1ID, &s.config.RDB)
+						gamesHomeMatches, err := s.rdbOperations.FetchMatches(logger, ctx, cell.Game1ID)
 						if err != nil {
 							logger.Error().Err(err).Msg("database error")
 							return entities.GetTeamVsTeamTableResponse{}, err
@@ -395,7 +395,7 @@ func (s *Service) GetTeamVsTeamTable(ctx context.Context, cityID, seasonID int64
 						bodyItem.GamesPlayed += 1
 						bodyItem.GamesToPlay -= 1
 					} else {
-						gamesOutMatches, err := s.rdbOperations.FetchMatches(logger, ctx, cell.Game2ID, &s.config.RDB)
+						gamesOutMatches, err := s.rdbOperations.FetchMatches(logger, ctx, cell.Game2ID)
 						if err != nil {
 							logger.Error().Err(err).Msg("database error")
 							return entities.GetTeamVsTeamTableResponse{}, err

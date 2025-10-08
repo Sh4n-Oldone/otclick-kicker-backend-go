@@ -14,7 +14,7 @@ type IMatchR interface {
 	GetPastMatchesByPlayerID(logger zerolog.Logger, ctx context.Context, playerID int) ([]entities.MatchV2, error)
 	GetMatchListByGameID(ctx context.Context, logger zerolog.Logger, gameID int64, cfg *config.DBConfig) ([]entities.MatchV2, error)
 	GetMatchListByLeagueID(logger zerolog.Logger, ctx context.Context, leagueID int64) ([]entities.Match, error)
-	FetchMatches(logger zerolog.Logger, ctx context.Context, gameID int64, cfg *config.DBConfig) ([]entities.ShortMatch, error)
+	FetchMatches(logger zerolog.Logger, ctx context.Context, gameID int64) ([]entities.ShortMatch, error)
 }
 
 type IMatchRW interface {

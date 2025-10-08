@@ -1626,7 +1626,7 @@ func (s *Service) GetTournamentGameList(ctx context.Context, tournamentId int64)
 
 	fullGames := make([]entities.FullTournamentGame, 0)
 
-	games, err := s.rdbOperations.GetTournamentGameList(logger, ctx, tournamentId, &s.config.RDB)
+	games, err := s.rdbOperations.GetTournamentGameList(logger, ctx, tournamentId)
 	if err != nil {
 		return nil, err
 	}
@@ -1677,12 +1677,70 @@ func (s *Service) GetTournamentGameList(ctx context.Context, tournamentId int64)
 
 		fullGames = append(fullGames, entities.FullTournamentGame{
 			Game:  game,
-			Team1: fullTeam1,
-			Team2: fullTeam2,
+			Team1: &fullTeam1,
+			Team2: &fullTeam2,
 		})
 	}
 
 	return fullGames, nil
+}
+
+func (s *Service) GetFutureTournamentGameList(ctx context.Context, tournamentId int64) ([]entities.TournamentGame, error) {
+	logger := s.GetLogger().With().Str("service", "GetFutureTournamentGameList").Logger()
+
+	futureGames := make([]entities.TournamentGame, 0)
+
+	games, err := s.rdbOperations.GetTournamentGameList(logger, ctx, tournamentId)
+	if err != nil {
+		return nil, err
+	}
+
+	//анонимная функция для проверки даты и завершенности этапа
+	isFutureDate := func(date *time.Time) bool {
+		yG, mG, dG := date.Date()
+		yN, mN, dN := time.Now().Date()
+
+		return yG >= yN && mG >= mN && dG >= dN
+	}
+
+	// игра является будущей, если у нее нет даты.
+	// если есть дата то она раньше или сегодня
+	for _, game := range games {
+		if game.Date == nil || isFutureDate(game.Date) {
+			futureGames = append(futureGames, game)
+		}
+	}
+
+	return futureGames, nil
+}
+
+func (s *Service) GetPlayedTournamentGameList(ctx context.Context, tournamentId int64) ([]entities.FullTournamentGame, error) {
+	logger := s.GetLogger().With().Str("service", "GetFutureTournamentGameList").Logger()
+
+	playedGames := make([]entities.FullTournamentGame, 0)
+
+	games, err := s.rdbOperations.GetTournamentGameList(logger, ctx, tournamentId)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, game := range games {
+
+		if game.Date != nil {
+			now := time.Now()
+			// если день игры позже или сегодня
+			if now.After(*game.Date) || now.Equal(*game.Date) {
+				//матчи как необязательный, но безвредный элемент, оставляем без обработки ошибки
+				matches, _ := s.rdbOperations.FetchMatches(logger, ctx, game.ID)
+				playedGames = append(playedGames, entities.FullTournamentGame{
+					Game:    game,
+					Matches: matches,
+				})
+			}
+		}
+	}
+
+	return playedGames, nil
 }
 
 /*local methods*/
