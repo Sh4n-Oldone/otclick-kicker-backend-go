@@ -1690,15 +1690,6 @@ func (s *Service) GetFutureTournamentGameList(ctx context.Context, tournamentId 
 
 	futureGames := make([]entities.TournamentGame, 0)
 
-	stageMap := make(map[int64]bool)
-	stages, err := s.rdbOperations.GetTournamentStageList(logger, ctx, tournamentId)
-	if err != nil {
-		return nil, err
-	}
-	for _, stage := range stages {
-		stageMap[stage.ID] = stage.IsFinished
-	}
-
 	games, err := s.rdbOperations.GetTournamentGameList(logger, ctx, tournamentId)
 	if err != nil {
 		return nil, err
@@ -1709,7 +1700,7 @@ func (s *Service) GetFutureTournamentGameList(ctx context.Context, tournamentId 
 		yG, mG, dG := date.Date()
 		yN, mN, dN := time.Now().Date()
 
-		return yG >= yN && mG >= mN && dG >= dN && stageMap[stageId] == false
+		return yG >= yN && mG >= mN && dG >= dN
 	}
 
 	// игра является будущей, если у нее нет даты.
