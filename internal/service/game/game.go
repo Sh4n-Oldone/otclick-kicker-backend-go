@@ -1688,7 +1688,7 @@ func (s *Service) GetTournamentGameList(ctx context.Context, tournamentId int64)
 func (s *Service) GetFutureTournamentGameList(ctx context.Context, tournamentId int64) ([]entities.TournamentGame, error) {
 	logger := s.GetLogger().With().Str("service", "GetFutureTournamentGameList").Logger()
 
-	futureGames := make([]entities.TournamentGame, 0, 8)
+	futureGames := make([]entities.TournamentGame, 0)
 
 	stageMap := make(map[int64]bool)
 	stages, err := s.rdbOperations.GetTournamentStageList(logger, ctx, tournamentId)
