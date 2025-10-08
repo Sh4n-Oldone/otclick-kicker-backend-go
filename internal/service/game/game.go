@@ -1696,7 +1696,7 @@ func (s *Service) GetFutureTournamentGameList(ctx context.Context, tournamentId 
 	}
 
 	//анонимная функция для проверки даты и завершенности этапа
-	isFutureDate := func(date *time.Time, stageId int64) bool {
+	isFutureDate := func(date *time.Time) bool {
 		yG, mG, dG := date.Date()
 		yN, mN, dN := time.Now().Date()
 
@@ -1706,13 +1706,7 @@ func (s *Service) GetFutureTournamentGameList(ctx context.Context, tournamentId 
 	// игра является будущей, если у нее нет даты.
 	// если есть дата то она раньше или сегодня
 	for _, game := range games {
-		if game.Date == nil {
-
-			futureGames = append(futureGames, game)
-			continue
-
-		} else if isFutureDate(game.Date, game.StageID) {
-
+		if game.Date == nil || isFutureDate(game.Date) {
 			futureGames = append(futureGames, game)
 		}
 	}
