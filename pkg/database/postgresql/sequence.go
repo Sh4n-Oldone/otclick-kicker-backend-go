@@ -6,6 +6,7 @@ import (
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql/tx"
 )
 
+// GetSuffix deprecated
 func (db *RDBOperation) GetSuffix(logger zerolog.Logger, ctx context.Context, tx tx.ITx) (string, error) {
 	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
