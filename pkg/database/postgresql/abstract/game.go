@@ -18,7 +18,7 @@ type IGameR interface {
 	GetComingGames(logger zerolog.Logger, ctx context.Context) ([]entities.ComingGame, error)
 	GetFutureGames(logger zerolog.Logger, ctx context.Context, cityID int) ([]entities.ShortGame, error)
 	GetTeamGames(logger zerolog.Logger, ctx context.Context, teamID int) ([]entities.TeamGame, error)
-	GetTournamentGameList(logger zerolog.Logger, ctx context.Context, tournamentID int64, cfg *config.DBConfig) ([]entities.TournamentGame, error)
+	GetTournamentGameList(logger zerolog.Logger, ctx context.Context, tournamentID int64) ([]entities.TournamentGame, error)
 	GetTournamentGame(logger zerolog.Logger, ctx context.Context, gameID int64, cfg *config.DBConfig) (entities.TournamentGame, error)
 	GetTournamentStageGames(logger zerolog.Logger, ctx context.Context, stageId int64, cfg *config.DBConfig) ([]entities.TournamentGame, error)
 	FetchPastGames(logger zerolog.Logger, ctx context.Context, teamID1, teamID2, cityID, leagueID int64, tiebreak *bool) ([]entities.GameFetch, error)
