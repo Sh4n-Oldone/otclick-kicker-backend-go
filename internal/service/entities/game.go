@@ -291,3 +291,8 @@ type FullTournamentGame struct {
 	Team2   *FullTournamentTeam `json:"team2,omitempty"`
 	Matches []ShortMatch        `json:"matches,omitempty"`
 }
+
+type GetTournamentGameList struct {
+	TournamentId *int64 `json:"tournamentId" validate:"omitempty,gt=0"`
+	CityId       *int64 `json:"cityId" validate:"omitempty,gt=0"`
+}

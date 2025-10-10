@@ -106,8 +106,6 @@ func decodeUpdateRequest(_ context.Context, r *http.Request) (interface{}, error
 
 func decodeDeleteRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	request := &entities.DeleteTournamentRequest{}
-	buf := bytebufferpool.Get()
-	defer bytebufferpool.Put(buf)
 
 	idParam := chi.URLParam(r, "id")
 	if idParam == "" {
@@ -128,8 +126,6 @@ func decodeDeleteRequest(_ context.Context, r *http.Request) (interface{}, error
 
 func decodeFinishStageRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	request := &entities.FinishStageRequest{Finisher: entities.User{Role: &entities.Role{}}}
-	buf := bytebufferpool.Get()
-	defer bytebufferpool.Put(buf)
 
 	idParam := chi.URLParam(r, "id")
 	if idParam == "" {

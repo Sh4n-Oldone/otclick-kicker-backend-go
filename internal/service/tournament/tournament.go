@@ -127,7 +127,7 @@ func (s *Service) Update(ctx context.Context, request *entities.UpdateTournament
 
 	request.TournamentTypeID = tournament.TypeID
 
-	games, err := s.rdbOperations.GetTournamentGameList(logger, ctx, tournament.ID)
+	games, err := s.rdbOperations.GetTournamentGameList(logger, ctx, &entities.GetTournamentGameList{TournamentId: &tournament.ID})
 	if err != nil {
 		return err
 	}

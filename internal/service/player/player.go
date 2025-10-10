@@ -7,6 +7,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"net/http"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/helpers"
+	"runtime"
 	"slices"
 	"strconv"
 
@@ -186,6 +187,91 @@ func (s *Service) Find(ctx context.Context, player entities.FindPlayersRequest) 
 		fullPlayer := buildFullPlayer(p, pastMatches, leagues, teams, pastGames)
 
 		fullPlayers[i] = fullPlayer
+	}
+
+	return entities.FindPlayersResponse{
+		Players:     nil,
+		FullPlayers: fullPlayers,
+	}, nil
+}
+
+func (s *Service) FindV2(ctx context.Context, player entities.FindPlayersRequest) (entities.FindPlayersResponse, error) {
+	logger := s.logger.With().Str("service", "player.FindV2").Logger()
+
+	players, err := s.rdbOperations.FindPlayersV2(logger, ctx, player)
+	if err != nil {
+		return entities.FindPlayersResponse{}, err
+	}
+
+	if player.KeepSimple != nil && *player.KeepSimple {
+		return entities.FindPlayersResponse{
+			Players:     players,
+			FullPlayers: nil,
+		}, nil
+	}
+
+	fullPlayers := make([]entities.FullPlayerV2, len(players))
+
+	g, gCtx := errgroup.WithContext(ctx)
+
+	g.SetLimit(runtime.NumCPU())
+
+	for i, p := range players {
+		i, p := i, p
+
+		g.Go(func() error {
+			var (
+				pastMatches []entities.MatchV2
+				leagues     []entities.PlayersLeague
+				pastGames   []entities.GameShort
+				teams       []entities.TeamItem
+			)
+
+			// внутренний errgroup для параллельных запросов по одному игроку
+			innerG, innerCtx := errgroup.WithContext(gCtx)
+
+			innerG.Go(func() error {
+				var err error
+				pastMatches, err = s.rdbOperations.GetPastMatchesByPlayerID(logger, innerCtx, p.ID)
+				return err
+			})
+
+			innerG.Go(func() error {
+				var err error
+				leagues, err = s.rdbOperations.GetLeaguesByPlayerID(logger, innerCtx, p.ID)
+				return err
+			})
+
+			innerG.Go(func() error {
+				var err error
+				teams, err = s.rdbOperations.GetTeamsByPlayerID(logger, innerCtx, p.ID, nil)
+				return err
+			})
+
+			if err = innerG.Wait(); err != nil {
+				return err
+			}
+
+			var teamIds []int
+			for _, team := range teams {
+				teamIds = append(teamIds, team.ID)
+			}
+
+			pastGames, err = s.rdbOperations.GetPastGamesByPlayersTeams(logger, gCtx, teamIds)
+			if err != nil {
+				return err
+			}
+
+			fullPlayer := buildFullPlayer(p, pastMatches, leagues, teams, pastGames)
+			fullPlayers[i] = fullPlayer
+
+			return nil
+		})
+	}
+
+	if err = g.Wait(); err != nil {
+		logger.Error().Err(err).Msg("failed from g.Wait")
+		return entities.FindPlayersResponse{}, err
 	}
 
 	return entities.FindPlayersResponse{
