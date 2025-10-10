@@ -279,6 +279,87 @@ func (db *RDBOperation) FindPlayers(logger zerolog.Logger, ctx context.Context, 
 	return players, nil
 }
 
+func (db *RDBOperation) FindPlayersV2(logger zerolog.Logger, ctx context.Context, player entities.FindPlayersRequest) ([]entities.Player, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	const query string = `
+		SELECT DISTINCT
+			p.id,
+			p.name,
+			p.second_name,
+			p.last_name,
+			p.avatar,
+			p.active_player,
+			p.deleted_at,
+			p.city_id,
+			c.ru
+		FROM players p
+		LEFT JOIN players_teams_links ptl ON p.id = ptl.player_id
+		LEFT JOIN teams t ON t.id = ptl.team_id
+		LEFT JOIN teams_leagues_links tll ON t.id = tll.team_id
+		LEFT JOIN rating r ON r.player_id = p.id AND r.league_id = tll.league_id
+		LEFT JOIN cities c ON c.id = p.city_id
+		WHERE 
+		    ($1::int IS NULL OR tll.league_id = $1)
+			AND ($2::varchar IS NULL OR 
+				(LOWER(COALESCE(p.name, '')) LIKE LOWER('%' || $2 || '%') OR 
+				 LOWER(COALESCE(p.second_name, '')) LIKE LOWER('%' || $2 || '%') OR 
+				 LOWER(COALESCE(p.last_name, '')) LIKE LOWER('%' || $2 || '%'))
+			)
+			AND ($3::int IS NULL OR (
+				SELECT COUNT(DISTINCT g.id)
+				FROM games g
+				JOIN matches m ON m.game_id = g.id
+				WHERE m.player1_team1_id = p.id 
+				   OR m.player2_team1_id = p.id 
+				   OR m.player1_team2_id = p.id 
+				   OR m.player2_team2_id = p.id
+			) >= $3)
+			AND ($4::int IS NULL OR r.value >= $4)
+			AND ($5::int IS NULL OR p.city_id = $5)
+			AND (
+			    CASE
+					WHEN $6::bool IS NULL OR $6::bool = FALSE THEN (p.deleted_at IS NULL) = true
+					ELSE true
+				END
+			)
+			AND (
+			    CASE
+                when $7::bool is true then
+                    not exists (select ptl2.team_id
+                                from players_teams_links ptl2
+                                where ptl2.player_id = p.id)
+                else true
+            end);`
+
+	var players []entities.Player
+
+	rows, err := db.db.Query(timeout, query, player.LeagueID, player.FindAny, player.GamesPlayedNumber, player.Rating, player.CityID, player.WithDeleted, player.OnlyFree)
+	if err != nil {
+		logger.Error().Stack().Err(err).Msg("failed to postgresql.FindPlayers")
+		return nil, DecodeDatabaseError(err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var p entities.Player
+
+		err = rows.Scan(&p.ID, &p.Name, &p.SecondName, &p.LastName, &p.Avatar, &p.ActivePlayer, &p.DeletedAt, &p.CityID, &p.CityName)
+		if err != nil {
+			logger.Error().Stack().Err(err).Msg("failed to postgresql.FindPlayers")
+			return nil, DecodeDatabaseError(errors.New(pkgerr.ErrGetPlayer))
+		}
+		if p.Rating == nil {
+			p.Rating = pointer.GetPointer(constant.DefaultRating)
+		}
+
+		players = append(players, p)
+	}
+
+	return players, nil
+}
+
 func (db *RDBOperation) GetPlayerIDsByLeagueID(logger zerolog.Logger, ctx context.Context, leagueID int64) ([]int64, error) {
 	const query string = `
 		SELECT p.id

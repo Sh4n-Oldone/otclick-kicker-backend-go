@@ -756,9 +756,8 @@ func (db *RDBOperation) GetFutureGames(logger zerolog.Logger, ctx context.Contex
 		JOIN teams_leagues_links tll1 ON t1.id = tll1.team_id  --связи с лигой команды 1
 		JOIN teams_leagues_links tll2 ON t2.id = tll2.team_id  --связи с лигой команды 2
 		JOIN leagues l ON tll1.league_id = l.id AND tll2.league_id = l.id  -- объединение по одинаковой лиге
-		WHERE g.date >= CURRENT_DATE AND g.city_id = $1
-		ORDER BY g.date;
-	`
+		WHERE g.date > NOW() AND g.city_id = $1
+		ORDER BY g.date;`
 
 	rows, err := db.db.Query(ctx, query, cityID)
 	if err != nil {
@@ -1019,7 +1018,7 @@ func (db *RWDBOperation) DeleteFutureGame(logger zerolog.Logger, ctx context.Con
 	return nil
 }
 
-func (db *RDBOperation) GetTournamentGameList(logger zerolog.Logger, ctx context.Context, tournamentID int64) ([]entities.TournamentGame, error) {
+func (db *RDBOperation) GetTournamentGameList(logger zerolog.Logger, ctx context.Context, req *entities.GetTournamentGameList) ([]entities.TournamentGame, error) {
 	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 
@@ -1028,9 +1027,11 @@ func (db *RDBOperation) GetTournamentGameList(logger zerolog.Logger, ctx context
 		FROM games AS g
 			JOIN tournament_stages AS ts ON g.stage_id = ts.id
 			JOIN tournaments AS t ON ts.tournament_id = t.id
-		WHERE t.id = $1;`
+		WHERE 
+			($1::INT IS NULL OR t.id = $1)
+			AND ($2::INT IS NULL OR g.city_id = $2);`
 
-	rows, err := db.db.Query(timeout, query, tournamentID)
+	rows, err := db.db.Query(timeout, query, req.TournamentId, req.CityId)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.GetTournamentGames")
 		return nil, DecodeDatabaseError(err)

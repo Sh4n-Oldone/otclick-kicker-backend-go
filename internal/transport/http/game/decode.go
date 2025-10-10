@@ -503,8 +503,6 @@ func decodeUpdateFutureTournamentGameRequest(_ context.Context, r *http.Request)
 
 func decodeDeleteFutureTournamentGameRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	request := &entities.DeleteFutureTournamentGameRequest{Executor: entities.User{Role: &entities.Role{}, Team: &entities.Team{}}}
-	buf := bytebufferpool.Get()
-	defer bytebufferpool.Put(buf)
 
 	reqCtx := r.Context()
 
@@ -536,16 +534,6 @@ func decodeDeleteFutureTournamentGameRequest(_ context.Context, r *http.Request)
 
 	teamId, ok := reqCtx.Value(constant.TeamIDContextKey).(int64)
 	request.Executor.Team.ID = teamId
-
-	_, err = io.Copy(buf, r.Body)
-	if err != nil {
-		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
-	}
-
-	err = json.Unmarshal(buf.Bytes(), &request)
-	if err != nil {
-		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
-	}
 
 	return request, nil
 }
@@ -638,8 +626,6 @@ func decodeUpdatePlayedTournamentGameRequest(_ context.Context, r *http.Request)
 
 func decodeDeletePlayedTournamentGameRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	request := &entities.DeletePlayedTournamentGameRequest{Executor: entities.User{Role: &entities.Role{}, Team: &entities.Team{}}}
-	buf := bytebufferpool.Get()
-	defer bytebufferpool.Put(buf)
 
 	reqCtx := r.Context()
 
@@ -672,16 +658,6 @@ func decodeDeletePlayedTournamentGameRequest(_ context.Context, r *http.Request)
 	teamId, ok := reqCtx.Value(constant.TeamIDContextKey).(int64)
 	request.Executor.Team.ID = teamId
 
-	_, err = io.Copy(buf, r.Body)
-	if err != nil {
-		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
-	}
-
-	err = json.Unmarshal(buf.Bytes(), &request)
-	if err != nil {
-		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
-	}
-
 	return request, nil
 }
 
@@ -699,6 +675,34 @@ func decodeGetTournamentGameListRequest(_ context.Context, r *http.Request) (int
 	}
 
 	return tournamentId, nil
+}
+
+func decodeTournamentIdCityIdParams(_ context.Context, r *http.Request) (interface{}, error) {
+	request := &entities.GetTournamentGameList{}
+
+	params := r.URL.Query()
+
+	tournamentIdParam := params.Get("tournamentId")
+	if tournamentIdParam != "" {
+		tournamentId, err := strconv.ParseInt(tournamentIdParam, 10, 64)
+		if err != nil {
+			err = errors.New(pkgerr.WrongParameterError)
+			return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+		request.TournamentId = &tournamentId
+	}
+
+	cityIdParam := params.Get("cityId")
+	if cityIdParam != "" {
+		cityId, err := strconv.ParseInt(cityIdParam, 10, 64)
+		if err != nil {
+			err = errors.New(pkgerr.WrongParameterError)
+			return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+		request.CityId = &cityId
+	}
+
+	return request, nil
 }
 
 /*local functions-helpers*/

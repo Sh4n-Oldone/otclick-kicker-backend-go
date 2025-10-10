@@ -39,8 +39,8 @@ func NewServer(endpoints game.Endpoints, options []kithttp.ServerOption, cfg *co
 	// /games возвращает список игр (есть фильтр)
 	r.Get("/games", kithttp.NewServer(endpoints.GetGameList, decodeGetGameListRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 
-	r.Get("/tournaments/{id}/games/played", kithttp.NewServer(endpoints.GetPlayedTournamentGameList, decodeIdParamRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
-	r.Get("/tournaments/{id}/games/future", kithttp.NewServer(endpoints.GetFutureTournamentGameList, decodeIdParamRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.Get("/tournaments/games/played", kithttp.NewServer(endpoints.GetPlayedTournamentGameList, decodeTournamentIdCityIdParams, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.Get("/tournaments/games/future", kithttp.NewServer(endpoints.GetFutureTournamentGameList, decodeTournamentIdCityIdParams, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 
 	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdminCapitan()).
 		Post("/games/played", kithttp.NewServer(endpoints.Create, decodeCreateRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)

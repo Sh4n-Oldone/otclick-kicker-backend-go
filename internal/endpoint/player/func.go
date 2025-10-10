@@ -169,7 +169,8 @@ func makeFindPlayers(s player.IService) endpoint.Endpoint {
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
-		playersResponse, err := s.Find(ctx, *req)
+		//TODO: в случае если метод рабочий, переименовать его в Find, старые удалить из сервиса и из базы
+		playersResponse, err := s.FindV2(ctx, *req)
 		if err != nil {
 			serviceLogger.Error().Err(err).Msg("Failed to player.Find")
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)

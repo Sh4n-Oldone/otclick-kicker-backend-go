@@ -605,7 +605,7 @@ func (s *Service) GetComingGames(ctx context.Context) (entities.GetComingGamesRe
 }
 
 func (s *Service) GetFutureGames(ctx context.Context, cityID int) (entities.GetFutureGamesResponse, error) {
-	logger := s.logger.With().Interface("service", "game.GetFutureGames").Logger()
+	logger := s.logger.With().Str("service", "game.GetFutureGames").Logger()
 	timeout, cancel := context.WithTimeout(ctx, s.config.RDB.MaxIdleConnectionTimeout)
 	defer cancel()
 
@@ -1626,7 +1626,7 @@ func (s *Service) GetTournamentGameList(ctx context.Context, tournamentId int64)
 
 	fullGames := make([]entities.FullTournamentGame, 0)
 
-	games, err := s.rdbOperations.GetTournamentGameList(logger, ctx, tournamentId)
+	games, err := s.rdbOperations.GetTournamentGameList(logger, ctx, &entities.GetTournamentGameList{TournamentId: &tournamentId})
 	if err != nil {
 		return nil, err
 	}
@@ -1685,28 +1685,22 @@ func (s *Service) GetTournamentGameList(ctx context.Context, tournamentId int64)
 	return fullGames, nil
 }
 
-func (s *Service) GetFutureTournamentGameList(ctx context.Context, tournamentId int64) ([]entities.TournamentGame, error) {
+func (s *Service) GetFutureTournamentGameList(ctx context.Context, req *entities.GetTournamentGameList) ([]entities.TournamentGame, error) {
 	logger := s.GetLogger().With().Str("service", "GetFutureTournamentGameList").Logger()
 
 	futureGames := make([]entities.TournamentGame, 0)
 
-	games, err := s.rdbOperations.GetTournamentGameList(logger, ctx, tournamentId)
+	games, err := s.rdbOperations.GetTournamentGameList(logger, ctx, req)
 	if err != nil {
 		return nil, err
 	}
 
-	//анонимная функция для проверки даты и завершенности этапа
-	isFutureDate := func(date *time.Time) bool {
-		yG, mG, dG := date.Date()
-		yN, mN, dN := time.Now().Date()
+	now := time.Now()
 
-		return yG >= yN && mG >= mN && dG >= dN
-	}
-
-	// игра является будущей, если у нее нет даты.
-	// если есть дата то она раньше или сегодня
+	// "Таймстемп проведения игры > now, либо таймстемп отсутствут - будущая игра"
 	for _, game := range games {
-		if game.Date == nil || isFutureDate(game.Date) {
+
+		if game.Date == nil || now.Before(*game.Date) {
 			futureGames = append(futureGames, game)
 		}
 	}
@@ -1714,22 +1708,24 @@ func (s *Service) GetFutureTournamentGameList(ctx context.Context, tournamentId 
 	return futureGames, nil
 }
 
-func (s *Service) GetPlayedTournamentGameList(ctx context.Context, tournamentId int64) ([]entities.FullTournamentGame, error) {
+func (s *Service) GetPlayedTournamentGameList(ctx context.Context, req *entities.GetTournamentGameList) ([]entities.FullTournamentGame, error) {
 	logger := s.GetLogger().With().Str("service", "GetFutureTournamentGameList").Logger()
 
 	playedGames := make([]entities.FullTournamentGame, 0)
 
-	games, err := s.rdbOperations.GetTournamentGameList(logger, ctx, tournamentId)
+	games, err := s.rdbOperations.GetTournamentGameList(logger, ctx, req)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, game := range games {
+	now := time.Now()
 
+	for _, game := range games {
 		if game.Date != nil {
-			now := time.Now()
-			// если день игры позже или сегодня
+
+			//  "Таймстемп проведения игры <= now - прошлая"
 			if now.After(*game.Date) || now.Equal(*game.Date) {
+
 				//матчи как необязательный, но безвредный элемент, оставляем без обработки ошибки
 				matches, _ := s.rdbOperations.FetchMatches(logger, ctx, game.ID)
 				playedGames = append(playedGames, entities.FullTournamentGame{
