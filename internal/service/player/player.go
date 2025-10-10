@@ -444,7 +444,9 @@ func buildFullPlayer(player entities.Player, pastMatches []entities.MatchV2, lea
 			stat.playersMatches++
 		}
 
-		leagueStats[*match.LeagueID] = stat
+		if match.LeagueID != nil {
+			leagueStats[*match.LeagueID] = stat
+		}
 	}
 
 	leaguePlayedGames := make(map[int]int)
