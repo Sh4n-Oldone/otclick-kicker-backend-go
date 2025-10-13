@@ -110,7 +110,7 @@ func (db *RDBOperation) GetCityById(logger zerolog.Logger, ctx context.Context, 
 
 	var city entities.City
 
-	const query string = `SELECT id, name, ru, deleted_at WHERE id = $1;`
+	const query string = `SELECT id, name, ru, deleted_at FROM cities WHERE id = $1;`
 
 	err := db.db.QueryRow(timeout, query, cityID).Scan(&city.ID, &city.Name, &city.Ru, &city.DeletedAt)
 	if err != nil {

@@ -14,7 +14,7 @@ type ILeagueR interface {
 }
 
 type ILeagueRW interface {
-	CreateLeague(logger zerolog.Logger, ctx context.Context, league entities.League, teams []int64) (id int64, err error)
+	CreateLeague(logger zerolog.Logger, ctx context.Context, request *entities.CreateLeagueRequest) (id int64, err error)
 	UpdateLeague(logger zerolog.Logger, ctx context.Context, league entities.League, teams []int64) error
 	DeleteLeague(logger zerolog.Logger, ctx context.Context, id int64) error
 }
