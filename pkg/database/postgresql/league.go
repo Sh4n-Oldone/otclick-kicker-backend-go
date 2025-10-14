@@ -38,7 +38,7 @@ func (db *RDBOperation) GetLeagueList(logger zerolog.Logger, ctx context.Context
 	return leagues, nil
 }
 
-func (db *RWDBOperation) CreateLeague(logger zerolog.Logger, ctx context.Context, league entities.League, teams []int64) (int64, error) {
+func (db *RWDBOperation) CreateLeague(logger zerolog.Logger, ctx context.Context, request *entities.CreateLeagueRequest) (int64, error) {
 	var id int64
 
 	tx, err := db.db.Begin(ctx)
@@ -47,14 +47,14 @@ func (db *RWDBOperation) CreateLeague(logger zerolog.Logger, ctx context.Context
 		return 0, DecodeDatabaseError(err)
 	}
 
-	err = tx.QueryRow(ctx, queryCreateLeague, league.Name, league.CityID, league.SeasonID).Scan(&id)
+	err = tx.QueryRow(ctx, queryCreateLeague, request.Name, request.CityID, request.SeasonID).Scan(&id)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to create League record")
 		_ = tx.Rollback(ctx)
 		return 0, DecodeDatabaseError(err)
 	}
 
-	for _, teamID := range teams {
+	for _, teamID := range request.Teams {
 		_, err = tx.Exec(ctx, queryUpdateTeamsLeagueID, teamID, id)
 		if err != nil {
 			logger.Error().Stack().Err(err).Msg("failed to create League record")

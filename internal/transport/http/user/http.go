@@ -32,7 +32,6 @@ func NewServer(endpoints user.Endpoints, options []kithttp.ServerOption, cfg *co
 
 	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
 		Post("/users", kithttp.NewServer(endpoints.Create, decodeCreateRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
-
 	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
 		Post("/users/tournament-masters", kithttp.NewServer(endpoints.CreateTournamentMaster, decodeCreateTournamentMasterRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).

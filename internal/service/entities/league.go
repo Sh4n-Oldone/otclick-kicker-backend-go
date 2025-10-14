@@ -20,6 +20,7 @@ type CreateLeagueRequest struct {
 	Name     string  `db:"name" json:"name"`
 	Teams    []int64 `json:"teams"`
 	SeasonID *int64  `db:"seasonId" json:"seasonId"`
+	Creator  User
 }
 
 type CreateLeagueResponse struct {

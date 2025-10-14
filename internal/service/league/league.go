@@ -4,11 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"slices"
+
+	"google.golang.org/grpc/codes"
 
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/constant"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/calculator"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
 	pkgerr "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 )
 
@@ -23,10 +27,22 @@ func (s *Service) GetList(ctx context.Context, cityID int64) ([]entities.League,
 	return leagues, nil
 }
 
-func (s *Service) Create(ctx context.Context, league entities.League, teams []int64) (*int64, error) {
+func (s *Service) Create(ctx context.Context, request *entities.CreateLeagueRequest) (*int64, error) {
 	logger := s.logger.With().Str("service", "Create").Logger()
 
-	id, err := s.rwdbOperations.CreateLeague(logger, ctx, league, teams)
+	if request.Creator.Role.Name == constant.TournamentMaster {
+		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, request.Creator.ID, &s.config.RDB)
+		if err != nil {
+			return nil, err
+		}
+
+		if master.City.ID != request.CityID {
+			err = errors.New(pkgerr.ErrLeagueNotInMasterCity)
+			return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+	}
+
+	id, err := s.rwdbOperations.CreateLeague(logger, ctx, request)
 	if err != nil {
 		return nil, err
 	}
