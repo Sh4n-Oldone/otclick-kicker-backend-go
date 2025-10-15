@@ -18,6 +18,7 @@ type IService interface {
 	GetTeamsByCity(ctx context.Context, onlyFree bool, cityID int64) ([]entities.TeamShort, error)
 	GetTeamsByLeague(ctx context.Context, leagueID int64) ([]entities.TeamByLeague, error)
 	GetTeamVsTeamTable(ctx context.Context, cityID, seasonID int64) (entities.GetTeamVsTeamTableResponse, error)
+	GetTournamentTeamVsTeamTable(ctx context.Context, cityID, seasonID int64) (entities.GetTournamentTeamVsTeamTableResponse, error)
 
 	Create(ctx context.Context, team *entities.CreateTeamRequest) (int64, error)
 	Update(ctx context.Context, team *entities.UpdateTeamRequest) (bool, error)

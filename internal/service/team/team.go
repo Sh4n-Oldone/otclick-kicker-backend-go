@@ -459,6 +459,179 @@ func (s *Service) GetTeamVsTeamTable(ctx context.Context, cityID, seasonID int64
 	return response, nil
 }
 
+func (s *Service) GetTournamentTeamVsTeamTable(ctx context.Context, cityID, seasonID int64) (entities.GetTournamentTeamVsTeamTableResponse, error) {
+	logger := s.logger.With().Interface("service", "GetTournamentTeamVsTeamTable").Logger()
+	typeOneVsOne := constant.RegularOneVsOneTournamentTypeID
+	tournamentReq := entities.GetTournamentListRequest{CityID: &cityID, SeasonID: &seasonID, TournamentID: nil, TournamentTypeID: &typeOneVsOne}
+	tournaments, totalTournamentCount, err := s.rdbOperations.GetTournamentList(logger, ctx, tournamentReq)
+
+	if err != nil {
+		return entities.GetTournamentTeamVsTeamTableResponse{}, err
+	}
+
+	if totalTournamentCount == 0 {
+		logger.Error().Err(err).Msg("No tournament found")
+		return entities.GetTournamentTeamVsTeamTableResponse{}, error_templates.New("No tournament found", errors.New("no tournament found"), codes.NotFound, http.StatusNotFound)
+	}
+
+	var data []entities.DataTournament
+
+	for _, tournament := range tournaments { // Проходим по турнирам нужного города/сезона
+		var dataItem entities.DataTournament
+		dataItem.TournamentId = tournament.ID
+		dataItem.TournamentName = tournament.Name
+
+		dataItem.Table.Columns = append(dataItem.Table.Columns, entities.Column{Uid: "teamShortName", Name: "Команда"})
+
+		teams, err := s.rdbOperations.FetchTeamsByTournament(logger, ctx, &tournament.ID, &typeOneVsOne)
+		if err != nil {
+			return entities.GetTournamentTeamVsTeamTableResponse{}, err
+		}
+		if len(teams) == 0 {
+			continue
+		}
+		noGames, err := s.rdbOperations.TeamsHaveNoGamesTournament(logger, ctx, teams, seasonID)
+		if err != nil {
+			return entities.GetTournamentTeamVsTeamTableResponse{}, err
+		}
+		if noGames { // если нет игр в турнире
+			for _, team := range teams { // голы заполняем нулями
+				var bodyItem entities.BodyTournament
+
+				bodyItem.Id = team.ID
+				bodyItem.TeamShortName = team.ShortName
+				bodyItem.Score = 0
+				bodyItem.DifferenceInScore = 0
+				bodyItem.GamesPlayed = 0
+				bodyItem.GamesToPlay = int64((len(teams) - 1)) // сейчас только для bo1
+				for _, t := range teams {                      // и отображаем нулевой счет
+					var cell entities.TableCellTournament
+
+					cell.GameId = 0
+					cell.Score = "0:0"
+
+					bodyItem.TableCell[t.ShortName] = cell
+				}
+				dataItem.Table.Body = append(dataItem.Table.Body, bodyItem)
+			}
+			continue
+		}
+
+		for _, team := range teams { // Проходим по командам текущего турнира
+			var bodyItem entities.BodyTournament
+			bodyItem.TableCell = make(map[string]entities.TableCellTournament, 0)
+
+			gamesToPlay, err := s.rdbOperations.FetchTournamentTeamGames(logger, ctx, tournament.ID, team.ID)
+			if err != nil {
+				return entities.GetTournamentTeamVsTeamTableResponse{}, err
+			}
+
+			bodyItem.Id = team.ID
+			bodyItem.TeamShortName = team.ShortName
+			bodyItem.Score = 0
+			bodyItem.DifferenceInScore = 0
+			bodyItem.GamesPlayed = 0
+			bodyItem.GamesToPlay = int64(len(gamesToPlay))
+
+			for _, t := range teams { // Проходим по командам-соперникам
+				var cell entities.TableCellTournament
+
+				cell.GameId = 0
+				cell.Score = "0:0"
+
+				if t.ID == team.ID {
+					bodyItem.TableCell[t.ShortName] = cell
+					continue //команда сама с собой не играет
+				}
+
+				tiebreak := false // tiebreak игры не учитываем
+
+				games, err := s.rdbOperations.FetchTournamentPastGames(logger, ctx, team.ID, t.ID, cityID, tournament.ID, &tiebreak)
+				if err != nil {
+					return entities.GetTournamentTeamVsTeamTableResponse{}, err
+				}
+
+				if len(games) == 0 { //если нет игр
+					bodyItem.TableCell[t.ShortName] = cell
+					continue
+				}
+				cell.GameId = int64(games[0].ID)
+
+				var match1Team1Score int64 = 0
+				var match1Team2Score int64 = 0
+
+				cell.GameId = int64(games[0].ID)
+				if games[0].TechLooseTeamID != nil && *games[0].TechLooseTeamID == team.ID { // Если команда с тех.проигрышем(team.ID) то "30:42" (эта команда проиграла)
+					cell.Score = "30:42"
+					bodyItem.DifferenceInScore -= 12 // Разницу учитываем
+					bodyItem.GamesPlayed += 1
+					bodyItem.GamesToPlay -= 1
+				} else if games[0].TechLooseTeamID != nil && *games[0].TechLooseTeamID == t.ID { // Если противника команда с тех.проигрышем(t.ID) то "42:30" (противник проиграл)
+					cell.Score = "42:30"
+					bodyItem.DifferenceInScore += 12 // Разницу учитываем
+					bodyItem.Score += 2              // Добавим себе 2 очка(в целом по игре), если команда противника с тех.проигрышем
+					bodyItem.GamesPlayed += 1
+					bodyItem.GamesToPlay -= 1
+				} else {
+					gamesMatches, err := s.rdbOperations.FetchMatches(logger, ctx, cell.GameId)
+					if err != nil {
+						return entities.GetTournamentTeamVsTeamTableResponse{}, err
+					}
+
+					for _, match := range gamesMatches { // Проходим по матчам
+						if match.Team1ID == team.ID {
+							match1Team1Score += match.ScoreTeam1
+							match1Team2Score += match.ScoreTeam2
+						} else {
+							match1Team1Score += match.ScoreTeam2
+							match1Team2Score += match.ScoreTeam1
+						}
+					}
+					cell.Score = strconv.FormatInt(match1Team1Score, 10) + ":" + strconv.FormatInt(match1Team2Score, 10)
+
+					if len(gamesMatches) != 0 {
+						bodyItem.GamesPlayed += 1
+						bodyItem.GamesToPlay -= 1
+					}
+				}
+
+				bodyItem.Score = resumScore(bodyItem.Score, match1Team1Score, match1Team2Score)
+
+				extraPoints, err := s.rdbOperations.GetTournamentTeamExtraPointsCount(logger, ctx, team.ID, tournament.ID)
+				if err != nil {
+					return entities.GetTournamentTeamVsTeamTableResponse{}, err
+				}
+				bodyItem.Score += extraPoints // Один раз за турнир считаем дополнительные очки команды
+
+				bodyItem.DifferenceInScore += (match1Team1Score - match1Team2Score)
+				bodyItem.TableCell[t.ShortName] = cell // Выставили ячейку со счетом
+			} // команды соперников
+
+			dataItem.Table.Body = append(dataItem.Table.Body, bodyItem)
+
+		} // команды текущего турнира
+		dataItem.Table.Columns = append(dataItem.Table.Columns, entities.Column{Uid: "score", Name: "Очки"})
+		dataItem.Table.Columns = append(dataItem.Table.Columns, entities.Column{Uid: "differenceInScore", Name: "+/-"})
+		dataItem.Table.Columns = append(dataItem.Table.Columns, entities.Column{Uid: "gamesPlayed", Name: "Игры"})
+		dataItem.Table.Columns = append(dataItem.Table.Columns, entities.Column{Uid: "gamesToPlay", Name: "Осталось"})
+
+		// добавили игры tiebreak текущего турнира
+		gamesTiebreak, err := s.rdbOperations.FetchTournamentPastGamesTiebreak(logger, ctx, tournament.ID)
+		if err != nil {
+			return entities.GetTournamentTeamVsTeamTableResponse{}, err
+		}
+		dataItem.GamesTiebreak = gamesTiebreak
+
+		data = append(data, dataItem)
+
+	} // турниры нужного города
+
+	var response entities.GetTournamentTeamVsTeamTableResponse
+	response.DataTournament = data
+	response.Message = "OK"
+	return response, nil
+}
+
 func (s *Service) Create(ctx context.Context, request *entities.CreateTeamRequest) (int64, error) {
 	logger := s.logger.With().Str("service", "Create").Logger()
 

@@ -131,8 +131,9 @@ type GetTeamsByLeagueRequest struct {
 }
 
 type GetTeamVsTeamTableRequest struct {
-	CityID   int64 `json:"cityId"`
-	SeasonID int64 `json:"seasonId"`
+	CityID           int64 `json:"cityId"`
+	SeasonID         int64 `json:"seasonId"`
+	TournamentTypeId int64 `json:"tournamentTypeId"`
 	// WithoutEmpty bool  `json:" withoutEmpty"`
 }
 
@@ -200,4 +201,36 @@ type TournamentTeam struct {
 type FullTournamentTeam struct {
 	TournamentTeam `json:"team"`
 	Players        []Player `json:"players"`
+}
+
+type GetTournamentTeamVsTeamTableResponse struct {
+	DataTournament []DataTournament `json:"dataTournament"`
+	Message        string           `json:"message"`
+}
+
+type DataTournament struct {
+	TournamentId   int64           `json:"id"`
+	TournamentName string          `json:"name"`
+	Table          TableTournament `json:"table"`
+	GamesTiebreak  []GameTiebreak  `json:"gamesTiebreak"`
+}
+
+type TableTournament struct {
+	Columns []Column         `json:"columns"`
+	Body    []BodyTournament `json:"body"`
+}
+
+type BodyTournament struct {
+	Id                int64  `json:"id"`
+	TeamShortName     string `json:"teamShortName"`
+	Score             int64  `json:"score"`
+	DifferenceInScore int64  `json:"differenceInScore"`
+	GamesPlayed       int64  `json:"gamesPlayed"`
+	GamesToPlay       int64  `json:"gamesToPlay"`
+	TableCell         map[string]TableCellTournament
+}
+
+type TableCellTournament struct {
+	GameId int64  `json:"gameId"`
+	Score  string `json:"score"`
 }

@@ -34,6 +34,7 @@ func NewServer(endpoints team.Endpoints, options []kithttp.ServerOption, cfg *co
 	r.Get("/teams/leagues/{league_id}", kithttp.NewServer(endpoints.GetTeamsByLeague, decodeGetTeamsByLeagueRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 	// r.Get("/teams/vs/{city_id}/{year}", kithttp.NewServer(endpoints.GetTeamVsTeamTable, decodeGetTeamVsTeamTableRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 	r.Get("/teams/vs", kithttp.NewServer(endpoints.GetTeamVsTeamTable, decodeGetTeamVsTeamTableRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.Get("/tournaments/1vs1/teams/vs", kithttp.NewServer(endpoints.GetTournamentTeamVsTeamTable, decodeGetTeamVsTeamTableRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 
 	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdminTournamentMaster()).
 		Post("/teams", kithttp.NewServer(endpoints.Create, decodeCreateRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
