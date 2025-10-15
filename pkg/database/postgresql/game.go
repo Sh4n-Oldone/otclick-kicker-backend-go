@@ -1209,3 +1209,38 @@ func (db *RWDBOperation) UpdatePlayedTournamentGame(logger zerolog.Logger, ctx c
 
 	return nil
 }
+
+func (db *RDBOperation) FetchTournamentTeamGames(logger zerolog.Logger, ctx context.Context, tournamentId, teamId int64) ([]entities.TournamentGame, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	const query string = `
+		SELECT g.id, g.city_id, g.place_id, g.date, g.team1_id, g.team2_id, g.tech_loose_team_id, g.is_tiebreak, g.stage_id
+		FROM games AS g
+			JOIN tournament_stages AS ts ON g.stage_id = ts.id
+			JOIN tournaments AS t ON ts.tournament_id = t.id
+		WHERE 
+			t.id = $1 AND
+			(g.team1_id = $2 OR g.team2_id = $2);`
+
+	rows, err := db.db.Query(timeout, query, tournamentId, teamId)
+	if err != nil {
+		logger.Error().Stack().Err(err).Msg("failed to postgresql.FetchTournamentTeamGames")
+		return nil, DecodeDatabaseError(err)
+	}
+	defer rows.Close()
+
+	var games []entities.TournamentGame
+
+	for rows.Next() {
+		var g entities.TournamentGame
+		err = rows.Scan(&g.ID, &g.CityID, &g.PlaceID, &g.Date, &g.Team1ID, &g.Team2ID, &g.TechLooseTeamID, &g.IsTiebreak, &g.StageID)
+		if err != nil {
+			logger.Error().Stack().Err(err).Msg("failed rows.Scan postgresql.FetchTournamentTeamGames")
+			return nil, DecodeDatabaseError(err)
+		}
+		games = append(games, g)
+	}
+
+	return games, nil
+}

@@ -36,4 +36,8 @@ type ITeamR interface {
 	GetTeamExtraPointsCount(logger zerolog.Logger, ctx context.Context, teamID, leagueID int64) (int64, error)
 	GetExtraPointsListByTeamAndLeagueId(logger zerolog.Logger, ctx context.Context, teamId, leagueId int64) ([]entities.ExtraPoints, error)
 	GetExtraPointsById(logger zerolog.Logger, ctx context.Context, extraPointsId int64) (entities.ExtraPoints, error)
+
+	FetchTeamsByTournament(logger zerolog.Logger, ctx context.Context, tournamentId, tournamentType *int64) ([]entities.Team, error)
+	TeamsHaveNoGamesTournament(logger zerolog.Logger, ctx context.Context, teams []entities.Team, seasonId int64) (bool, error)
+	GetTournamentTeamExtraPointsCount(logger zerolog.Logger, ctx context.Context, teamId, tournamentId int64) (int64, error)
 }

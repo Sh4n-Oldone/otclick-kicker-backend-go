@@ -122,6 +122,7 @@ type GameTiebreak struct {
 	ScoreTeam1      *int       `json:"scoreTeam1"`
 	ScoreTeam2      *int       `json:"scoreTeam2"`
 	LeagueId        int        `json:"leagueId"`
+	TournamentId    int        `json:"tournamentId"`
 	TechLooseTeamId *int       `json:"techLooseTeamId,omitempty"`
 }
 

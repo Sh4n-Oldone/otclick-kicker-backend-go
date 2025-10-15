@@ -27,6 +27,10 @@ type IGameR interface {
 	GetPastGamesByTeamAndLeague(logger zerolog.Logger, ctx context.Context, teamId, leagueId int) ([]entities.GameShort, error)
 	GetPastGamesByPlayersTeams(logger zerolog.Logger, ctx context.Context, teamIDs []int) ([]entities.GameShort, error)
 	GetTeamGamesInLeague(logger zerolog.Logger, ctx context.Context, teamId, leagueId int64, tiebreak *bool) ([]entities.Game, error)
+
+	FetchTournamentPastGames(logger zerolog.Logger, ctx context.Context, teamId1, teamId2, cityId, tournamentId int64, tiebreak *bool) ([]entities.GameFetch, error)
+	FetchTournamentPastGamesTiebreak(logger zerolog.Logger, ctx context.Context, tournamentId int64) ([]entities.GameTiebreak, error)
+	FetchTournamentTeamGames(logger zerolog.Logger, ctx context.Context, tournamentId, teamId int64) ([]entities.TournamentGame, error)
 }
 
 type IGameRW interface {

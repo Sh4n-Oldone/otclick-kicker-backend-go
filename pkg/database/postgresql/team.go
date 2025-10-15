@@ -260,6 +260,35 @@ func (db *RDBOperation) FetchTeams(logger zerolog.Logger, ctx context.Context, l
 	return teams, nil
 }
 
+func (db *RDBOperation) FetchTeamsByTournament(logger zerolog.Logger, ctx context.Context, tournamentId, tournamentType *int64) ([]entities.Team, error) {
+	const query = `SELECT t.id, t.short_name FROM teams t
+		JOIN tournaments_teams_link ttl ON t.id = ttl.team_id
+		JOIN tournaments ts ON ttl.tournament_id = ts.id
+		WHERE
+		($1::INT IS NULL OR ts.id = $1) AND
+		($2::INT IS NULL OR ts.type_id = $2)`
+
+	rows, err := db.db.Query(ctx, query, *tournamentId, *tournamentType)
+	if err != nil {
+		logger.Error().Stack().Err(err).Msg("failed rows.Scan postgresql.FetchTeamsByTournament")
+		return nil, err
+	}
+	defer rows.Close()
+
+	var teams []entities.Team
+	for rows.Next() {
+		var team entities.Team
+		err = rows.Scan(&team.ID, &team.ShortName)
+		if err != nil {
+			logger.Error().Stack().Err(err).Msg("failed rows.Scan postgresql.FetchTeamsByTournament")
+			return nil, err
+		}
+		teams = append(teams, team)
+	}
+
+	return teams, nil
+}
+
 func (db *RDBOperation) FetchPastGames(logger zerolog.Logger, ctx context.Context, teamID1, teamID2, cityID, leagueID int64, tiebreak *bool) ([]entities.GameFetch, error) {
 	const query = `SELECT id, tech_loose_team_id FROM games WHERE team1_id = $1 AND team2_id = $2 AND city_id = $3 AND league_id = $4 AND date < now()
 		AND CASE
@@ -341,6 +370,96 @@ func (db *RDBOperation) FetchPastGamesTiebreak(logger zerolog.Logger, ctx contex
 	return games, nil
 }
 
+func (db *RDBOperation) FetchTournamentPastGamesTiebreak(logger zerolog.Logger, ctx context.Context, tournamentId int64) ([]entities.GameTiebreak, error) {
+	const query = `
+	SELECT 
+		g.id,
+		g.city_id,
+		g.place_id,
+		g.date,
+		g.team1_id,
+		g.team2_id,
+		sum(score_team1) as score_team1,
+		sum(score_team2) as score_team2,
+		t.id,
+		g.tech_loose_team_id
+	FROM games g
+	LEFT JOIN matches m ON g.id = m.game_id
+	JOIN tournament_stages ts ON g.stage_id = ts.id
+	JOIN tournaments t ON ts.tournament_id = t.id
+	WHERE t.id = $1 AND g.date < now() AND is_tiebreak = true
+	GROUP BY g.id, g.city_id, g.place_id, g.date, g.team1_id, g.team2_id, t.id, g.tech_loose_team_id
+	ORDER BY g.id DESC;`
+
+	rows, err := db.db.Query(ctx, query, tournamentId)
+	if err != nil {
+		logger.Error().Stack().Err(err).Msg("failed to postgresql.FetchTournamentPastGamesTiebreak")
+		return nil, DecodeDatabaseError(err)
+	}
+	defer rows.Close()
+
+	var games []entities.GameTiebreak
+
+	for rows.Next() {
+		game := entities.GameTiebreak{}
+		err = rows.Scan(
+			&game.Id,
+			&game.CityId,
+			&game.PlaceId,
+			&game.Date,
+			&game.Team1Id,
+			&game.Team2Id,
+			&game.ScoreTeam1,
+			&game.ScoreTeam2,
+			&game.TournamentId,
+			&game.TechLooseTeamId,
+		)
+		if err != nil {
+			logger.Error().Stack().Err(err).Msg("failed to postgresql.FetchTournamentPastGamesTiebreak")
+			return nil, DecodeDatabaseError(err)
+		}
+
+		games = append(games, game)
+	}
+
+	return games, nil
+}
+
+func (db *RDBOperation) FetchTournamentPastGames(logger zerolog.Logger, ctx context.Context, teamId1, teamId2, cityId, tournamentId int64, tiebreak *bool) ([]entities.GameFetch, error) {
+	const query = `SELECT g.id, g.tech_loose_team_id FROM games g
+		JOIN tournament_stages ts ON g.stage_id = ts.id
+		JOIN tournaments t ON ts.tournament_id = t.id
+	WHERE ((g.team1_id = $1 AND g.team2_id = $2) OR (g.team1_id = $2 AND g.team2_id = $1))
+		AND
+		g.city_id = $3 AND t.id = $4 AND g.date < now()
+		AND CASE
+		WHEN $5 = true THEN is_tiebreak = true
+		WHEN $5 = false THEN is_tiebreak = false
+		WHEN $5 IS NULL THEN true
+		END`
+
+	rows, err := db.db.Query(ctx, query, teamId1, teamId2, cityId, tournamentId, tiebreak)
+
+	if err != nil {
+		logger.Error().Stack().Err(err).Msg("failed rows.Scan postgresql.FetchTournamentPastGames")
+		return nil, err
+	}
+	defer rows.Close()
+
+	var games []entities.GameFetch
+	for rows.Next() {
+		var game entities.GameFetch
+		err = rows.Scan(&game.ID, &game.TechLooseTeamID)
+		if err != nil {
+			logger.Error().Stack().Err(err).Msg("failсed rows.Scan postgresql.FetchTournamentPastGames")
+			return nil, err
+		}
+		games = append(games, game)
+	}
+
+	return games, nil
+}
+
 func (db *RDBOperation) FetchMatches(logger zerolog.Logger, ctx context.Context, gameID int64) ([]entities.ShortMatch, error) {
 	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
@@ -394,6 +513,41 @@ func (db *RDBOperation) TeamsHaveNoGames(logger zerolog.Logger, ctx context.Cont
 			var game entities.ComingGame
 			err = rows.Scan(&game.ID)
 			if err != nil {
+				return false, err
+			}
+			games = append(games, game)
+		}
+		if len(games) >= 0 {
+			return false, nil
+		}
+
+	}
+
+	return true, nil
+}
+
+func (db *RDBOperation) TeamsHaveNoGamesTournament(logger zerolog.Logger, ctx context.Context, teams []entities.Team, seasonId int64) (bool, error) {
+	const queryGame = `SELECT g.id
+					   FROM games g
+					   JOIN tournament_stages ts ON g.stage_id = ts.id
+					   JOIN tournaments t ON ts.tournament_id = t.id
+					   WHERE (g.team1_id = $1 OR g.team2_id = $1)
+					   AND t.season_id = $2
+					`
+	for _, team := range teams {
+		rows, err := db.db.Query(ctx, queryGame, team.ID, seasonId)
+		if err != nil {
+			logger.Error().Stack().Err(err).Msg("failed rows.Scan postgresql.TeamsHaveNoGamesTournament")
+			return false, err
+		}
+		defer rows.Close()
+
+		var games []entities.TournamentGame
+		for rows.Next() {
+			var game entities.TournamentGame
+			err = rows.Scan(&game.ID)
+			if err != nil {
+				logger.Error().Stack().Err(err).Msg("failed rows.Scan postgresql.TeamsHaveNoGamesTournament")
 				return false, err
 			}
 			games = append(games, game)
@@ -635,6 +789,24 @@ func (db *RDBOperation) GetTeamExtraPointsCount(logger zerolog.Logger, ctx conte
 	err := db.db.QueryRow(ctx, query, teamID, leagueID).Scan(&extraPoints)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to postgresql.GetTeamExtraPoints")
+		return 0, DecodeDatabaseError(err)
+	}
+
+	return extraPoints, nil
+}
+
+func (db *RDBOperation) GetTournamentTeamExtraPointsCount(logger zerolog.Logger, ctx context.Context, teamId, tournamentId int64) (int64, error) {
+	const query = `SELECT COALESCE(SUM(points), 0)
+	FROM team_extra_points tep
+		JOIN tournaments_teams_link ttl ON tep.id = ttl.team_id
+		JOIN tournaments t ON ttl.tournament_id = t.id
+	WHERE tep.team_id = $1 AND t.id = $2;`
+
+	var extraPoints int64
+
+	err := db.db.QueryRow(ctx, query, teamId, tournamentId).Scan(&extraPoints)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to postgresql.GetTournamentTeamExtraPointsCount")
 		return 0, DecodeDatabaseError(err)
 	}
 
