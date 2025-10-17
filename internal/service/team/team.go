@@ -527,6 +527,7 @@ func (s *Service) GetTournamentTeamVsTeamTable(ctx context.Context, cityID, seas
 			}
 
 			bodyItem.Id = team.ID
+			bodyItem.TeamName = team.Name
 			bodyItem.TeamShortName = team.ShortName
 			bodyItem.Score = 0
 			bodyItem.DifferenceInScore = 0
@@ -543,6 +544,8 @@ func (s *Service) GetTournamentTeamVsTeamTable(ctx context.Context, cityID, seas
 					bodyItem.TableCell[t.ShortName] = cell
 					continue //команда сама с собой не играет
 				}
+
+				cell.TeamName = t.Name
 
 				tiebreak := false // tiebreak игры не учитываем
 
