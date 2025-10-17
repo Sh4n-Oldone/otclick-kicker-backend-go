@@ -261,7 +261,7 @@ func (db *RDBOperation) FetchTeams(logger zerolog.Logger, ctx context.Context, l
 }
 
 func (db *RDBOperation) FetchTeamsByTournament(logger zerolog.Logger, ctx context.Context, tournamentId, tournamentType *int64) ([]entities.Team, error) {
-	const query = `SELECT t.id, t.short_name FROM teams t
+	const query = `SELECT t.id, t.name, t.short_name FROM teams t
 		JOIN tournaments_teams_link ttl ON t.id = ttl.team_id
 		JOIN tournaments ts ON ttl.tournament_id = ts.id
 		WHERE
@@ -278,7 +278,7 @@ func (db *RDBOperation) FetchTeamsByTournament(logger zerolog.Logger, ctx contex
 	var teams []entities.Team
 	for rows.Next() {
 		var team entities.Team
-		err = rows.Scan(&team.ID, &team.ShortName)
+		err = rows.Scan(&team.ID, &team.Name, &team.ShortName)
 		if err != nil {
 			logger.Error().Stack().Err(err).Msg("failed rows.Scan postgresql.FetchTeamsByTournament")
 			return nil, err

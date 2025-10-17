@@ -222,6 +222,7 @@ type TableTournament struct {
 
 type BodyTournament struct {
 	Id                int64  `json:"id"`
+	TeamName          string `json:"teamName"`
 	TeamShortName     string `json:"teamShortName"`
 	Score             int64  `json:"score"`
 	DifferenceInScore int64  `json:"differenceInScore"`
@@ -231,6 +232,7 @@ type BodyTournament struct {
 }
 
 type TableCellTournament struct {
-	GameId int64  `json:"gameId"`
-	Score  string `json:"score"`
+	GameId   int64  `json:"gameId"`
+	Score    string `json:"score"`
+	TeamName string `json:"teamName"`
 }
