@@ -68,7 +68,8 @@ func (s *Service) Create(ctx context.Context, request *entities.CreateTournament
 			logger.Error().Err(err).Msg("cityId is nil")
 			return 0, err
 		}
-		if request.Creator.Role.Name != constant.SuperUserRole || request.Creator.Role.Name != constant.AdminRole {
+		if request.Creator.Role.Name != constant.SuperUserRole && request.Creator.Role.Name != constant.AdminRole {
+			err = errors.New(pkgerr.WrongUserRole)
 			logger.Error().Err(err).Msgf("forbidden for this role: %s", request.Creator.Role.Name)
 			return 0, error_templates.New(err.Error(), err, codes.Unauthenticated, http.StatusForbidden)
 		}
