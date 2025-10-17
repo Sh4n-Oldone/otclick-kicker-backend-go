@@ -149,16 +149,20 @@ func WrapErrorEndpoint(err error, reqID string) error {
 	var outErr *OutputError
 	if errors.As(err, &outErr) {
 		if outErr.grpcStatusCode == codes.Unavailable || outErr.grpcStatusCode == codes.Internal {
-			msg := fmt.Sprintf("internal error, request_id: %s", reqID)
+			msg := fmt.Sprintf("internal error, request_id: %s; %s.", reqID, err.Error())
 			err = errors.New(msg)
 		}
 	} else {
 		if stat, ok := status.FromError(err); ok {
 			if stat.Code() == codes.Unavailable || stat.Code() == codes.Internal {
-				msg := fmt.Sprintf("internal error, request_id: %s", reqID)
+				msg := fmt.Sprintf("internal error, request_id: %s; %s.", reqID, err.Error())
 				err = errors.New(msg)
 			}
 		}
 	}
 	return err
+}
+
+func BadRequestError(err error) error {
+	return New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 }

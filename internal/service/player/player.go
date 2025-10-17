@@ -2,19 +2,75 @@ package player
 
 import (
 	"context"
-	"slices"
-
+	"errors"
 	"golang.org/x/sync/errgroup"
+	"google.golang.org/grpc/codes"
+	"net/http"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/helpers"
+	"runtime"
+	"slices"
+	"strconv"
+
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/constant"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
+	pkgerr "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 )
 
-func (s *Service) Create(ctx context.Context, player entities.CreatePlayerRequest) (int, error) {
-	logger := s.logger.With().Interface("service", "player.Create").Logger()
-	timeout, cancel := context.WithTimeout(ctx, s.config.RWDB.MaxIdleConnectionTimeout)
-	defer cancel()
+func (s *Service) Create(ctx context.Context, request *entities.CreatePlayerRequest) (int, error) {
+	logger := s.logger.With().Str("service", "player.Create").Logger()
 
-	id, err := s.rwdbOperations.CreatePlayer(logger, timeout, player)
+	// если запрос от имени мастера по турнирам, то...
+	if request.Creator.Role.Name == constant.TournamentMaster {
+		// игрок должен быть активен...
+		if request.ActivePlayer == nil || *request.ActivePlayer == false {
+			err := errors.New("игрок должен быть активен")
+			logger.Error().Err(err).Msg("Failed create player request")
+			return 0, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+
+		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, request.Creator.ID, &s.config.RDB)
+		if err != nil {
+			return 0, err
+		}
+
+		if request.CityIdParam == "" {
+			// и его cityId не должен быть указан вовсе(наиболее вероятный и желаемый сценарий)
+			request.CityID = master.City.ID
+
+		} else {
+			// или его cityId должен быть равен cityId мастера по турнирам(эта проверка для подстраховки)
+			cityId, err := strconv.ParseInt(request.CityIdParam, 10, 64)
+			if err != nil {
+				err = errors.New(pkgerr.WrongParameterError + ": " + "cityId")
+				return 0, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+			}
+
+			if cityId != master.City.ID {
+				err = errors.New(pkgerr.ErrCityIdNotEqualMasterCityId)
+				return 0, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+			}
+
+			request.CityID = cityId
+		}
+
+	} else {
+
+		if request.CityIdParam == "" {
+			err := errors.New(pkgerr.EmptyParameterError + ": " + "cityId")
+			return 0, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+
+		cityId, err := strconv.ParseInt(request.CityIdParam, 10, 64)
+		if err != nil || cityId <= 0 {
+			err = errors.New(pkgerr.WrongParameterError + ": " + "cityId")
+			return 0, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+
+		request.CityID = cityId
+	}
+
+	id, err := s.rwdbOperations.CreatePlayer(logger, ctx, *request, &s.config.RDB)
 	if err != nil {
 		return 0, err
 	}
@@ -62,7 +118,7 @@ func (s *Service) Update(ctx context.Context, player entities.UpdatePlayerReques
 }
 
 func (s *Service) Find(ctx context.Context, player entities.FindPlayersRequest) (entities.FindPlayersResponse, error) {
-	logger := s.logger.With().Interface("service", "player.Find").Logger()
+	logger := s.logger.With().Str("service", "player.Find").Logger()
 	timeout, cancel := context.WithTimeout(ctx, s.config.RDB.MaxIdleConnectionTimeout)
 	defer cancel()
 
@@ -81,16 +137,16 @@ func (s *Service) Find(ctx context.Context, player entities.FindPlayersRequest) 
 	}
 
 	// если нужно полное описание игрока(KeepSimple != true) то метод продолжает выполнение
-	// и возвращается []entities.FullPlayer
+	// и возвращается []entities.FullPlayerV2
 
-	fullPlayers := make([]entities.FullPlayer, len(players))
+	fullPlayers := make([]entities.FullPlayerV2, len(players))
 
 	for i, p := range players {
 
 		var (
-			pastMatches []entities.Match
+			pastMatches []entities.MatchV2
 			leagues     []entities.PlayersLeague
-			pastGames   []entities.Game
+			pastGames   []entities.GameShort
 			teams       []entities.TeamItem
 		)
 
@@ -110,7 +166,7 @@ func (s *Service) Find(ctx context.Context, player entities.FindPlayersRequest) 
 
 		g.Go(func() error {
 			var err error
-			teams, err = s.rdbOperations.GetTeamsByPlayerID(logger, ctx, p.ID)
+			teams, err = s.rdbOperations.GetTeamsByPlayerID(logger, ctx, p.ID, nil)
 			return err
 		})
 
@@ -139,14 +195,99 @@ func (s *Service) Find(ctx context.Context, player entities.FindPlayersRequest) 
 	}, nil
 }
 
-func (s *Service) Get(ctx context.Context, id int) (entities.FullPlayer, error) {
+func (s *Service) FindV2(ctx context.Context, player entities.FindPlayersRequest) (entities.FindPlayersResponse, error) {
+	logger := s.logger.With().Str("service", "player.FindV2").Logger()
+
+	players, err := s.rdbOperations.FindPlayersV2(logger, ctx, player)
+	if err != nil {
+		return entities.FindPlayersResponse{}, err
+	}
+
+	if player.KeepSimple != nil && *player.KeepSimple {
+		return entities.FindPlayersResponse{
+			Players:     players,
+			FullPlayers: nil,
+		}, nil
+	}
+
+	fullPlayers := make([]entities.FullPlayerV2, len(players))
+
+	g, gCtx := errgroup.WithContext(ctx)
+
+	g.SetLimit(runtime.NumCPU())
+
+	for i, p := range players {
+		i, p := i, p
+
+		g.Go(func() error {
+			var (
+				pastMatches []entities.MatchV2
+				leagues     []entities.PlayersLeague
+				pastGames   []entities.GameShort
+				teams       []entities.TeamItem
+			)
+
+			// внутренний errgroup для параллельных запросов по одному игроку
+			innerG, innerCtx := errgroup.WithContext(gCtx)
+
+			innerG.Go(func() error {
+				var err error
+				pastMatches, err = s.rdbOperations.GetPastMatchesByPlayerID(logger, innerCtx, p.ID)
+				return err
+			})
+
+			innerG.Go(func() error {
+				var err error
+				leagues, err = s.rdbOperations.GetLeaguesByPlayerID(logger, innerCtx, p.ID)
+				return err
+			})
+
+			innerG.Go(func() error {
+				var err error
+				teams, err = s.rdbOperations.GetTeamsByPlayerID(logger, innerCtx, p.ID, nil)
+				return err
+			})
+
+			if err = innerG.Wait(); err != nil {
+				return err
+			}
+
+			var teamIds []int
+			for _, team := range teams {
+				teamIds = append(teamIds, team.ID)
+			}
+
+			pastGames, err = s.rdbOperations.GetPastGamesByPlayersTeams(logger, gCtx, teamIds)
+			if err != nil {
+				return err
+			}
+
+			fullPlayer := buildFullPlayer(p, pastMatches, leagues, teams, pastGames)
+			fullPlayers[i] = fullPlayer
+
+			return nil
+		})
+	}
+
+	if err = g.Wait(); err != nil {
+		logger.Error().Err(err).Msg("failed from g.Wait")
+		return entities.FindPlayersResponse{}, err
+	}
+
+	return entities.FindPlayersResponse{
+		Players:     nil,
+		FullPlayers: fullPlayers,
+	}, nil
+}
+
+func (s *Service) Get(ctx context.Context, id int) (entities.FullPlayerV2, error) {
 	logger := s.logger.With().Interface("service", "player.Get").Logger()
 	timeout, cancel := context.WithTimeout(ctx, s.config.RDB.MaxIdleConnectionTimeout)
 	defer cancel()
 
 	var (
 		player      entities.Player
-		pastMatches []entities.Match
+		pastMatches []entities.MatchV2
 		leagues     []entities.PlayersLeague
 		teams       []entities.TeamItem
 	)
@@ -155,7 +296,7 @@ func (s *Service) Get(ctx context.Context, id int) (entities.FullPlayer, error) 
 
 	g.Go(func() error {
 		var err error
-		player, err = s.rdbOperations.GetPlayerByID(logger, timeout, id)
+		player, err = s.rdbOperations.GetPlayerByID(logger, timeout, id, nil)
 		return err
 	})
 
@@ -173,12 +314,12 @@ func (s *Service) Get(ctx context.Context, id int) (entities.FullPlayer, error) 
 
 	g.Go(func() error {
 		var err error
-		teams, err = s.rdbOperations.GetTeamsByPlayerID(logger, ctx, id)
+		teams, err = s.rdbOperations.GetTeamsByPlayerID(logger, ctx, id, nil)
 		return err
 	})
 
 	if err := g.Wait(); err != nil {
-		return entities.FullPlayer{}, err
+		return entities.FullPlayerV2{}, err
 	}
 
 	var teamIds []int
@@ -189,7 +330,7 @@ func (s *Service) Get(ctx context.Context, id int) (entities.FullPlayer, error) 
 	// игры с участием команд игрока
 	pastGamesOfPlayersTeam, err := s.rdbOperations.GetPastGamesByPlayersTeams(logger, timeout, teamIds)
 	if err != nil {
-		return entities.FullPlayer{}, err
+		return entities.FullPlayerV2{}, err
 	}
 
 	fullPlayer := buildFullPlayer(player, pastMatches, leagues, teams, pastGamesOfPlayersTeam)
@@ -198,11 +339,11 @@ func (s *Service) Get(ctx context.Context, id int) (entities.FullPlayer, error) 
 }
 
 func (s *Service) GetByTeamID(ctx context.Context, teamID int) ([]entities.Player, error) {
-	logger := s.logger.With().Interface("service", "player.GetByTeamID").Logger()
+	logger := s.logger.With().Str("service", "player.GetByTeamID").Logger()
 	timeout, cancel := context.WithTimeout(ctx, s.config.RDB.MaxIdleConnectionTimeout)
 	defer cancel()
 
-	players, err := s.rdbOperations.GetPlayersByTeamID(logger, timeout, teamID)
+	players, err := s.rdbOperations.GetPlayersByTeamID(logger, timeout, teamID, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -210,7 +351,65 @@ func (s *Service) GetByTeamID(ctx context.Context, teamID int) ([]entities.Playe
 	return players, nil
 }
 
-func buildFullPlayer(player entities.Player, pastMatches []entities.Match, leagues []entities.PlayersLeague, teams []entities.TeamItem, pastGames []entities.Game) entities.FullPlayer {
+func (s *Service) GetTournamentPlayerList(ctx context.Context, req *entities.GetTournamentPlayerListRequest) ([]entities.TournamentPlayerItem, error) {
+	logger := s.logger.With().Str("service", "player.GetTournamentPlayerList").Logger()
+
+	items := make([]entities.TournamentPlayerItem, 0, 8)
+
+	players, err := s.rdbOperations.GetTournamentPlayers(ctx, logger, req.TournamentID, req.WithDeleted, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, p := range players {
+
+		var selfTeam *entities.TournamentTeam
+		otherTeams := make([]entities.TournamentTeam, 0)
+
+		selfTeamName, _ := helpers.BuildTeamName(p.Name, p.SecondName, p.LastName, p.ID)
+
+		teams, err := s.rdbOperations.GetTeamsByPlayerID(logger, ctx, int(p.ID), nil)
+		if err != nil {
+			return nil, err
+		}
+
+		haveSelfTeam := false
+
+		for _, team := range teams {
+			if team.Name == selfTeamName && !haveSelfTeam {
+
+				selfTeam = &entities.TournamentTeam{
+					ID:        int64(team.ID),
+					Name:      team.Name,
+					ShortName: team.ShortName,
+					CityID:    int64(team.CityID),
+					Avatar:    team.Avatar,
+				}
+
+				haveSelfTeam = true
+
+			} else {
+				otherTeams = append(otherTeams, entities.TournamentTeam{
+					ID:        int64(team.ID),
+					Name:      team.Name,
+					ShortName: team.ShortName,
+					CityID:    int64(team.CityID),
+					Avatar:    team.Avatar,
+				})
+			}
+		}
+
+		items = append(items, entities.TournamentPlayerItem{
+			Player:     p,
+			SelfTeam:   selfTeam,
+			OtherTeams: otherTeams,
+		})
+	}
+
+	return items, nil
+}
+
+func buildFullPlayer(player entities.Player, pastMatches []entities.MatchV2, leagues []entities.PlayersLeague, teams []entities.TeamItem, pastGames []entities.GameShort) entities.FullPlayerV2 {
 	type leagueStat struct {
 		goalsScoredNumber   int
 		goalsConcededNumber int
@@ -223,8 +422,11 @@ func buildFullPlayer(player entities.Player, pastMatches []entities.Match, leagu
 	for _, match := range pastMatches {
 		var stat leagueStat
 		stat.playersGames = make(map[int]bool)
-		if entry, ok := leagueStats[*match.LeagueID]; ok {
-			stat = entry
+
+		if match.LeagueID != nil {
+			if entry, ok := leagueStats[*match.LeagueID]; ok {
+				stat = entry
+			}
 		}
 
 		// заполняем игры игрока
@@ -242,17 +444,21 @@ func buildFullPlayer(player entities.Player, pastMatches []entities.Match, leagu
 			stat.playersMatches++
 		}
 
-		leagueStats[*match.LeagueID] = stat
+		if match.LeagueID != nil {
+			leagueStats[*match.LeagueID] = stat
+		}
 	}
 
 	leaguePlayedGames := make(map[int]int)
 	for _, game := range pastGames {
 		games := 0
-		if entry, ok := leaguePlayedGames[*game.LeagueID]; ok {
-			games = entry
+		if game.LeagueID != nil {
+			if entry, ok := leaguePlayedGames[*game.LeagueID]; ok {
+				games = entry
+			}
+			games++
+			leaguePlayedGames[*game.LeagueID] = games
 		}
-		games++
-		leaguePlayedGames[*game.LeagueID] = games
 	}
 
 	leagueItems := make([]entities.LeagueItem, len(leagues))
@@ -288,7 +494,7 @@ func buildFullPlayer(player entities.Player, pastMatches []entities.Match, leagu
 		}
 	}
 
-	return entities.FullPlayer{
+	return entities.FullPlayerV2{
 		ID:           player.ID,
 		Name:         player.Name,
 		SecondName:   player.SecondName,

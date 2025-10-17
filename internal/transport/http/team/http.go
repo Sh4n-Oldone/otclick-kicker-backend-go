@@ -1,10 +1,12 @@
 package team
 
 import (
+	"net/http"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	kithttp "github.com/go-kit/kit/transport/http"
-	"net/http"
+
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/team"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/user"
@@ -32,17 +34,18 @@ func NewServer(endpoints team.Endpoints, options []kithttp.ServerOption, cfg *co
 	r.Get("/teams/leagues/{league_id}", kithttp.NewServer(endpoints.GetTeamsByLeague, decodeGetTeamsByLeagueRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 	// r.Get("/teams/vs/{city_id}/{year}", kithttp.NewServer(endpoints.GetTeamVsTeamTable, decodeGetTeamVsTeamTableRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 	r.Get("/teams/vs", kithttp.NewServer(endpoints.GetTeamVsTeamTable, decodeGetTeamVsTeamTableRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.Get("/tournaments/1vs1/teams/vs", kithttp.NewServer(endpoints.GetTournamentTeamVsTeamTable, decodeGetTeamVsTeamTableRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 
-	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
+	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdminTournamentMaster()).
 		Post("/teams", kithttp.NewServer(endpoints.Create, decodeCreateRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
-	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
+	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdminTournamentMaster()).
 		Put("/teams", kithttp.NewServer(endpoints.Update, decodeUpdateRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
 		Delete("/teams/{id}", kithttp.NewServer(endpoints.Delete, decodeDeleteRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 
-	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
+	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdminTournamentMaster()).
 		Post("/teams/add-player", kithttp.NewServer(endpoints.AddPlayerIntoTeam, decodeAddPlayerIntoTeamRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
-	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
+	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdminTournamentMaster()).
 		Post("/teams/remove-player", kithttp.NewServer(endpoints.RemovePlayerFromTeam, decodeRemovePlayerFromTeamRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 
 	return r

@@ -2,15 +2,17 @@ package postgresql
 
 import (
 	"context"
-	stderr "errors"
+	"errors"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
+
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
+	pkgerr "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 )
 
-func (db *RDBOperation) GetBarList(logger zerolog.Logger, ctx context.Context, cityID *int64, withDeleted bool) ([]entity.Bar, error) {
+func (db *RDBOperation) GetBarList(logger zerolog.Logger, ctx context.Context, cityID *int64, withDeleted bool) ([]entities.Bar, error) {
 
 	queries := map[string]string{
 		"queryGetBarList":                    queryGetBarList,
@@ -41,46 +43,47 @@ func (db *RDBOperation) GetBarList(logger zerolog.Logger, ctx context.Context, c
 	}
 	defer rows.Close()
 
-	var entities []entity.Bar
+	var bars []entities.Bar
 
 	for rows.Next() {
-		var rel entity.City
-		var entity entity.Bar
+		var city entities.City
+		var bar entities.Bar
 
-		err = rows.Scan(&entity.ID, &rel.ID, &entity.Name, &entity.Description, &entity.UpdatedAt, &entity.DeletedAt)
+		err = rows.Scan(&bar.ID, &city.ID, &bar.Name, &bar.Description, &bar.UpdatedAt, &bar.DeletedAt)
 		if err != nil {
 			logger.Error().Stack().Err(err).Msg("failed scan to postgresql.GetBarList")
 			return nil, DecodeDatabaseError(err)
 		}
 
-		entity.City = rel
+		bar.City = city
 
-		entities = append(entities, entity)
+		bars = append(bars, bar)
 	}
 
-	return entities, nil
+	return bars, nil
 }
 
-func (db *RDBOperation) GetBarByID(logger zerolog.Logger, ctx context.Context, id int64) (*entity.Bar, error) {
-	var rel entity.City
-	var entity entity.Bar
+func (db *RDBOperation) GetBarByID(logger zerolog.Logger, ctx context.Context, id int64, cfg *config.DBConfig) (*entities.Bar, error) {
+	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+	defer cancel()
 
-	entity.City = rel
+	var bar entities.Bar
+	bar.City = entities.City{}
 
-	err := db.db.QueryRow(ctx, queryGetBarByID, id).
-		Scan(&entity.ID, &entity.City.ID, &entity.Name, &entity.Description, &entity.UpdatedAt, &entity.DeletedAt)
+	err := db.db.QueryRow(timeout, queryGetBarByID, id).
+		Scan(&bar.ID, &bar.City.ID, &bar.Name, &bar.Description, &bar.UpdatedAt, &bar.DeletedAt)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.GetBarByID")
-		return nil, DecodeDatabaseError(stderr.New(errors.ErrGetPlayer))
+		return nil, DecodeDatabaseError(errors.New(pkgerr.ErrGetPlayer))
 	}
 
-	return &entity, nil
+	return &bar, nil
 }
 
-func (db *RWDBOperation) CreateBar(logger zerolog.Logger, ctx context.Context, entity entity.Bar) (*int64, error) {
+func (db *RWDBOperation) CreateBar(logger zerolog.Logger, ctx context.Context, bar entities.Bar) (*int64, error) {
 	var id int64
 
-	err := db.db.QueryRow(ctx, queryCreateBar, entity.City.ID, entity.Name, entity.Description).Scan(&id)
+	err := db.db.QueryRow(ctx, queryCreateBar, bar.City.ID, bar.Name, bar.Description).Scan(&id)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.CreateBar")
 		return nil, DecodeDatabaseError(err)
@@ -89,16 +92,16 @@ func (db *RWDBOperation) CreateBar(logger zerolog.Logger, ctx context.Context, e
 	return &id, nil
 }
 
-func (db *RWDBOperation) UpdateBar(logger zerolog.Logger, ctx context.Context, entity entity.UpdateBarRequest) error {
-	res, err := db.db.Exec(ctx, queryUpdateBar, entity.ID, entity.Name, entity.Description)
+func (db *RWDBOperation) UpdateBar(logger zerolog.Logger, ctx context.Context, bar entities.UpdateBarRequest) error {
+	res, err := db.db.Exec(ctx, queryUpdateBar, bar.ID, bar.Name, bar.Description)
 	if err != nil {
-		logger.Error().Stack().Err(err).Msg("failed to postgresql.CreateBar")
+		logger.Error().Stack().Err(err).Msg("failed to postgresql.UpdateBar")
 		return DecodeDatabaseError(err)
 	}
 
 	if res.RowsAffected() == 0 {
 		err = pgx.ErrNoRows
-		logger.Error().Stack().Err(err).Msg("failed find to postgresql.CreateBar")
+		logger.Error().Stack().Err(err).Msg("failed find to postgresql.UpdateBar")
 		return DecodeDatabaseError(err)
 	}
 
@@ -108,13 +111,13 @@ func (db *RWDBOperation) UpdateBar(logger zerolog.Logger, ctx context.Context, e
 func (db *RWDBOperation) DeleteBar(logger zerolog.Logger, ctx context.Context, id int64) error {
 	res, err := db.db.Exec(ctx, queryDeleteBar, id)
 	if err != nil {
-		logger.Error().Stack().Err(err).Msg("failed to postgresql.CreateBar")
+		logger.Error().Stack().Err(err).Msg("failed to postgresql.DeleteBar")
 		return DecodeDatabaseError(err)
 	}
 
 	if res.RowsAffected() == 0 {
 		err = pgx.ErrNoRows
-		logger.Error().Stack().Err(err).Msg("failed find to postgresql.CreateBar")
+		logger.Error().Stack().Err(err).Msg("failed find to postgresql.DeleteBar")
 		return DecodeDatabaseError(err)
 	}
 

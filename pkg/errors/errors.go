@@ -17,6 +17,11 @@ const (
 	FailedGameByTeamsLeagueMismatch = "ошибка совмещения команд из разных лиг"
 	ErrEmptyField                   = "отсутствует значение в поле запроса"
 	WrongPlaceIdError               = "некорректный id места игры"
+	ErrUserIdToken                  = "не удалось получить идентификатор пользователя из токена"
+	ErrRoleToken                    = "не удалось получить роли из токена"
+	ErrCityIdNotEqualMasterCityId   = "cityId должен быть равен cityId мастера по турнирам"
+	ErrBarNotInMasterCity           = "бар находится не в городе мастера по турнирам"
+	ErrLeagueNotInMasterCity        = "мастер по турнирам не может создавать лигу не в своем городе"
 )
 
 // Database errors
@@ -53,9 +58,10 @@ const (
 	ErrGetPlace     = "ошибка получения данных игрового места"
 	ErrGetPlaceList = "ошибка получения списка игровых мест"
 
-	ErrCreateTeam = "ошибка создания команды"
-	ErrDeleteTeam = "ошибка удаления команды"
-	ErrUpdateTeam = "ошибка обновления данных команды"
+	ErrCreateTeam           = "ошибка создания команды"
+	ErrDeleteTeam           = "ошибка удаления команды"
+	ErrDeleteTeamFromLeague = "ошибка удаления команды из лиги, у команды %d есть прошлые игры в лиге %d"
+	ErrUpdateTeam           = "ошибка обновления данных команды"
 
 	ErrTeamAlreadyInLeague = "команда уже находится в составе другой лиги"
 	ErrCreateGame          = "ошибка создания игры"
@@ -70,4 +76,7 @@ const (
 	ErrMatchNotFound       = "матч не найден"
 
 	ErrRating = "ошибка при сохранении рейтинга"
+
+	ErrCreateSeason = "ошибка создания сезона"
+	ErrUpdateSeason = "ошибка обновления данных сезона"
 )

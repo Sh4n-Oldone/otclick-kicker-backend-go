@@ -2,13 +2,42 @@ package entities
 
 import "time"
 
+type FullPlayer struct {
+	ID           int          `json:"id"`
+	Name         *string      `json:"name,omitempty"`
+	SecondName   *string      `json:"secondName,omitempty"`
+	LastName     string       `json:"lastName"`
+	Avatar       []byte       `json:"avatar,omitempty"`
+	ActivePlayer *bool        `json:"activePlayer,omitempty"`
+	Deleted      bool         `json:"deleted"`
+	CityID       *int         `json:"cityId,omitempty"`
+	CityName     *string      `json:"cityName,omitempty"`
+	Leagues      []LeagueItem `json:"leagues,omitempty"`
+}
+
+type PlayersLeague struct {
+	ID     int
+	Name   string
+	CityID int
+	Rating *int
+}
+
+type PlayersTournament struct {
+	ID     int64
+	Name   string
+	CityID int64
+	Rating *int64
+}
+
 type CreatePlayerRequest struct {
-	Name         *string `json:"name,omitempty"`
-	SecondName   *string `json:"secondName,omitempty"`
-	LastName     string  `json:"lastName"`
+	Name         *string `json:"name,omitempty" validate:"omitempty,min=1,max=64"`
+	SecondName   *string `json:"secondName,omitempty" validate:"omitempty,min=1,max=64"`
+	LastName     string  `json:"lastName" validate:"required,min=1,max=64"`
 	Avatar       []byte  `json:"avatar,omitempty"`
 	ActivePlayer *bool   `json:"activePlayer,omitempty"`
-	CityID       int     `json:"cityId"`
+	CityID       int64   `json:"cityId"`
+	CityIdParam  string  `json:"cityIdParam"`
+	Creator      User    `json:"creator" validate:"required"`
 }
 
 type CreatePlayerResponse struct {
@@ -16,12 +45,12 @@ type CreatePlayerResponse struct {
 }
 
 type UpdatePlayerRequest struct {
-	ID           int     `json:"id"`
-	Name         *string `json:"name,omitempty"`
-	SecondName   *string `json:"secondName,omitempty"`
-	LastName     *string `json:"lastName,omitempty"`
+	ID           int64   `json:"id" validate:"required,gt=0"`
+	Name         *string `json:"name,omitempty" validate:"omitempty,min=1,max=64"`
+	SecondName   *string `json:"secondName,omitempty" validate:"omitempty,min=1,max=64"`
+	LastName     *string `json:"lastName,omitempty" validate:"omitempty,min=1,max=64"`
 	ActivePlayer *bool   `json:"activePlayer,omitempty"`
-	Avatar       *string `json:"avatar,omitempty"`
+	Avatar       []byte  `json:"avatar,omitempty"`
 	CityID       *int32  `json:"cityId,omitempty"`
 }
 
@@ -53,8 +82,8 @@ type FindPlayersRequest struct {
 }
 
 type FindPlayersResponse struct {
-	Players     []Player     `json:"players,omitempty"`
-	FullPlayers []FullPlayer `json:"fullPlayers,omitempty"`
+	Players     []Player       `json:"players,omitempty"`
+	FullPlayers []FullPlayerV2 `json:"fullPlayers,omitempty"`
 }
 
 type Player struct {
@@ -73,7 +102,7 @@ type Player struct {
 	Rating        *int       `json:"rating,omitempty"`
 }
 
-type FullPlayer struct {
+type FullPlayerV2 struct {
 	ID           int     `json:"id"`
 	Name         *string `json:"name,omitempty"`
 	SecondName   *string `json:"secondName,omitempty"`
@@ -99,7 +128,7 @@ type FullPlayer struct {
 	// Rating                    *int         `json:"rating,omitempty"`
 }
 
-type LeagueItem struct {
+type LeagueItemV2 struct {
 	ID     int    `json:"id"`
 	Name   string `json:"name"`
 	Rating int    `json:"rating"`
@@ -118,11 +147,32 @@ type OkResponse struct {
 	Message string `json:"message"`
 }
 
-type TeamItem struct {
+type TeamItemV2 struct {
 	ID        int    `json:"id"`
 	Name      string `json:"name,omitempty"`
 	ShortName string `json:"shortName,omitempty"`
 	Avatar    []byte `json:"avatar,omitempty"`
 	CityID    int    `json:"city_id"`
 	Leagues   []int  `json:"leagues"`
+}
+
+type GetTournamentPlayerListRequest struct {
+	TournamentID int64
+	WithDeleted  bool
+}
+
+type TournamentPlayer struct {
+	ID         int64   `json:"id"`
+	Name       *string `json:"name,omitempty"`
+	SecondName *string `json:"secondName,omitempty"`
+	LastName   string  `json:"lastName"`
+	IsActive   bool    `json:"isActive"`
+	Avatar     []byte  `json:"avatar,omitempty"`
+	CityID     *int64  `json:"cityId,omitempty"`
+}
+
+type TournamentPlayerItem struct {
+	Player     TournamentPlayer `json:"player"`
+	SelfTeam   *TournamentTeam  `json:"selfTeam,omitempty"`
+	OtherTeams []TournamentTeam `json:"otherTeams,omitempty"`
 }

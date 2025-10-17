@@ -27,7 +27,7 @@ func NewServer(endpoints league.Endpoints, options []kithttp.ServerOption, cfg *
 
 	//Actual
 	r.Get("/leagues", kithttp.NewServer(endpoints.GetList, decodeGetListRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
-	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
+	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdminTournamentMaster()).
 		Post("/leagues", kithttp.NewServer(endpoints.Create, decodeCreateRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
 		Put("/leagues/{id}", kithttp.NewServer(endpoints.Update, decodeUpdateRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
@@ -36,6 +36,15 @@ func NewServer(endpoints league.Endpoints, options []kithttp.ServerOption, cfg *
 
 	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
 		Post("/leagues/{id}/recalc", kithttp.NewServer(endpoints.Recalc, decodeRecalcRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+
+	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
+		Post("/extra-points", kithttp.NewServer(endpoints.CreateExtraPoints, decodeCreateExtraPointsRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
+		Patch("/extra-points", kithttp.NewServer(endpoints.UpdateExtraPoints, decodeUpdateExtraPointsRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
+		Delete("/extra-points/{id}", kithttp.NewServer(endpoints.DeleteExtraPoints, decodeDeleteExtraPointsRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.Get("/leagues/{league_id}/teams/{team_id}/extra-points", kithttp.NewServer(endpoints.GetExtraPointsListByTeamAndLeagueId, decodeGetExtraPointsListByTeamAndLeagueIdRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.Get("/extra-points/{id}", kithttp.NewServer(endpoints.GetExtraPointsById, decodeGetExtraPointsByIdRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 
 	return r
 }

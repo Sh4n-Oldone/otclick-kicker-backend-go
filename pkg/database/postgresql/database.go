@@ -2,121 +2,57 @@ package postgresql
 
 import (
 	"context"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql/abstract"
+
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql/tx"
 )
 
 type RWDBOperationer interface {
-	CreateCity(logger zerolog.Logger, ctx context.Context, city entity.City) (id *int64, err error)
-	UpdateCity(logger zerolog.Logger, ctx context.Context, city entity.City) error
-	DeleteCity(logger zerolog.Logger, ctx context.Context, id int64) error
+	abstract.IUserRW
+	abstract.ICityRW
+	abstract.IPlaceRW
+	abstract.IPlayerRW
+	abstract.IBarRW
+	abstract.ITableRW
+	abstract.IPlaceRW
+	abstract.IMatchRW
+	abstract.IGameRW
+	abstract.ITeamRW
+	abstract.IRatingRW
+	abstract.ISeasonRW
+	abstract.ITournamentRW
+	abstract.ILeagueRW
 
-	CreateUser(logger zerolog.Logger, ctx context.Context, user entity.User) (id *int64, err error)
-	UpdateUser(logger zerolog.Logger, ctx context.Context, user entity.User) error
-
-	CreateMatch(logger zerolog.Logger, ctx context.Context, match entity.Match) (id int64, err error)
-	UpdateMatch(logger zerolog.Logger, ctx context.Context, match entity.Match) error
-	DeleteMatch(logger zerolog.Logger, ctx context.Context, id int64) (bool, error)
-
-	CreatePlayer(logger zerolog.Logger, ctx context.Context, player entities.CreatePlayerRequest) (int, error)
-	DeletePlayer(logger zerolog.Logger, ctx context.Context, playerID int) error
-	RecoverPlayer(logger zerolog.Logger, ctx context.Context, playerID int) error
-	UpdatePlayer(logger zerolog.Logger, ctx context.Context, playerData entities.UpdatePlayerRequest) error
-
-	CreateBar(logger zerolog.Logger, ctx context.Context, entity entity.Bar) (id *int64, err error)
-	UpdateBar(logger zerolog.Logger, ctx context.Context, entity entity.UpdateBarRequest) error
-	DeleteBar(logger zerolog.Logger, ctx context.Context, id int64) error
-
-	CreateTable(logger zerolog.Logger, ctx context.Context, entity entity.Table) (id *int64, err error)
-	UpdateTable(logger zerolog.Logger, ctx context.Context, entity entity.Table) error
-	DeleteTable(logger zerolog.Logger, ctx context.Context, id int64) error
-
-	CreatePlace(logger zerolog.Logger, ctx context.Context, entity entity.Place) (id *int64, err error)
-	UpdatePlace(logger zerolog.Logger, ctx context.Context, entity entity.Place) error
-	DeletePlace(logger zerolog.Logger, ctx context.Context, id int64) error
-	CreateTeam(logger zerolog.Logger, ctx context.Context, team entity.CreateTeamRequest) (id int64, err error)
-	UpdateTeam(logger zerolog.Logger, ctx context.Context, team entity.UpdateTeamRequest) (bool, error)
-	DeleteTeam(logger zerolog.Logger, ctx context.Context, id int64) (bool, error)
-	AddPlayerIntoTeam(logger zerolog.Logger, ctx context.Context, playerID, teamID int64) (bool, error)
-	RemovePlayerFromTeam(logger zerolog.Logger, ctx context.Context, playerID, teamID int64) (bool, error)
-	CreateLeague(logger zerolog.Logger, ctx context.Context, league entity.League, teams []int64) (id int64, err error)
-	UpdateLeague(logger zerolog.Logger, ctx context.Context, league entity.League, teams []int64) error
-	DeleteLeague(logger zerolog.Logger, ctx context.Context, id int64) error
-
-	DeleteGame(logger zerolog.Logger, ctx context.Context, gameID int) error
-	UpdateGame(logger zerolog.Logger, ctx context.Context, request entities.UpdateGameRequest, rates []entity.Rating) error
-	UpdateFutureGame(logger zerolog.Logger, ctx context.Context, request entity.UpdateFutureGameRequest) error
-	CreateFutureGame(logger zerolog.Logger, ctx context.Context, request entity.CreateFutureGameRequest) (int, error)
-	CreateGameWithRating(logger zerolog.Logger, ctx context.Context, request entities.CreateGameRequest, rates map[int]int, operator *string, leagueID int64) (entities.CreateGameResponse, error)
-
-	CreateRating(logger zerolog.Logger, ctx context.Context, entity entity.Rating, operatior *string) error
-	UpdateRating(logger zerolog.Logger, ctx context.Context, entity entity.Rating) error
-
-	RewriteMatchesAndPlayerRatings(logger zerolog.Logger, ctx context.Context, matches []entity.Match, ratings map[int64]entity.Rating) error
+	BeginTx(ctx context.Context, logger zerolog.Logger) (tx.ITx, error)
 }
 
 // RDBOperationer is the interface that implemented by the RDBOperation structure.
 type RDBOperationer interface {
-	GetRoleList(logger zerolog.Logger, ctx context.Context) ([]entity.Role, error)
-	GetRole(logger zerolog.Logger, ctx context.Context, id *int64, name *string) (*entity.Role, error)
+	abstract.IRoleR
+	abstract.ICityR
+	abstract.IBarR
+	abstract.IPlaceR
+	abstract.IUserR
+	abstract.ISeasonR
+	abstract.ITableR
+	abstract.IMatchR
+	abstract.ILeagueR
+	abstract.IGameR
+	abstract.ITeamR
+	abstract.IPlayerR
+	abstract.ITournamentR
 
-	GetCityList(logger zerolog.Logger, ctx context.Context, withDelete bool) ([]entity.City, error)
-
-	GetUser(logger zerolog.Logger, ctx context.Context, id *int64, email *string) (*entity.User, error)
-
-	GetPlayerByID(logger zerolog.Logger, ctx context.Context, playerID int) (entities.Player, error)
-	GetPlayersByTeamID(logger zerolog.Logger, ctx context.Context, teamID int) ([]entities.Player, error)
-
-	GetPastMatchesByPlayerID(logger zerolog.Logger, ctx context.Context, playerID int) ([]entities.Match, error)
-	GetLeaguesByPlayerID(logger zerolog.Logger, ctx context.Context, playerID int) ([]entities.PlayersLeague, error)
-
-	GetTeamsByPlayerID(logger zerolog.Logger, ctx context.Context, playerID int) ([]entities.TeamItem, error)
-
-	GetPastGamesByPlayersTeam(logger zerolog.Logger, ctx context.Context, teamID int) ([]entities.Game, error)
-
-	GetPastGamesByPlayersTeams(logger zerolog.Logger, ctx context.Context, teamIDs []int) ([]entities.Game, error)
-
-	FindPlayers(logger zerolog.Logger, ctx context.Context, player entities.FindPlayersRequest) ([]entities.Player, error)
-
-	GetTableList(logger zerolog.Logger, ctx context.Context, withDelete bool) ([]entity.Table, error)
-
-	GetBarList(logger zerolog.Logger, ctx context.Context, cityID *int64, withDelete bool) ([]entity.Bar, error)
-	GetBarByID(logger zerolog.Logger, ctx context.Context, id int64) (*entity.Bar, error)
-
-	GetPlaceList(logger zerolog.Logger, ctx context.Context, barID, tableID, cityID *int64, withDelete bool) ([]entity.Place, error)
-	GetPlaceByID(logger zerolog.Logger, ctx context.Context, id int64) (*entity.Place, error)
-	GetLeagueList(logger zerolog.Logger, ctx context.Context, cityID int64) ([]entity.League, error)
-
-	GetGame(logger zerolog.Logger, ctx context.Context, gameID int) (entities.GetGameResponse, error)
-	FindGames(logger zerolog.Logger, ctx context.Context, request entities.FindGameRequest) ([]entities.FindGame, error)
-	GetGamesYears(logger zerolog.Logger, ctx context.Context) (entity.GetGamesYearsResponse, error)
-	GetComingGames(logger zerolog.Logger, ctx context.Context) ([]entities.ComingGame, error)
-	GetFutureGames(logger zerolog.Logger, ctx context.Context, cityID int) ([]entity.ShortGame, error)
-	GetTeamGames(logger zerolog.Logger, ctx context.Context, teamID int) ([]entity.TeamGame, error)
-	GetTeam(logger zerolog.Logger, ctx context.Context, teamID int64) (entity.GetTeamResponse, error)
-	GetTeams(logger zerolog.Logger, ctx context.Context, cityId int64, onlyFree bool) ([]entity.TeamShort, error)
-	GetTeamsByCity(logger zerolog.Logger, ctx context.Context, onlyFree bool, cityID int64) ([]entity.TeamShort, error)
-	GetTeamsByLeague(logger zerolog.Logger, ctx context.Context, leagueID int64) ([]entity.TeamByLeague, error)
-
-	FetchLeagues(logger zerolog.Logger, ctx context.Context, cityID int64) ([]entity.League, error)
-	FetchTeams(logger zerolog.Logger, ctx context.Context, leagueID int64) ([]entity.Team, error)
-	FetchPastGames(logger zerolog.Logger, ctx context.Context, teamID1, teamID2, cityID, leagueID int64) ([]entity.GameFetch, error)
-	FetchMatches(logger zerolog.Logger, ctx context.Context, gameID int64) ([]entities.Match, error)
-	TeamsHaveNoGames(logger zerolog.Logger, ctx context.Context, teams []entity.Team, year int64) (bool, error)
-
-	GetRatingByPlayerIDAndByLeagueID(logger zerolog.Logger, ctx context.Context, playerID, leagueID int64) (int64, error)
-
-	GetMatchListByGameID(ctx context.Context, logger zerolog.Logger, gameID int) ([]entities.Match, error)
-
-	GetPlayerIDsByLeagueID(logger zerolog.Logger, ctx context.Context, leagueID int64) ([]int64, error)
-	GetMatchListByLeagueID(logger zerolog.Logger, ctx context.Context, leagueID int64) ([]entity.Match, error)
+	GetSuffix(logger zerolog.Logger, ctx context.Context, tx tx.ITx) (string, error)
 }
 
 type dbp struct {
-	db *pgxpool.Pool
+	db  *pgxpool.Pool
+	cfg *config.DBConfig
 }
 
 // RWDBOperation is a structure that implements the RWDBOperationer interface.
@@ -125,6 +61,65 @@ type RWDBOperation dbp
 // RDBOperation is a structure that implements the RDBOperationer interface.
 type RDBOperation dbp
 
-func NewOperationer(rwConn *pgxpool.Pool, rConn *pgxpool.Pool) (RWDBOperationer, RDBOperationer) {
-	return &RWDBOperation{rwConn}, &RDBOperation{rConn}
+func NewOperationer(rwConn *pgxpool.Pool, rConn *pgxpool.Pool, cfg *config.Configuration) (RWDBOperationer, RDBOperationer) {
+	return &RWDBOperation{rwConn, &cfg.RWDB}, &RDBOperation{rConn, &cfg.RDB}
+}
+
+func poolOrTx(pg tx.IExecutor, tx tx.ITx) tx.IExecutor {
+	if tx != nil {
+		if txExec := tx.Executor(); txExec != nil {
+			return txExec
+		}
+	}
+
+	return pg
+}
+
+type Tx struct {
+	tx     pgx.Tx
+	pg     *pgxpool.Pool
+	logger zerolog.Logger
+}
+
+func (db *RWDBOperation) BeginTx(ctx context.Context, logger zerolog.Logger) (tx.ITx, error) {
+	tX, err := db.db.Begin(ctx)
+	if err != nil {
+		logger.Error().Err(err).Msg("BeginRW")
+		return nil, DecodeDatabaseError(err)
+	}
+
+	return &Tx{
+		tx:     tX,
+		pg:     db.db,
+		logger: logger,
+	}, nil
+}
+
+//func (db *RDBOperation) BeginR(ctx context.Context, logger zerolog.Logger) (tx.ITx, error) {
+//	tx, err := db.db.Begin(ctx)
+//	if err != nil {
+//		logger.Error().Err(err).Msg("BeginR")
+//		return nil, DecodeDatabaseError(err)
+//	}
+//
+//	return &Tx{
+//		tx: tx,
+//		pg: db.db,
+//	}, nil
+//}
+
+func (t *Tx) Commit(ctx context.Context) error {
+	return t.tx.Commit(ctx)
+}
+
+func (t *Tx) Rollback(ctx context.Context) {
+	logger := t.logger.With().Str("transaction", "Rollback").Logger()
+	err := t.tx.Rollback(ctx)
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed tx.Rollback")
+	}
+}
+
+func (t *Tx) Executor() tx.IExecutor {
+	return t.tx
 }

@@ -1,10 +1,12 @@
 package game
 
 import (
+	"net/http"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	kithttp "github.com/go-kit/kit/transport/http"
-	"net/http"
+
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/game"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/user"
@@ -34,6 +36,11 @@ func NewServer(endpoints game.Endpoints, options []kithttp.ServerOption, cfg *co
 	r.Get("/games/years", kithttp.NewServer(endpoints.GetYears, decodeGamesYearsRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 	// /games/coming возвращает список ближайших игр
 	r.Get("/games/coming", kithttp.NewServer(endpoints.GetComingGames, decodeGetComingGamesRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	// /games возвращает список игр (есть фильтр)
+	r.Get("/games", kithttp.NewServer(endpoints.GetGameList, decodeGetGameListRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+
+	r.Get("/tournaments/games/played", kithttp.NewServer(endpoints.GetPlayedTournamentGameList, decodeTournamentIdCityIdParams, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.Get("/tournaments/games/future", kithttp.NewServer(endpoints.GetFutureTournamentGameList, decodeTournamentIdCityIdParams, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 
 	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdminCapitan()).
 		Post("/games/played", kithttp.NewServer(endpoints.Create, decodeCreateRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
@@ -50,5 +57,23 @@ func NewServer(endpoints game.Endpoints, options []kithttp.ServerOption, cfg *co
 	// Get "/games/teams/{team_id}" - получает список будущих домашних игр для указанной команды
 	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdminCapitan()).
 		Get("/games/teams/{team_id}", kithttp.NewServer(endpoints.GetTeamGames, decodeGetTeamIDRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdminCapitan()).
+		Delete("/games/future/{id}", kithttp.NewServer(endpoints.DeleteFutureGame, decodeDeleteFutureGameRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+
+	r.Get("/tournaments/{id}/games", kithttp.NewServer(endpoints.GetTournamentGameList, decodeGetTournamentGameListRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+
+	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdminCapitanTournamentMaster()).
+		Post("/tournaments/games/future", kithttp.NewServer(endpoints.CreateFutureTournamentGame, decodeCreateFutureTournamentGameRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdminCapitanTournamentMaster()).
+		Patch("/tournaments/games/future/{id}", kithttp.NewServer(endpoints.UpdateFutureTournamentGame, decodeUpdateFutureTournamentGameRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdminCapitanTournamentMaster()).
+		Delete("/tournaments/games/future/{id}", kithttp.NewServer(endpoints.DeleteFutureTournamentGame, decodeDeleteFutureTournamentGameRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+
+	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdminCapitanTournamentMaster()).
+		Post("/tournaments/games/played", kithttp.NewServer(endpoints.CreatePlayedTournamentGame, decodeCreatePlayedTournamentGameRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdminCapitanTournamentMaster()).
+		Patch("/tournaments/games/played/{id}", kithttp.NewServer(endpoints.UpdatePlayedTournamentGame, decodeUpdatePlayedTournamentGameRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdminCapitanTournamentMaster()).
+		Delete("/tournaments/games/played/{id}", kithttp.NewServer(endpoints.DeletePlayedTournamentGame, decodeDeletePlayedTournamentGameRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 	return r
 }
