@@ -77,17 +77,24 @@ func IsPowTwo[T int64 | int | int32 | int16 | int8 | uint64 | uint | uint32 | ui
 
 func BuildTeamName(name, secondName *string, lastName string, id int64) (string, string) {
 	firstRune := func(s string) string {
-		var rr rune
+		s = strings.TrimSpace(s)
+
+		if s == "" {
+			return ""
+		}
+
 		for _, r := range s {
-			if unicode.IsLetter(r) {
-				rr = r
-				return string(unicode.ToUpper(rr))
+			if unicode.IsPrint(r) {
+				if unicode.IsLetter(r) {
+					return string(unicode.ToUpper(r))
+				} else {
+					return string(r)
+				}
 			} else {
-				rr = r
-				return string(rr)
+				return ""
 			}
 		}
-		return string(rr)
+		return ""
 	}
 
 	var nameArr []string
