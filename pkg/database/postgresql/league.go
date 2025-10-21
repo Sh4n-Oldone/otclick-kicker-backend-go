@@ -6,6 +6,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog"
 
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 )
@@ -191,4 +192,20 @@ func (db *RDBOperation) GetLeaguesByPlayerID(logger zerolog.Logger, ctx context.
 	}
 
 	return leagues, nil
+}
+
+func (db *RDBOperation) GetLeagueById(logger zerolog.Logger, ctx context.Context, leagueId int64, cfg *config.DBConfig) (*entities.League, error) {
+	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	const query string = "SELECT id, name, city_id, season_id FROM leagues WHERE id = $1"
+
+	var league entities.League
+	err := db.db.QueryRow(timeout, query, leagueId).Scan(&league.ID, &league.Name, &league.CityID, &league.SeasonID)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to postgresql.GetLeagueById")
+		return nil, err
+	}
+
+	return &league, nil
 }

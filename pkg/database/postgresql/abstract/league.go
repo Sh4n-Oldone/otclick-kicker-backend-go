@@ -3,6 +3,7 @@ package abstract
 import (
 	"context"
 	"github.com/rs/zerolog"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 )
 
@@ -11,6 +12,7 @@ type ILeagueR interface {
 	GetLeagueList(logger zerolog.Logger, ctx context.Context, cityID int64) ([]entities.League, error)
 	GetLeagueListByTeamId(logger zerolog.Logger, ctx context.Context, teamID int64) ([]entities.LeagueShort, error)
 	GetLeaguesByPlayerID(logger zerolog.Logger, ctx context.Context, playerID int) ([]entities.PlayersLeague, error)
+	GetLeagueById(logger zerolog.Logger, ctx context.Context, leagueId int64, cfg *config.DBConfig) (*entities.League, error)
 }
 
 type ILeagueRW interface {
