@@ -30,7 +30,8 @@ type UpdateTournamentRequest struct {
 }
 
 type DeleteTournamentRequest struct {
-	ID int64 `validate:"required,gt=0"`
+	ID      int64 `validate:"required,gt=0"`
+	Creator User
 }
 
 type Tournament struct {

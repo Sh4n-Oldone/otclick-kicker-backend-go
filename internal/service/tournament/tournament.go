@@ -201,12 +201,32 @@ func (s *Service) Update(ctx context.Context, request *entities.UpdateTournament
 	return errors.New("not implemented")
 }
 
-func (s *Service) Delete(ctx context.Context, id int64) error {
+func (s *Service) Delete(ctx context.Context, request *entities.DeleteTournamentRequest) error {
 	logger := s.logger.With().Str("service", "Delete").Logger()
 
-	tournament, err := s.rdbOperations.GetTournamentById(logger, ctx, id, &s.config.RDB)
+	var err error
+	tournament, err := s.rdbOperations.GetTournamentById(logger, ctx, request.ID, &s.config.RDB)
 	if err != nil {
 		return err
+	}
+
+	if request.Creator.Role.Name != constant.SuperUserRole && request.Creator.Role.Name != constant.AdminRole && request.Creator.Role.Name != constant.TournamentMaster {
+		err = errors.New(pkgerr.WrongUserRole)
+		logger.Error().Err(err).Msgf("forbidden for this role: %s", request.Creator.Role.Name)
+		return error_templates.New(err.Error(), err, codes.Unauthenticated, http.StatusForbidden)
+	}
+
+	if request.Creator.Role.Name == constant.TournamentMaster {
+		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, request.Creator.ID, &s.config.RDB)
+		if err != nil {
+			return err
+		}
+
+		if tournament.CityID != master.City.ID {
+			err = errors.New(pkgerr.ErrCityIdNotEqualMasterCityId)
+			logger.Error().Err(err).Msg("cityIdParam not equal masterCityId in tournament.Delete")
+			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
 	}
 
 	tx, err := s.rwdbOperations.BeginTx(ctx, logger)
@@ -424,7 +444,7 @@ func (s *Service) createRegularOneVsOne(ctx context.Context, request entities.Cr
 		}
 
 		if int64(pointer.GetValue(player.CityID)) != pointer.GetValue(request.CityID) {
-			err = fmt.Errorf("id города игрока %s(%d) не совпадает с id города турнира(%d)", pointer.GetValue(player.Name), pointer.GetValue(player.CityID), request.CityID)
+			err = fmt.Errorf("id города игрока %s(%d) не совпадает с id города турнира(%d)", pointer.GetValue(player.Name), pointer.GetValue(player.CityID), pointer.GetValue(request.CityID))
 			tx.Rollback(ctx)
 			return 0, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 		}
