@@ -54,8 +54,8 @@ type ShortGame struct {
 	Date       time.Time   `json:"date"`
 	CityID     int         `json:"cityId"`
 	Place      PlaceShort  `json:"place"`
-	LeagueID   int         `json:"leagueId"`
-	LeagueName string      `json:"leagueName"`
+	LeagueID   *int        `json:"leagueId"`
+	LeagueName *string     `json:"leagueName"`
 	Teams      []TeamShort `json:"teams"`
 }
 
