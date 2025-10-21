@@ -748,14 +748,12 @@ func (db *RDBOperation) GetFutureGames(logger zerolog.Logger, ctx context.Contex
 		       t2.short_name, 
 		       t2.name
 		FROM games g
+		LEFT JOIN leagues l ON g.league_id = l.id
 		LEFT JOIN places p ON g.place_id = p.id
 		LEFT JOIN bars b ON p.bar_id = b.id
 		LEFT JOIN tables tbl ON p.table_id = tbl.id
 		JOIN teams t1 ON g.team1_id = t1.id
 		JOIN teams t2 ON g.team2_id = t2.id
-		JOIN teams_leagues_links tll1 ON t1.id = tll1.team_id  --связи с лигой команды 1
-		JOIN teams_leagues_links tll2 ON t2.id = tll2.team_id  --связи с лигой команды 2
-		JOIN leagues l ON tll1.league_id = l.id AND tll2.league_id = l.id  -- объединение по одинаковой лиге
 		WHERE g.date > NOW() AND g.city_id = $1
 		ORDER BY g.date;`
 

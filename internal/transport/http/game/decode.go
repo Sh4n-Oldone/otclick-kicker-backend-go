@@ -74,7 +74,7 @@ func decodeIdParamRequest(_ context.Context, r *http.Request) (interface{}, erro
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
-	return id, nil
+	return int(id), nil
 }
 
 func decodeUpdateRequest(_ context.Context, r *http.Request) (interface{}, error) {

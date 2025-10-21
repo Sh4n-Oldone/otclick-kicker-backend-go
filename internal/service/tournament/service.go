@@ -14,7 +14,7 @@ type IService interface {
 	GetTournamentTypeList(ctx context.Context, withDeleted bool) ([]entities.TournamentType, error)
 	Create(ctx context.Context, request *entities.CreateTournamentRequest) (int64, error)
 	Update(ctx context.Context, request *entities.UpdateTournamentRequest) error
-	Delete(ctx context.Context, id int64) error
+	Delete(ctx context.Context, request *entities.DeleteTournamentRequest) error
 	FinishStage(ctx context.Context, request *entities.FinishStageRequest) error
 	GetTournamentStageList(ctx context.Context, id int64) ([]entities.TournamentStageItem, error)
 	GetTournamentList(ctx context.Context, request *entities.GetTournamentListRequest) ([]entities.TournamentShort, int64, error)

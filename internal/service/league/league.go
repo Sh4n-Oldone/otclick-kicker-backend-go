@@ -53,6 +53,11 @@ func (s *Service) Create(ctx context.Context, request *entities.CreateLeagueRequ
 func (s *Service) Update(ctx context.Context, league entities.League, teams []int64) error {
 	logger := s.logger.With().Interface("service", "Update").Logger()
 
+	err := s.checkMasterAndLeagueCities(ctx, league.ID)
+	if err != nil {
+		return err
+	}
+
 	oldTeams, err := s.rdbOperations.GetTeamsByLeague(logger, ctx, league.ID)
 	if err != nil {
 		return err
@@ -90,7 +95,12 @@ func (s *Service) Update(ctx context.Context, league entities.League, teams []in
 func (s *Service) Delete(ctx context.Context, id int64) error {
 	logger := s.logger.With().Interface("service", "Delete").Logger()
 
-	err := s.rwdbOperations.DeleteLeague(logger, ctx, id)
+	err := s.checkMasterAndLeagueCities(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	err = s.rwdbOperations.DeleteLeague(logger, ctx, id)
 	if err != nil {
 		return err
 	}
@@ -100,6 +110,11 @@ func (s *Service) Delete(ctx context.Context, id int64) error {
 
 func (s *Service) Recalc(ctx context.Context, id int64) error {
 	logger := s.logger.With().Interface("service", "Recalc").Logger()
+
+	err := s.checkMasterAndLeagueCities(ctx, id)
+	if err != nil {
+		return err
+	}
 
 	// Get all players from league
 	playerIDs, err := s.rdbOperations.GetPlayerIDsByLeagueID(logger, ctx, id)
@@ -250,6 +265,11 @@ func (s *Service) Recalc(ctx context.Context, id int64) error {
 func (s *Service) CreateExtraPoints(ctx context.Context, req *entities.CreateExtraPointsRequest) (int64, error) {
 	logger := s.logger.With().Str("service", "CreateExtraPoints").Logger()
 
+	err := s.checkMasterAndLeagueCities(ctx, req.LeagueId)
+	if err != nil {
+		return 0, err
+	}
+
 	id, err := s.rwdbOperations.CreateExtraPoints(logger, ctx, req)
 	if err != nil {
 		return 0, err
@@ -260,6 +280,15 @@ func (s *Service) CreateExtraPoints(ctx context.Context, req *entities.CreateExt
 
 func (s *Service) UpdateExtraPoints(ctx context.Context, req *entities.UpdateExtraPointsRequest) (bool, error) {
 	logger := s.logger.With().Str("service", "UpdateExtraPoints").Logger()
+	extraPointsInfo, err := s.GetExtraPointsById(ctx, req.Id)
+	if err != nil {
+		return false, err
+	}
+
+	err = s.checkMasterAndLeagueCities(ctx, extraPointsInfo.LeagueId)
+	if err != nil {
+		return false, err
+	}
 
 	res, err := s.rwdbOperations.UpdateExtraPoints(logger, ctx, req)
 	if err != nil {
@@ -271,6 +300,15 @@ func (s *Service) UpdateExtraPoints(ctx context.Context, req *entities.UpdateExt
 
 func (s *Service) DeleteExtraPoints(ctx context.Context, extraPointsId int64) (bool, error) {
 	logger := s.logger.With().Str("service", "DeleteExtraPoints").Logger()
+	extraPointsInfo, err := s.GetExtraPointsById(ctx, extraPointsId)
+	if err != nil {
+		return false, err
+	}
+
+	err = s.checkMasterAndLeagueCities(ctx, extraPointsInfo.LeagueId)
+	if err != nil {
+		return false, err
+	}
 
 	res, err := s.rwdbOperations.DeleteExtraPoints(logger, ctx, extraPointsId)
 	if err != nil {
@@ -300,4 +338,31 @@ func (s *Service) GetExtraPointsById(ctx context.Context, extraPointsId int64) (
 	}
 
 	return res, nil
+}
+
+func (s *Service) checkMasterAndLeagueCities(ctx context.Context, leagueId int64) error {
+	logger := s.logger.With().Interface("service", "checkMasterAndLeagueCities").Logger()
+
+	role := ctx.Value(constant.RoleNameContextKey).(string)
+	if role == constant.TournamentMaster {
+		userId := ctx.Value(constant.UserIDContextKey).(int64)
+
+		masterInfo, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, userId, &s.config.RDB)
+		if err != nil {
+			return err
+		}
+
+		leagueInfo, err := s.rdbOperations.GetLeagueById(logger, ctx, leagueId, &s.config.RDB)
+		if err != nil {
+			return err
+		}
+
+		if masterInfo.City.ID != leagueInfo.CityID {
+			err = errors.New(pkgerr.ErrCityLeagueAndMasterMismatch)
+			logger.Error().Err(err).Msg("master city not equal league city")
+			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+	}
+
+	return nil
 }
