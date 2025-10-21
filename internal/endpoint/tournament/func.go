@@ -120,7 +120,14 @@ func makeDelete(s tournament.IService) endpoint.Endpoint {
 				error_templates.New(pkgerr.FailedCastRequest, err, codes.InvalidArgument, http.StatusBadRequest), reqID)
 		}
 
-		err = s.Delete(ctx, req.ID)
+		err = s.GetValidator().Struct(req)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed validation in makeDelete")
+			return nil, error_templates.WrapErrorEndpoint(
+				error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest), reqID)
+		}
+
+		err = s.Delete(ctx, req)
 		if err != nil {
 			serviceLogger.Error().Err(err).Msg("Failed Delete")
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)

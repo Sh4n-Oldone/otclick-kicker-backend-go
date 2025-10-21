@@ -105,7 +105,21 @@ func decodeUpdateRequest(_ context.Context, r *http.Request) (interface{}, error
 }
 
 func decodeDeleteRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := &entities.DeleteTournamentRequest{}
+	request := &entities.DeleteTournamentRequest{Creator: entities.User{Role: &entities.Role{}}}
+
+	userId, ok := r.Context().Value(constant.UserIDContextKey).(int64)
+	if !ok || userId == 0 {
+		err := errors.New(pkgerr.ErrUserIdToken)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	request.Creator.ID = userId
+
+	role, ok := r.Context().Value(constant.RoleNameContextKey).(string)
+	if !ok || role == "" {
+		err := errors.New(pkgerr.ErrRoleToken)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	request.Creator.Role.Name = role
 
 	idParam := chi.URLParam(r, "id")
 	if idParam == "" {
