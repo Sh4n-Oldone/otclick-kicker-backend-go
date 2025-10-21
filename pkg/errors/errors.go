@@ -22,6 +22,7 @@ const (
 	ErrCityIdNotEqualMasterCityId   = "cityId должен быть равен cityId мастера по турнирам"
 	ErrBarNotInMasterCity           = "бар находится не в городе мастера по турнирам"
 	ErrLeagueNotInMasterCity        = "мастер по турнирам не может создавать лигу не в своем городе"
+	ErrCityLeagueAndMasterMismatch  = "город лиги и город мастера по турнирам не совпадают"
 )
 
 // Database errors
