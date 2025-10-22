@@ -158,6 +158,9 @@ func (db *RWDBOperation) DeleteGame(logger zerolog.Logger, ctx context.Context, 
 }
 
 func (db *RDBOperation) GetGame(logger zerolog.Logger, ctx context.Context, gameID int) (entities.GetGameResponse, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
 	const query string = `
 	SELECT 
 		g.id AS game_id,
@@ -222,7 +225,7 @@ func (db *RDBOperation) GetGame(logger zerolog.Logger, ctx context.Context, game
 	var game entities.GetGameResponse
 	matches := make([]entities.FullMatch, 0)
 
-	rows, err := db.db.Query(ctx, query, gameID)
+	rows, err := db.db.Query(timeout, query, gameID)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to postgresql.GetGame")
 		return entities.GetGameResponse{}, DecodeDatabaseError(errors.New(pkgerr.ErrGetGame))
@@ -323,6 +326,27 @@ func (db *RDBOperation) GetGame(logger zerolog.Logger, ctx context.Context, game
 		TechLooseTeamID: game.TechLooseTeamID,
 		Matches:         matches,
 	}, nil
+}
+
+func (db *RDBOperation) GetGameById(logger zerolog.Logger, ctx context.Context, gameID int, tx tx.ITx) (entities.GameLeagueTournament, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	const query string = `
+		SELECT id, city_id, place_id, date, team1_id, team2_id, league_id, tech_loose_team_id, is_tiebreak, stage_id  
+		FROM games
+		WHERE id = $1;`
+
+	var g entities.GameLeagueTournament
+
+	err := poolOrTx(db.db, tx).QueryRow(timeout, query, gameID).
+		Scan(&g.ID, &g.CityID, &g.PlaceID, &g.Date, &g.Team1ID, &g.Team2ID, &g.LeagueID, &g.TechLooseTeamID, &g.IsTiebreak, &g.StageID)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to postgresql.GetGameById")
+		return entities.GameLeagueTournament{}, DecodeDatabaseError(err)
+	}
+
+	return g, nil
 }
 
 func (db *RWDBOperation) UpdateGame(logger zerolog.Logger, ctx context.Context, game entities.UpdateGameRequest, rates []entities.Rating) error {
@@ -506,7 +530,10 @@ func (db *RDBOperation) FindGames(logger zerolog.Logger, ctx context.Context, re
 	return games, nil
 }
 
-func (db *RWDBOperation) UpdateFutureGame(logger zerolog.Logger, ctx context.Context, request entities.UpdateFutureGameRequest) error {
+func (db *RWDBOperation) UpdateFutureGame(logger zerolog.Logger, ctx context.Context, req entities.UpdateFutureGameRequest, tx tx.ITx) error {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
 	const query string = `
 		UPDATE public.games
 		SET 
@@ -516,18 +543,17 @@ func (db *RWDBOperation) UpdateFutureGame(logger zerolog.Logger, ctx context.Con
 			team1_id = $5,
 			team2_id = $6,
 			updated_at = NOW()
-		WHERE id = $1;
-	`
+		WHERE id = $1;`
 
-	tag, err := db.db.Exec(ctx, query, request.ID, request.LeagueID, request.Date, request.PlaceID, request.Team1ID, request.Team2ID)
+	tag, err := poolOrTx(db.db, tx).Exec(timeout, query, req.ID, req.LeagueID, req.Date, req.PlaceID, req.Team1ID, req.Team2ID)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to postgresql.UpdateFutureGame")
-		return errors.New(pkgerr.ErrUpdateGame)
+		return DecodeDatabaseError(err)
 	}
 	if tag.RowsAffected() == 0 {
 		err = errors.New(pkgerr.ErrGameNotFound)
 		logger.Error().Err(err).Msg("failed to postgresql.UpdateFutureGame")
-		return err
+		return DecodeDatabaseError(err)
 	}
 
 	return nil
@@ -798,19 +824,23 @@ func (db *RDBOperation) GetFutureGames(logger zerolog.Logger, ctx context.Contex
 	return games, nil
 }
 
-func (db *RWDBOperation) CreateFutureGame(logger zerolog.Logger, ctx context.Context, request entities.CreateFutureGameRequest) (int, error) {
+func (db *RWDBOperation) CreateFutureGame(logger zerolog.Logger, ctx context.Context, req entities.CreateFutureGameRequest, tx tx.ITx) (int, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
 	const query string = `
 		INSERT INTO games (city_id, league_id, date, place_id, team1_id, team2_id, is_tiebreak)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
-		RETURNING id;
-	`
+		RETURNING id;`
 
 	var id int
 
-	err := db.db.QueryRow(ctx, query, request.CityID, request.LeagueID, request.Date, request.PlaceID, request.Team1ID, request.Team2ID, request.IsTiebreak).Scan(&id)
+	err := poolOrTx(db.db, tx).QueryRow(
+		timeout, query, req.CityID, req.LeagueID, req.Date, req.PlaceID, req.Team1ID, req.Team2ID, req.IsTiebreak,
+	).Scan(&id)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to postgresql.CreateFutureGame")
-		return 0, err
+		return 0, DecodeDatabaseError(err)
 	}
 
 	return id, nil
@@ -1000,8 +1030,11 @@ func (db *RWDBOperation) CreateGameWithRating(logger zerolog.Logger, ctx context
 	}, nil
 }
 
-func (db *RWDBOperation) DeleteFutureGame(logger zerolog.Logger, ctx context.Context, gameID int64) error {
-	res, err := db.db.Exec(ctx, queryDeleteFutureGame, gameID)
+func (db *RWDBOperation) DeleteFutureGame(logger zerolog.Logger, ctx context.Context, req entities.DeleteFutureGameRequest, tx tx.ITx) error {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	res, err := poolOrTx(db.db, tx).Exec(timeout, queryDeleteFutureGame, req.ID)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.DeleteFutureGame")
 		return DecodeDatabaseError(err)

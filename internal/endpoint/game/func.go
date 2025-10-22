@@ -3,9 +3,10 @@ package game
 import (
 	"context"
 	"errors"
+	"net/http"
+
 	"github.com/go-kit/kit/endpoint"
 	"google.golang.org/grpc/codes"
-	"net/http"
 
 	cnst "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/constant"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
@@ -186,20 +187,15 @@ func makeUpdateFutureGame(s game.IService) endpoint.Endpoint {
 		req, err := helpers.CastRequest[entities.UpdateFutureGameRequest](request)
 		if err != nil {
 			serviceLogger.Error().Err(err).Msg("Failed to cast request")
-			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+			return nil, error_templates.WrapErrorEndpoint(
+				error_templates.New(pkgerr.FailedCastRequest, err, codes.InvalidArgument, http.StatusBadRequest), reqID)
 		}
 
-		// Captain-Flow
-		// limitations for the role 'captain'
-		// if teamID of captain not equal team1 or team2 from request then user unauthorized error
-		role := ctx.Value(cnst.RoleNameContextKey)
-		teamID := ctx.Value(cnst.TeamIDContextKey)
-		rTeam1ID := int64(req.Team1ID)
-		rTeam2ID := int64(req.Team2ID)
-		if role == cnst.CaptainRole && (teamID != rTeam1ID && teamID != rTeam2ID) {
-			serviceLogger.Error().Err(err).Msg("Failed to captain request")
-			err = error_templates.New(pkgerr.WrongUserRole, errors.New(pkgerr.WrongUserRole), codes.Unauthenticated, http.StatusUnauthorized)
-			return nil, err
+		err = s.GetValidator().Struct(req)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed to game.GetFutureGame")
+			return nil, error_templates.WrapErrorEndpoint(
+				error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest), reqID)
 		}
 
 		err = s.UpdateFutureGame(ctx, req)
@@ -299,20 +295,15 @@ func makeCreateFutureGame(s game.IService) endpoint.Endpoint {
 		req, err := helpers.CastRequest[entities.CreateFutureGameRequest](request)
 		if err != nil {
 			serviceLogger.Error().Err(err).Msg("Failed to cast request")
-			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+			return nil, error_templates.WrapErrorEndpoint(
+				error_templates.New(pkgerr.FailedCastRequest, err, codes.InvalidArgument, http.StatusBadRequest), reqID)
 		}
 
-		// Captain-Flow
-		// limitations for the role 'captain'
-		// if teamID of captain not equal team1 or team2 from request then user unauthorized error
-		role := ctx.Value(cnst.RoleNameContextKey)
-		teamID := ctx.Value(cnst.TeamIDContextKey)
-		rTeam1ID := int64(req.Team1ID)
-		rTeam2ID := int64(req.Team2ID)
-		if role == cnst.CaptainRole && (teamID != rTeam1ID && teamID != rTeam2ID) {
-			serviceLogger.Error().Err(err).Msg("Failed to captain request")
-			err = error_templates.New(pkgerr.WrongUserRole, errors.New(pkgerr.WrongUserRole), codes.Unauthenticated, http.StatusUnauthorized)
-			return nil, err
+		err = s.GetValidator().Struct(req)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed to game.GetFutureGame")
+			return nil, error_templates.WrapErrorEndpoint(
+				error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest), reqID)
 		}
 
 		resp, err := s.CreateFutureGame(ctx, req)
@@ -368,27 +359,17 @@ func makeDeleteFutureGame(s game.IService) endpoint.Endpoint {
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
-		err = helpers.ValidateDeleteFutureGame(req)
+		err = s.GetValidator().Struct(req)
 		if err != nil {
-			serviceLogger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).Msg(pkgerr.FailedValidateRequest)
+			serviceLogger.Error().Err(err).Msg("Failed to game.GetFutureGame")
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
-		// Проверяем, что капитан удаляет именно свою игру
-		role := ctx.Value(cnst.RoleNameContextKey)
-		teamID := ctx.Value(cnst.TeamIDContextKey)
-		rTeam1ID := req.Team1ID
-		rTeam2ID := req.Team2ID
-		if role == cnst.CaptainRole && (teamID != rTeam1ID && teamID != rTeam2ID) {
-			err = error_templates.New(pkgerr.WrongUserRole, errors.New(pkgerr.WrongUserRole), codes.Unauthenticated, http.StatusUnauthorized)
-			serviceLogger.Error().Err(err).Msg("Failed to captain request")
-			return nil, error_templates.WrapErrorEndpoint(err, reqID)
-		}
-
-		err = s.DeleteFutureGame(ctx, req.ID)
+		err = s.DeleteFutureGame(ctx, req)
 		if err != nil {
 			serviceLogger.Error().Err(err).Msg("Failed to game.DeleteFutureGame")
-			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+			return nil, error_templates.WrapErrorEndpoint(
+				error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest), reqID)
 		}
 
 		return entities.OkResponse{

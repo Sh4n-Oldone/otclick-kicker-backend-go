@@ -2,13 +2,12 @@ package postgresql
 
 import (
 	"context"
-	stderr "errors"
+	"errors"
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog"
-
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql/tx"
+	pkgerr "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 )
 
 func (db *RDBOperation) GetLeagueList(logger zerolog.Logger, ctx context.Context, cityID int64) ([]entities.League, error) {
@@ -176,7 +175,7 @@ func (db *RDBOperation) GetLeaguesByPlayerID(logger zerolog.Logger, ctx context.
 	rows, err := db.db.Query(ctx, query, playerID)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to postgresql.GetLeaguesByPlayerID")
-		return nil, DecodeDatabaseError(stderr.New(errors.ErrGetLeagueList))
+		return nil, DecodeDatabaseError(errors.New(pkgerr.ErrGetLeagueList))
 	}
 
 	for rows.Next() {
@@ -185,7 +184,7 @@ func (db *RDBOperation) GetLeaguesByPlayerID(logger zerolog.Logger, ctx context.
 		err = rows.Scan(&league.ID, &league.Name, &league.CityID, &league.Rating)
 		if err != nil {
 			logger.Error().Err(err).Msg("failed to postgresql.GetLeaguesByPlayerID")
-			return nil, DecodeDatabaseError(stderr.New(errors.ErrGetLeague))
+			return nil, DecodeDatabaseError(errors.New(pkgerr.ErrGetLeague))
 		}
 
 		leagues = append(leagues, league)
@@ -194,18 +193,20 @@ func (db *RDBOperation) GetLeaguesByPlayerID(logger zerolog.Logger, ctx context.
 	return leagues, nil
 }
 
-func (db *RDBOperation) GetLeagueById(logger zerolog.Logger, ctx context.Context, leagueId int64, cfg *config.DBConfig) (*entities.League, error) {
-	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+func (db *RDBOperation) GetLeagueById(logger zerolog.Logger, ctx context.Context, leagueId int64, tx tx.ITx) (entities.League, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 
-	const query string = "SELECT id, name, city_id, season_id FROM leagues WHERE id = $1"
+	const query string = `SELECT l.id, l.name, l.city_id, l.season_id FROM public.leagues l WHERE l.id = $1;`
 
 	var league entities.League
-	err := db.db.QueryRow(timeout, query, leagueId).Scan(&league.ID, &league.Name, &league.CityID, &league.SeasonID)
+
+	err := poolOrTx(db.db, tx).QueryRow(timeout, query, leagueId).
+		Scan(&league.ID, &league.Name, &league.CityID, &league.SeasonID)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to postgresql.GetLeagueById")
-		return nil, err
+		return entities.League{}, DecodeDatabaseError(err)
 	}
 
-	return &league, nil
+	return league, nil
 }

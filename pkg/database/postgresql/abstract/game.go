@@ -12,6 +12,7 @@ import (
 
 type IGameR interface {
 	GetGame(logger zerolog.Logger, ctx context.Context, gameID int) (entities.GetGameResponse, error)
+	GetGameById(logger zerolog.Logger, ctx context.Context, gameID int, tx tx.ITx) (entities.GameLeagueTournament, error)
 	FindGames(logger zerolog.Logger, ctx context.Context, request entities.FindGameRequest) ([]entities.FindGame, error)
 	GetGamesYears(logger zerolog.Logger, ctx context.Context) (entities.GetGamesYearsResponse, error)
 	GetGameList(logger zerolog.Logger, ctx context.Context, request entities.GetGameListRequest) ([]entities.GameV2, error)
@@ -36,10 +37,10 @@ type IGameR interface {
 type IGameRW interface {
 	DeleteGame(logger zerolog.Logger, ctx context.Context, gameID int64, cfg *config.DBConfig) error
 	UpdateGame(logger zerolog.Logger, ctx context.Context, request entities.UpdateGameRequest, rates []entities.Rating) error
-	UpdateFutureGame(logger zerolog.Logger, ctx context.Context, request entities.UpdateFutureGameRequest) error
-	CreateFutureGame(logger zerolog.Logger, ctx context.Context, request entities.CreateFutureGameRequest) (int, error)
+	UpdateFutureGame(logger zerolog.Logger, ctx context.Context, request entities.UpdateFutureGameRequest, tx tx.ITx) error
+	CreateFutureGame(logger zerolog.Logger, ctx context.Context, request entities.CreateFutureGameRequest, tx tx.ITx) (int, error)
 	CreateGameWithRating(logger zerolog.Logger, ctx context.Context, request entities.CreateGameRequest, rates map[int]int, operator *string, leagueID int64) (entities.CreateGameResponse, error)
-	DeleteFutureGame(logger zerolog.Logger, ctx context.Context, gameID int64) error
+	DeleteFutureGame(logger zerolog.Logger, ctx context.Context, req entities.DeleteFutureGameRequest, tx tx.ITx) error
 	CreateFutureTournamentStageGames(logger zerolog.Logger, ctx context.Context, stageID, cityID int64, team1IDs, team2IDs []int64, tx tx.ITx) error
 	CreateFutureTournamentGame(logger zerolog.Logger, ctx context.Context, request *entities.CreateFutureTournamentGameRequest, cfg *config.DBConfig) (int64, error)
 	UpdateFutureTournamentGame(logger zerolog.Logger, ctx context.Context, request *entities.UpdateFutureTournamentGameRequest, cfg *config.DBConfig) error

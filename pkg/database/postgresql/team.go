@@ -120,14 +120,13 @@ func (db *RDBOperation) GetTeam(logger zerolog.Logger, ctx context.Context, team
 
 func (db *RDBOperation) GetTeams(logger zerolog.Logger, ctx context.Context, cityID int64, onlyFree bool) ([]entities.TeamShort, error) {
 	query := `SELECT t.id, t.name, t.short_name FROM teams t
-		LEFT JOIN teams_leagues_links tll ON t.id = tll.team_id
 		WHERE t.city_id = $1`
 	if onlyFree {
-		query += " AND tll.league_id IS NULL"
+		query += " AND NOT EXISTS (SELECT 1 FROM teams_leagues_links tll WHERE tll.team_id = t.id)"
 	}
 	query += " ORDER BY id"
 
-	rows, err := db.db.Query(ctx, query, cityID) // , onlyFree
+	rows, err := db.db.Query(ctx, query, cityID)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to GetTeams")
 		return nil, DecodeDatabaseError(err)
