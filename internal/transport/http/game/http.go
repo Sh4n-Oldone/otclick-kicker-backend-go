@@ -49,14 +49,14 @@ func NewServer(endpoints game.Endpoints, options []kithttp.ServerOption, cfg *co
 	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdminCapitanTournamentMaster()).
 		Delete("/games/future/{id}", kithttp.NewServer(endpoints.DeleteFutureGame, decodeDeleteFutureGameRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 
-	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdminCapitan()).
+	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdminCapitanTournamentMaster()).
 		Post("/games/played", kithttp.NewServer(endpoints.Create, decodeCreateRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 	// Patch "/games/played" - обновляет игру с матчами, пересчитывает рейтинг.
 	// Рейтинг считается правильно только если переданная игра - последняя, в которой участвовали эти игроки
-	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdminCapitan()).
+	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdminCapitanTournamentMaster()).
 		Patch("/games/played", kithttp.NewServer(endpoints.Update, decodeUpdateRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
-	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
-		Delete("/games/played/{id}", kithttp.NewServer(endpoints.Delete, decodeIdParamRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdminCapitanTournamentMaster()).
+		Delete("/games/played/{id}", kithttp.NewServer(endpoints.Delete, decodeDeleteGameRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 
 	// Get "/games/teams/{team_id}" - получает список будущих домашних игр для указанной команды
 	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdminCapitan()).

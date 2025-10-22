@@ -29,19 +29,6 @@ func makeCreate(s game.IService) endpoint.Endpoint {
 				error_templates.New(pkgerr.FailedCastRequest, err, codes.InvalidArgument, http.StatusBadRequest), reqID)
 		}
 
-		// Captain-Flow
-		// limitations for the role 'captain'
-		// if teamID of captain not equal team1 or team2 from request then user unauthorized error
-		role := ctx.Value(cnst.RoleNameContextKey)
-		teamID := ctx.Value(cnst.TeamIDContextKey)
-		rTeam1ID := int64(req.Team1ID)
-		rTeam2ID := int64(req.Team2ID)
-		if role == cnst.CaptainRole && (teamID != rTeam1ID && teamID != rTeam2ID) {
-			err = error_templates.New(pkgerr.WrongUserRole, errors.New(pkgerr.WrongUserRole), codes.Unauthenticated, http.StatusForbidden)
-			serviceLogger.Error().Err(err).Msg("Failed to captain request")
-			return nil, error_templates.WrapErrorEndpoint(err, reqID)
-		}
-
 		// Checking matches only for filled
 		if len(req.Matches) > 0 {
 			for _, m := range req.Matches {
@@ -75,13 +62,19 @@ func makeDelete(s game.IService) endpoint.Endpoint {
 		reqID, ctx := middleware.GetRequestID(ctx)
 		serviceLogger := s.GetLogger().With().Str("Source", "game.makeDelete").Logger()
 
-		gameId, err := helpers.CastRequest[int](request)
+		req, err := helpers.CastRequest[entities.DeleteGameRequest](request)
 		if err != nil {
 			serviceLogger.Error().Err(err).Msg("Failed to cast request")
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
-		err = s.Delete(ctx, gameId)
+		err = s.GetValidator().Struct(req)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed validation")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		err = s.Delete(ctx, &req)
 		if err != nil {
 			serviceLogger.Error().Err(err).Msg("Failed to game.Delete")
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
@@ -125,25 +118,19 @@ func makeUpdate(s game.IService) endpoint.Endpoint {
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
-		// Captain-Flow
-		// limitations for the role 'captain'
-		// if teamID of captain not equal team1 or team2 from request then user unauthorized error
-		role := ctx.Value(cnst.RoleNameContextKey)
-		teamID := ctx.Value(cnst.TeamIDContextKey)
-		rTeam1ID := int64(req.Team1ID)
-		rTeam2ID := int64(req.Team2ID)
-		if role == cnst.CaptainRole && (teamID != rTeam1ID && teamID != rTeam2ID) {
-			serviceLogger.Error().Err(err).Msg("Failed to captain request")
-			err = error_templates.New(pkgerr.WrongUserRole, errors.New(pkgerr.WrongUserRole), codes.Unauthenticated, http.StatusUnauthorized)
-			return nil, error_templates.WrapErrorEndpoint(err, reqID)
-		}
-
 		for _, m := range req.Matches {
 			if m.Team1ID != req.Team1ID || m.Team2ID != req.Team2ID {
 				serviceLogger.Error().Err(err).Msg("Failed to makeUpdate")
 				err = error_templates.New(pkgerr.ErrDifferentTeams, errors.New(pkgerr.ErrDifferentTeams), codes.InvalidArgument, http.StatusBadRequest)
 				return nil, error_templates.WrapErrorEndpoint(err, reqID)
 			}
+		}
+
+		err = s.GetValidator().Struct(req)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed validation")
+			return nil, error_templates.WrapErrorEndpoint(
+				error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest), reqID)
 		}
 
 		err = s.Update(ctx, req)

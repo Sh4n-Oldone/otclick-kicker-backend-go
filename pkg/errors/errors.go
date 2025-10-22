@@ -23,6 +23,7 @@ const (
 	ErrBarNotInMasterCity           = "бар находится не в городе мастера по турнирам"
 	ErrLeagueNotInMasterCity        = "мастер по турнирам не может создавать лигу не в своем городе"
 	ErrCityLeagueAndMasterMismatch  = "город лиги и город мастера по турнирам не совпадают"
+	ErrGameIsNotPartOfLeague        = "игра была провдена не в рамках лиги"
 )
 
 // Database errors

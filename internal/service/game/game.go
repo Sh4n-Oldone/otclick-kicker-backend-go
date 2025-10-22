@@ -23,7 +23,11 @@ func (s *Service) Create(ctx context.Context, request entities.CreateGameRequest
 	timeout, cancel := context.WithTimeout(ctx, s.config.RWDB.MaxIdleConnectionTimeout)
 	defer cancel()
 
-	// Getting league for teams and validate it
+	league, err := s.rdbOperations.GetLeagueById(logger, ctx, int64(request.LeagueID), nil)
+	if err != nil {
+		return entities.CreateGameResponse{}, err
+	}
+
 	team1resp, err := s.rdbOperations.GetTeam(logger, ctx, int64(request.Team1ID), &s.config.RDB)
 	if err != nil {
 		return entities.CreateGameResponse{}, err
@@ -33,10 +37,51 @@ func (s *Service) Create(ctx context.Context, request entities.CreateGameRequest
 		return entities.CreateGameResponse{}, err
 	}
 
+	// проверяем, что команды из одной лиги
 	leagueID := int64(request.LeagueID)
 	if !bothContain(leagueID, team1resp.Leagues, team2resp.Leagues) {
 		logger.Error().Stack().Err(err).Msg("failed to Create (Played Game) : leagueID is missing from one or both arrays")
 		err = errors.New(pkgerr.FailedGameByTeamsLeagueMismatch)
+		return entities.CreateGameResponse{}, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	// проверяем относится ли капитан к какой-либо из команд
+	if request.Creator.Role.Name == constant.CaptainRole {
+		err = s.validateCaptain(ctx, logger, request.Creator.ID, request.Creator.Team.ID, int64(request.Team1ID), int64(request.Team2ID))
+		if err != nil {
+			return entities.CreateGameResponse{}, err
+		}
+	}
+
+	// проверяем город мастера по турнирам на соответствие городу лиги и команд
+	if request.Creator.Role.Name == constant.TournamentMaster {
+		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, request.Creator.ID, &s.config.RDB)
+		if err != nil {
+			return entities.CreateGameResponse{}, err
+		}
+
+		if (team1resp.CityId == nil || *team1resp.CityId != master.City.ID) || (team2resp.CityId == nil || *team2resp.CityId != master.City.ID) {
+			err = errors.New("город команды и город мастера по турнирам не совпадают")
+			logger.Error().Err(err).Msg("master city not equal league city")
+			return entities.CreateGameResponse{}, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+
+		if league.CityID != master.City.ID {
+			err = errors.New("город лиги и город мастера по турнирам не совпадают")
+			logger.Error().Err(err).Msg("master city not equal league city")
+			return entities.CreateGameResponse{}, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+
+		if master.City.ID != int64(request.CityID) {
+			err = errors.New("город в запросе и город мастера по турнирам не совпадают")
+			logger.Error().Err(err).Msg("master city not equal request city")
+			return entities.CreateGameResponse{}, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+	}
+
+	if league.CityID != int64(request.CityID) {
+		err = errors.New("город в запросе и город лиги не совпадают")
+		logger.Error().Err(err).Msg("request city not equal league city")
 		return entities.CreateGameResponse{}, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
@@ -193,13 +238,20 @@ func (s *Service) Create(ctx context.Context, request entities.CreateGameRequest
 	return resp, nil
 }
 
-func (s *Service) Delete(ctx context.Context, gameID int) error {
+func (s *Service) Delete(ctx context.Context, req *entities.DeleteGameRequest) error {
 	logger := s.logger.With().Interface("service", "game.Delete").Logger()
 
 	recalc := true
-	game, err := s.rdbOperations.GetGame(logger, ctx, gameID)
+	game, err := s.rdbOperations.GetGame(logger, ctx, req.ID)
 	if err != nil {
 		return err
+	}
+
+	gameLeagueId := game.LeagueID
+	if gameLeagueId == nil {
+		err = errors.New(pkgerr.ErrGameIsNotPartOfLeague)
+		logger.Error().Err(err).Msg("the game is not part of league")
+		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
 	// Getting league for teams and validate it
@@ -212,11 +264,42 @@ func (s *Service) Delete(ctx context.Context, gameID int) error {
 		return err
 	}
 
-	leagueID := int64(game.LeagueID)
+	league := &entities.League{}
+
+	*league, err = s.rdbOperations.GetLeagueById(logger, ctx, int64(*gameLeagueId), nil)
+	if err != nil {
+		return err
+	}
 
 	if team1resp.Leagues == nil || team2resp.Leagues == nil ||
-		(team1resp.Leagues != nil && team2resp.Leagues != nil && !bothContain(leagueID, team1resp.Leagues, team2resp.Leagues)) {
+		(team1resp.Leagues != nil && team2resp.Leagues != nil && !bothContain(int64(*gameLeagueId), team1resp.Leagues, team2resp.Leagues)) {
 		recalc = false
+	}
+
+	if req.Executor.Role.Name == constant.CaptainRole {
+		err = s.validateCaptain(ctx, logger, req.Executor.ID, req.Executor.Team.ID, int64(game.Team1ID), int64(game.Team2ID))
+		if err != nil {
+			return err
+		}
+	}
+
+	if req.Executor.Role.Name == constant.TournamentMaster {
+		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, req.Executor.ID, &s.config.RDB)
+		if err != nil {
+			return err
+		}
+
+		if int64(game.CityID) != master.City.ID {
+			err = errors.New("город игры и город мастера по турнирам не совпадают")
+			logger.Error().Err(err).Msg("master city not equal game city")
+			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+
+		if league.CityID != master.City.ID {
+			err = errors.New("город лиги игры и город мастера по турнирам не совпадают")
+			logger.Error().Err(err).Msg("master city not equal league city")
+			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
 	}
 
 	if recalc {
@@ -265,14 +348,14 @@ func (s *Service) Delete(ctx context.Context, gameID int) error {
 			}
 		}
 		for playerID, value := range plGmRtInc {
-			rateValue, err := s.rdbOperations.GetRatingByPlayerIDAndByLeagueID(logger, ctx, int64(playerID), leagueID)
+			rateValue, err := s.rdbOperations.GetRatingByPlayerIDAndByLeagueID(logger, ctx, int64(playerID), int64(*gameLeagueId))
 			if err != nil {
 				return err
 			}
 
 			rate := &entities.Rating{
 				PlayerID: int64(playerID),
-				LeagueID: leagueID,
+				LeagueID: int64(*gameLeagueId),
 				Value:    rateValue - int64(value),
 			}
 			operator := "insertIgnore"
@@ -283,10 +366,11 @@ func (s *Service) Delete(ctx context.Context, gameID int) error {
 		}
 	}
 
-	err = s.rwdbOperations.DeleteGame(logger, ctx, int64(gameID), &s.config.RWDB)
+	err = s.rwdbOperations.DeleteGame(logger, ctx, int64(req.ID), &s.config.RWDB)
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -307,7 +391,11 @@ func (s *Service) Update(ctx context.Context, request entities.UpdateGameRequest
 	timeout, cancel := context.WithTimeout(ctx, s.config.RWDB.MaxIdleConnectionTimeout)
 	defer cancel()
 
-	// Getting league for teams and validate it
+	league, err := s.rdbOperations.GetLeagueById(logger, ctx, int64(request.LeagueID), nil)
+	if err != nil {
+		return err
+	}
+
 	team1resp, err := s.rdbOperations.GetTeam(logger, ctx, int64(request.Team1ID), &s.config.RDB)
 	if err != nil {
 		return err
@@ -317,11 +405,40 @@ func (s *Service) Update(ctx context.Context, request entities.UpdateGameRequest
 		return err
 	}
 
+	// проверяем, что команды из одной лиги
 	leagueID := int64(request.LeagueID)
 	if !bothContain(leagueID, team1resp.Leagues, team2resp.Leagues) {
 		logger.Error().Stack().Err(err).Msg("failed to Update (Played Game) : leagueID is missing from one or both arrays")
 		err = errors.New(pkgerr.FailedGameByTeamsLeagueMismatch)
 		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	// проверяем относится ли капитан к какой-либо из команд
+	if request.Executor.Role.Name == constant.CaptainRole {
+		err = s.validateCaptain(ctx, logger, request.Executor.ID, request.Executor.Team.ID, int64(request.Team1ID), int64(request.Team2ID))
+		if err != nil {
+			return err
+		}
+	}
+
+	// проверяем город мастера по турнирам на соответствие городу лиги и команд
+	if request.Executor.Role.Name == constant.TournamentMaster {
+		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, request.Executor.ID, &s.config.RDB)
+		if err != nil {
+			return err
+		}
+
+		if (team1resp.CityId == nil || *team1resp.CityId != master.City.ID) || (team2resp.CityId == nil || *team2resp.CityId != master.City.ID) {
+			err = errors.New("город команды и город мастера по турнирам не совпадают")
+			logger.Error().Err(err).Msg("master city not equal league city")
+			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+
+		if league.CityID != master.City.ID {
+			err = errors.New("город лиги и город мастера по турнирам не совпадают")
+			logger.Error().Err(err).Msg("master city not equal league city")
+			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
 	}
 
 	rates := make(map[int]int, 0)

@@ -146,6 +146,7 @@ type CreateGameRequest struct {
 	TechLooseTeamID *int         `json:"techLooseTeamId" validate:"omitempty,gt=0"`
 	Matches         []GamesMatch `json:"matches" validate:"omitempty,dive"`
 	IsTiebreak      bool         `json:"isTiebreak"`
+	Creator         User
 }
 
 type CreateGameResponse struct {
@@ -154,7 +155,8 @@ type CreateGameResponse struct {
 }
 
 type DeleteGameRequest struct {
-	ID int `json:"id"`
+	ID       int `json:"id"`
+	Executor User
 }
 
 type GetGameResponse struct {
@@ -162,7 +164,7 @@ type GetGameResponse struct {
 	CityID          int         `json:"cityId"`
 	Date            *time.Time  `json:"date"`
 	Place           PlaceShort  `json:"place"`
-	LeagueID        int         `json:"leagueId"`
+	LeagueID        *int        `json:"leagueId"`
 	Team1ID         int         `json:"team1Id"`
 	Team1Name       string      `json:"team1Name"`
 	Team2ID         int         `json:"team2Id"`
@@ -180,6 +182,7 @@ type UpdateGameRequest struct {
 	Team2ID         int        `json:"team2Id" validate:"required,gt=0"`
 	TechLooseTeamID *int       `json:"techLooseTeamId" validate:"omitempty,gt=0"`
 	Matches         []NewMatch `json:"matches" validate:"omitempty,dive"`
+	Executor        User
 }
 
 type FindGameRequest struct {
