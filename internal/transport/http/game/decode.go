@@ -146,9 +146,28 @@ func decodeFindRequest(_ context.Context, r *http.Request) (interface{}, error) 
 }
 
 func decodeUpdateFutureGameRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := entities.UpdateFutureGameRequest{}
+	request := entities.UpdateFutureGameRequest{Executor: entities.User{Role: &entities.Role{}, Team: &entities.Team{}}}
 	buf := bytebufferpool.Get()
 	defer bytebufferpool.Put(buf)
+
+	reqCtx := r.Context()
+
+	userId, ok := reqCtx.Value(constant.UserIDContextKey).(int64)
+	if !ok || userId == 0 {
+		err := errors.New(pkgerr.ErrUserIdToken)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	request.Executor.ID = userId
+
+	role, ok := reqCtx.Value(constant.RoleNameContextKey).(string)
+	if !ok || role == "" {
+		err := errors.New(pkgerr.ErrRoleToken)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	request.Executor.Role.Name = role
+
+	teamId, ok := reqCtx.Value(constant.TeamIDContextKey).(int64)
+	request.Executor.Team.ID = teamId
 
 	_, err := io.Copy(buf, r.Body)
 	if err != nil {
@@ -158,27 +177,6 @@ func decodeUpdateFutureGameRequest(_ context.Context, r *http.Request) (interfac
 	err = json.Unmarshal(buf.Bytes(), &request)
 	if err != nil {
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
-	}
-
-	err = validate.Struct(request)
-	if err != nil {
-		err = errors.New(pkgerr.ValidationErr + ": " + err.Error())
-		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
-	}
-
-	if request.PlaceID != nil {
-		if *request.PlaceID <= 0 {
-			err = errors.New(pkgerr.ValidationErr + ": " + pkgerr.WrongPlaceIdError)
-			return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
-		}
-	}
-
-	if request.Date != nil {
-		date := *request.Date
-		if date.Equal(time.Unix(0, 0)) || date.IsZero() || date.Year() == 0 {
-			err = errors.New(pkgerr.ValidationErr + ": " + pkgerr.ErrWrongDate)
-			return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
-		}
 	}
 
 	return request, nil
@@ -304,9 +302,28 @@ func decodeGetGameListRequest(_ context.Context, r *http.Request) (interface{}, 
 }
 
 func decodeCreateFutureGameRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := entities.CreateFutureGameRequest{}
+	request := entities.CreateFutureGameRequest{Creator: entities.User{Role: &entities.Role{}, Team: &entities.Team{}}}
 	buf := bytebufferpool.Get()
 	defer bytebufferpool.Put(buf)
+
+	reqCtx := r.Context()
+
+	userId, ok := reqCtx.Value(constant.UserIDContextKey).(int64)
+	if !ok || userId == 0 {
+		err := errors.New(pkgerr.ErrUserIdToken)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	request.Creator.ID = userId
+
+	role, ok := reqCtx.Value(constant.RoleNameContextKey).(string)
+	if !ok || role == "" {
+		err := errors.New(pkgerr.ErrRoleToken)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	request.Creator.Role.Name = role
+
+	teamId, ok := reqCtx.Value(constant.TeamIDContextKey).(int64)
+	request.Creator.Team.ID = teamId
 
 	_, err := io.Copy(buf, r.Body)
 	if err != nil {
@@ -342,27 +359,6 @@ func decodeCreateFutureGameRequest(_ context.Context, r *http.Request) (interfac
 		request.IsTiebreak = isTiebreak
 	}
 
-	err = validate.Struct(request)
-	if err != nil {
-		err = errors.New(pkgerr.ValidationErr + ": " + err.Error())
-		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
-	}
-
-	if request.PlaceID != nil {
-		if *request.PlaceID <= 0 {
-			err = errors.New(pkgerr.ValidationErr + ": " + pkgerr.WrongPlaceIdError)
-			return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
-		}
-	}
-
-	if request.Date != nil {
-		date := *request.Date
-		if date.Equal(time.Unix(0, 0)) || date.IsZero() || date.Year() == 0 {
-			err = errors.New(pkgerr.ValidationErr + ": " + pkgerr.ErrWrongDate)
-			return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
-		}
-	}
-
 	return request, nil
 }
 
@@ -383,10 +379,26 @@ func decodeGetTeamIDRequest(_ context.Context, r *http.Request) (interface{}, er
 }
 
 func decodeDeleteFutureGameRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := entities.DeleteFutureGameRequest{}
+	request := entities.DeleteFutureGameRequest{Executor: entities.User{Role: &entities.Role{}, Team: &entities.Team{}}}
 
-	buf := bytebufferpool.Get()
-	defer bytebufferpool.Put(buf)
+	reqCtx := r.Context()
+
+	userId, ok := reqCtx.Value(constant.UserIDContextKey).(int64)
+	if !ok || userId == 0 {
+		err := errors.New(pkgerr.ErrUserIdToken)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	request.Executor.ID = userId
+
+	role, ok := reqCtx.Value(constant.RoleNameContextKey).(string)
+	if !ok || role == "" {
+		err := errors.New(pkgerr.ErrRoleToken)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	request.Executor.Role.Name = role
+
+	teamId, ok := reqCtx.Value(constant.TeamIDContextKey).(int64)
+	request.Executor.Team.ID = teamId
 
 	idParam := chi.URLParam(r, "id")
 	if idParam == "" {
@@ -397,16 +409,6 @@ func decodeDeleteFutureGameRequest(_ context.Context, r *http.Request) (interfac
 	id, err := strconv.ParseInt(idParam, 10, 64)
 	if err != nil {
 		err = errors.New(pkgerr.WrongParameterError)
-		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
-	}
-
-	_, err = io.Copy(buf, r.Body)
-	if err != nil {
-		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
-	}
-
-	err = json.Unmarshal(buf.Bytes(), &request)
-	if err != nil {
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 

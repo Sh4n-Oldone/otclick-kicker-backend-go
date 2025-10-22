@@ -22,7 +22,7 @@ type IService interface {
 	GetFutureGames(ctx context.Context, cityID int) (entities.GetFutureGamesResponse, error)
 	CreateFutureGame(ctx context.Context, request entities.CreateFutureGameRequest) (entities.CreateFutureGameResponse, error)
 	GetTeamGames(ctx context.Context, teamID int) (entities.GetTeamGamesResponse, error)
-	DeleteFutureGame(ctx context.Context, gameID int64) error
+	DeleteFutureGame(ctx context.Context, req entities.DeleteFutureGameRequest) error
 
 	CreateFutureTournamentGame(ctx context.Context, request *entities.CreateFutureTournamentGameRequest) (int64, error)
 	UpdateFutureTournamentGame(ctx context.Context, request *entities.UpdateFutureTournamentGameRequest) error

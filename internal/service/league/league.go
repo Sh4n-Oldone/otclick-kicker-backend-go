@@ -341,7 +341,7 @@ func (s *Service) GetExtraPointsById(ctx context.Context, extraPointsId int64) (
 }
 
 func (s *Service) checkMasterAndLeagueCities(ctx context.Context, leagueId int64) error {
-	logger := s.logger.With().Interface("service", "checkMasterAndLeagueCities").Logger()
+	logger := s.logger.With().Str("service", "checkMasterAndLeagueCities").Logger()
 
 	role := ctx.Value(constant.RoleNameContextKey).(string)
 	if role == constant.TournamentMaster {
@@ -352,7 +352,7 @@ func (s *Service) checkMasterAndLeagueCities(ctx context.Context, leagueId int64
 			return err
 		}
 
-		leagueInfo, err := s.rdbOperations.GetLeagueById(logger, ctx, leagueId, &s.config.RDB)
+		leagueInfo, err := s.rdbOperations.GetLeagueById(logger, ctx, leagueId, nil)
 		if err != nil {
 			return err
 		}
