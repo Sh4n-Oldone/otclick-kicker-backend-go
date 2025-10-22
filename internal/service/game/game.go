@@ -554,12 +554,64 @@ func (s *Service) Find(ctx context.Context, request entities.FindGameRequest) (e
 }
 
 func (s *Service) UpdateFutureGame(ctx context.Context, request entities.UpdateFutureGameRequest) error {
-	logger := s.logger.With().Interface("service", "game.UpdateFutureGame").Logger()
-	timeout, cancel := context.WithTimeout(ctx, s.config.RWDB.MaxIdleConnectionTimeout)
-	defer cancel()
+	logger := s.logger.With().Str("service", "game.UpdateFutureGame").Logger()
 
-	err := s.rwdbOperations.UpdateFutureGame(logger, timeout, request)
+	league, err := s.rdbOperations.GetLeagueById(logger, ctx, int64(request.LeagueID), nil)
 	if err != nil {
+		return err
+	}
+
+	team1, err := s.rdbOperations.GetTeamById(logger, ctx, int64(request.Team1ID), nil)
+	if err != nil {
+		return err
+	}
+
+	team2, err := s.rdbOperations.GetTeamById(logger, ctx, int64(request.Team2ID), nil)
+	if err != nil {
+		return err
+	}
+
+	// проверяем относится ли капитан к какой-либо из команд
+	if request.Executor.Role.Name == constant.CaptainRole {
+		err = s.validateCaptain(ctx, logger, request.Executor.ID, request.Executor.Team.ID, int64(request.Team1ID), int64(request.Team2ID))
+		if err != nil {
+			return err
+		}
+	}
+
+	// проверяем город мастера по турнирам на соответствие городу лиги и команд
+	if request.Executor.Role.Name == constant.TournamentMaster {
+		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, request.Executor.ID, &s.config.RDB)
+		if err != nil {
+			return err
+		}
+
+		if (team1.CityId == nil || *team1.CityId != master.City.ID) || (team2.CityId == nil || *team2.CityId != master.City.ID) {
+			err = errors.New("город команды и город мастера по турнирам не совпадают")
+			logger.Error().Err(err).Msg("master city not equal league city")
+			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+
+		if league.CityID != master.City.ID {
+			err = errors.New("город лиги и город мастера по турнирам не совпадают")
+			logger.Error().Err(err).Msg("master city not equal league city")
+			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+	}
+
+	tx, err := s.rwdbOperations.BeginTx(ctx, logger)
+	if err != nil {
+		return err
+	}
+
+	err = s.rwdbOperations.UpdateFutureGame(logger, ctx, request, tx)
+	if err != nil {
+		tx.Rollback(ctx)
+		return err
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		tx.Rollback(ctx)
 		return err
 	}
 
@@ -618,12 +670,76 @@ func (s *Service) GetFutureGames(ctx context.Context, cityID int) (entities.GetF
 }
 
 func (s *Service) CreateFutureGame(ctx context.Context, request entities.CreateFutureGameRequest) (entities.CreateFutureGameResponse, error) {
-	logger := s.logger.With().Interface("service", "game.CreateFutureGame").Logger()
-	timeout, cancel := context.WithTimeout(ctx, s.config.RWDB.MaxIdleConnectionTimeout)
-	defer cancel()
+	logger := s.logger.With().Str("service", "game.CreateFutureGame").Logger()
 
-	id, err := s.rwdbOperations.CreateFutureGame(logger, timeout, request)
+	league, err := s.rdbOperations.GetLeagueById(logger, ctx, int64(request.LeagueID), nil)
 	if err != nil {
+		return entities.CreateFutureGameResponse{}, err
+	}
+
+	team1, err := s.rdbOperations.GetTeamById(logger, ctx, int64(request.Team1ID), nil)
+	if err != nil {
+		return entities.CreateFutureGameResponse{}, err
+	}
+
+	team2, err := s.rdbOperations.GetTeamById(logger, ctx, int64(request.Team2ID), nil)
+	if err != nil {
+		return entities.CreateFutureGameResponse{}, err
+	}
+
+	// проверяем относится ли капитан к какой-либо из команд
+	if request.Creator.Role.Name == constant.CaptainRole {
+		err = s.validateCaptain(ctx, logger, request.Creator.ID, request.Creator.Team.ID, int64(request.Team1ID), int64(request.Team2ID))
+		if err != nil {
+			return entities.CreateFutureGameResponse{}, err
+		}
+	}
+
+	// проверяем город мастера по турнирам на соответствие городу лиги и команд
+	if request.Creator.Role.Name == constant.TournamentMaster {
+		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, request.Creator.ID, &s.config.RDB)
+		if err != nil {
+			return entities.CreateFutureGameResponse{}, err
+		}
+
+		if (team1.CityId == nil || *team1.CityId != master.City.ID) || (team2.CityId == nil || *team2.CityId != master.City.ID) {
+			err = errors.New("город команды и город мастера по турнирам не совпадают")
+			logger.Error().Err(err).Msg("master city not equal league city")
+			return entities.CreateFutureGameResponse{}, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+
+		if league.CityID != master.City.ID {
+			err = errors.New("город лиги и город мастера по турнирам не совпадают")
+			logger.Error().Err(err).Msg("master city not equal league city")
+			return entities.CreateFutureGameResponse{}, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+
+		if master.City.ID != int64(request.CityID) {
+			err = errors.New("город в запросе и город мастера по турнирам не совпадают")
+			logger.Error().Err(err).Msg("master city not equal request city")
+			return entities.CreateFutureGameResponse{}, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+	}
+
+	if league.CityID != int64(request.CityID) {
+		err = errors.New("город в запросе и город лиги не совпадают")
+		logger.Error().Err(err).Msg("request city not equal league city")
+		return entities.CreateFutureGameResponse{}, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	tx, err := s.rwdbOperations.BeginTx(ctx, logger)
+	if err != nil {
+		return entities.CreateFutureGameResponse{}, err
+	}
+
+	id, err := s.rwdbOperations.CreateFutureGame(logger, ctx, request, tx)
+	if err != nil {
+		tx.Rollback(ctx)
+		return entities.CreateFutureGameResponse{}, err
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		tx.Rollback(ctx)
 		return entities.CreateFutureGameResponse{}, err
 	}
 
@@ -643,15 +759,70 @@ func (s *Service) GetTeamGames(ctx context.Context, teamID int) (entities.GetTea
 	return entities.GetTeamGamesResponse{Games: games}, nil
 }
 
-func (s *Service) DeleteFutureGame(ctx context.Context, gameID int64) error {
-	logger := s.logger.With().Interface("service", "game.DeleteFutureGame").Logger()
-	timeout, cancel := context.WithTimeout(ctx, s.config.RDB.MaxIdleConnectionTimeout)
-	defer cancel()
+func (s *Service) DeleteFutureGame(ctx context.Context, req entities.DeleteFutureGameRequest) error {
+	logger := s.logger.With().Str("service", "game.DeleteFutureGame").Logger()
 
-	err := s.rwdbOperations.DeleteFutureGame(logger, timeout, gameID)
+	game, err := s.rdbOperations.GetGameById(logger, ctx, int(req.ID), nil)
 	if err != nil {
 		return err
 	}
+
+	league := &entities.League{}
+	if game.LeagueID != nil {
+		*league, err = s.rdbOperations.GetLeagueById(logger, ctx, *game.LeagueID, nil)
+		if err != nil {
+			return err
+		}
+	}
+
+	if req.Executor.Role.Name == constant.CaptainRole {
+		err = s.validateCaptain(ctx, logger, req.Executor.ID, req.Executor.Team.ID, game.Team1ID, game.Team2ID)
+		if err != nil {
+			return err
+		}
+	}
+
+	if req.Executor.Role.Name == constant.TournamentMaster {
+		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, req.Executor.ID, &s.config.RDB)
+		if err != nil {
+			return err
+		}
+
+		if game.CityID != master.City.ID {
+			err = errors.New("город игры и город мастера по турнирам не совпадают")
+			logger.Error().Err(err).Msg("master city not equal game city")
+			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+
+		if league.CityID != master.City.ID {
+			err = errors.New("город лиги игры и город мастера по турнирам не совпадают")
+			logger.Error().Err(err).Msg("master city not equal league city")
+			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+	}
+
+	if game.Date != nil && time.Now().After(*game.Date) {
+		err = errors.New("сыгранная игра не может быть удалена")
+		logger.Error().Err(err).Msg("game was played")
+		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	tx, err := s.rwdbOperations.BeginTx(ctx, logger)
+	if err != nil {
+		return err
+	}
+
+	err = s.rwdbOperations.DeleteFutureGame(logger, ctx, req, tx)
+	if err != nil {
+		tx.Rollback(ctx)
+		return err
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		tx.Rollback(ctx)
+		return err
+	}
+
 	return nil
 }
 

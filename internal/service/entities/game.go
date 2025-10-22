@@ -62,11 +62,12 @@ type ShortGame struct {
 type CreateFutureGameRequest struct {
 	CityID     int        `json:"cityId" validate:"required,gt=0"`
 	LeagueID   int        `json:"leagueId" validate:"required,gt=0"`
-	Date       *time.Time `json:"date"`
-	PlaceID    *int       `json:"placeId"`
+	Date       *time.Time `json:"date" validate:"omitempty,valid-date"`
+	PlaceID    *int       `json:"placeId" validate:"omitempty,gt=0"`
 	Team1ID    int        `json:"team1Id" validate:"required,gt=0"`
 	Team2ID    int        `json:"team2Id" validate:"required,gt=0"`
 	IsTiebreak bool       `json:"isTiebreak"`
+	Creator    User
 }
 
 type CreateFutureGameResponse struct {
@@ -76,10 +77,11 @@ type CreateFutureGameResponse struct {
 type UpdateFutureGameRequest struct {
 	ID       int        `json:"id" validate:"required,gt=0"`
 	LeagueID int        `json:"leagueId" validate:"required,gt=0"`
-	Date     *time.Time `json:"date"`
-	PlaceID  *int       `json:"placeId"`
+	Date     *time.Time `json:"date" validate:"omitempty,valid-date"`
+	PlaceID  *int       `json:"placeId" validate:"omitempty,gt=0"`
 	Team1ID  int        `json:"team1Id" validate:"required,gt=0"`
 	Team2ID  int        `json:"team2Id" validate:"required,gt=0"`
+	Executor User
 }
 
 type GetTeamGamesResponse struct {
@@ -95,9 +97,8 @@ type TeamGame struct {
 }
 
 type DeleteFutureGameRequest struct {
-	ID      int64 `json:"id" validate:"required,gt=0"`
-	Team1ID int64 `json:"team1Id" validate:"required,gt=0"`
-	Team2ID int64 `json:"team2Id" validate:"required,gt=0"`
+	ID       int64 `json:"id" validate:"required,gt=0"`
+	Executor User
 }
 
 type Game struct {
@@ -296,4 +297,17 @@ type FullTournamentGame struct {
 type GetTournamentGameList struct {
 	TournamentId *int64 `json:"tournamentId" validate:"omitempty,gt=0"`
 	CityId       *int64 `json:"cityId" validate:"omitempty,gt=0"`
+}
+
+type GameLeagueTournament struct {
+	ID              int64      `json:"id"`
+	CityID          int64      `json:"cityId"`
+	PlaceID         *int64     `json:"placeId,omitempty"`
+	Date            *time.Time `json:"date,omitempty"`
+	Team1ID         int64      `json:"team1Id"`
+	Team2ID         int64      `json:"team2Id"`
+	LeagueID        *int64     `json:"leagueId,omitempty"`
+	TechLooseTeamID *int64     `json:"techLooseTeamId,omitempty"`
+	IsTiebreak      bool       `json:"isTiebreak"`
+	StageID         *int64     `json:"stageId,omitempty"`
 }
