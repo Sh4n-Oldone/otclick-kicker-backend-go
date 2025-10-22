@@ -21,9 +21,28 @@ import (
 var validate = helpers.NewCustomValidator()
 
 func decodeCreateRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := entities.CreateGameRequest{}
+	request := entities.CreateGameRequest{Creator: entities.User{Role: &entities.Role{}, Team: &entities.Team{}}}
 	buf := bytebufferpool.Get()
 	defer bytebufferpool.Put(buf)
+
+	reqCtx := r.Context()
+
+	userId, ok := reqCtx.Value(constant.UserIDContextKey).(int64)
+	if !ok || userId == 0 {
+		err := errors.New(pkgerr.ErrUserIdToken)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	request.Creator.ID = userId
+
+	role, ok := reqCtx.Value(constant.RoleNameContextKey).(string)
+	if !ok || role == "" {
+		err := errors.New(pkgerr.ErrRoleToken)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	request.Creator.Role.Name = role
+
+	teamId, ok := reqCtx.Value(constant.TeamIDContextKey).(int64)
+	request.Creator.Team.ID = teamId
 
 	cityIdParam := r.URL.Query().Get("cityId")
 	if cityIdParam == "" {
@@ -77,8 +96,46 @@ func decodeIdParamRequest(_ context.Context, r *http.Request) (interface{}, erro
 	return int(id), nil
 }
 
+func decodeDeleteGameRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	request := entities.DeleteGameRequest{Executor: entities.User{Role: &entities.Role{}, Team: &entities.Team{}}}
+	reqCtx := r.Context()
+
+	userId, ok := reqCtx.Value(constant.UserIDContextKey).(int64)
+	if !ok || userId == 0 {
+		err := errors.New(pkgerr.ErrUserIdToken)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	request.Executor.ID = userId
+
+	role, ok := reqCtx.Value(constant.RoleNameContextKey).(string)
+	if !ok || role == "" {
+		err := errors.New(pkgerr.ErrRoleToken)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	request.Executor.Role.Name = role
+
+	teamId, ok := reqCtx.Value(constant.TeamIDContextKey).(int64)
+	request.Executor.Team.ID = teamId
+
+	idParam := chi.URLParam(r, "id")
+	if idParam == "" {
+		err := errors.New(pkgerr.EmptyParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	id, err := strconv.ParseInt(idParam, 10, 64)
+	if err != nil {
+		err = errors.New(pkgerr.WrongParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	request.ID = int(id)
+
+	return request, nil
+}
+
 func decodeUpdateRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := entities.UpdateGameRequest{}
+	request := entities.UpdateGameRequest{Executor: entities.User{Role: &entities.Role{}, Team: &entities.Team{}}}
 	buf := bytebufferpool.Get()
 	defer bytebufferpool.Put(buf)
 
@@ -90,21 +147,6 @@ func decodeUpdateRequest(_ context.Context, r *http.Request) (interface{}, error
 	err = json.Unmarshal(buf.Bytes(), &request)
 	if err != nil {
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
-	}
-
-	err = validate.Struct(request)
-	if err != nil {
-		err = errors.New(pkgerr.ValidationErr + ": " + err.Error())
-		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
-	}
-
-	if request.Matches != nil {
-		for _, match := range request.Matches {
-			if match.Team1ID != request.Team1ID || match.Team2ID != request.Team2ID {
-				err = errors.New(pkgerr.ValidationErr + ": " + "id команд в игре и матче не совпадают")
-				return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
-			}
-		}
 	}
 
 	return request, nil
