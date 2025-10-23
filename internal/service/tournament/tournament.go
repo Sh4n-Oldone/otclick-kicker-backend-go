@@ -372,7 +372,7 @@ func (s *Service) GetTournamentStageList(ctx context.Context, id int64) ([]entit
 	var stageItems []entities.TournamentStageItem
 
 	for _, stage := range stages {
-		games, err := s.rdbOperations.GetTournamentStageGames(logger, ctx, stage.TournamentID, &s.config.RDB)
+		games, err := s.rdbOperations.GetTournamentStageGames(logger, ctx, stage.ID, &s.config.RDB)
 		if err != nil {
 			return nil, err
 		}
