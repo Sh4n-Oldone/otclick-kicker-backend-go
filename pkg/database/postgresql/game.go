@@ -847,69 +847,36 @@ func (db *RWDBOperation) CreateFutureGame(logger zerolog.Logger, ctx context.Con
 }
 
 func (db *RDBOperation) GetTeamGames(logger zerolog.Logger, ctx context.Context, teamID int) ([]entities.TeamGame, error) {
-	const query string = `
-		WITH
-			league_teams AS (
-				SELECT
-					t.id as team_id,
-					t.name as team_name,
-					t.short_name as team_short_name
-				FROM teams t
-				JOIN teams_leagues_links tll ON t.id = tll.team_id
-				WHERE tll.league_id = (SELECT league_id FROM teams_leagues_links WHERE team_id = $1)
-				  AND t.id != $1
-			),
-			games_as_team1 AS (
-				SELECT
-					g.id,
-					lt.team_id,
-					lt.team_name,
-					lt.team_short_name,
-					p.id as place_id,
-					b.id as bar_id,
-					b.name as bar_name,
-					tbl.id as table_id,
-					tbl.name as table_name,
-					g.date,
-					true as is_home_game
-				FROM league_teams lt
-						 LEFT JOIN games g ON g.team1_id = $1 AND g.team2_id = lt.team_id
-						 LEFT JOIN places p ON g.place_id = p.id
-						 LEFT JOIN bars b ON p.bar_id = b.id
-						 LEFT JOIN tables tbl ON p.table_id = tbl.id
-			),
-			games_as_team2 AS (
-				SELECT
-					g.id,
-					lt.team_id,
-					lt.team_name,
-					lt.team_short_name,
-					p.id as place_id,
-					b.id as bar_id,
-					b.name as bar_name,
-					tbl.id as table_id,
-					tbl.name as table_name,
-					g.date,
-					false as is_home_game
-				FROM league_teams lt
-						 LEFT JOIN games g ON g.team2_id = $1 AND g.team1_id = lt.team_id
-						 LEFT JOIN places p ON g.place_id = p.id
-						 LEFT JOIN bars b ON p.bar_id = b.id
-						 LEFT JOIN tables tbl ON p.table_id = tbl.id
-			)
-		SELECT *
-		FROM (
-				 SELECT * FROM games_as_team1
-				 UNION ALL
-				 SELECT * FROM games_as_team2
-			 ) all_games
-		--WHERE date >= CURRENT_DATE or date IS NULL
-		ORDER BY team_id;
-	`
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	const query = `
+    SELECT
+        g.id as game_id,
+        t.id as team_id,
+        t.name,
+        t.short_name,
+        p.id as place_id,
+        b.id as bar_id,
+        b.name as bar_name,
+        tbl.id as table_id,
+        tbl.name as table_name,
+        g.date,
+        (g.team1_id = $1) as is_home_game
+    FROM games g
+    JOIN teams t ON t.id = CASE
+        WHEN g.team1_id = $1 THEN g.team2_id
+        WHEN g.team2_id = $1 THEN g.team1_id
+    END
+    LEFT JOIN places p ON g.place_id = p.id
+    LEFT JOIN bars b ON p.bar_id = b.id
+    LEFT JOIN tables tbl ON p.table_id = tbl.id
+    WHERE (g.team1_id = $1 OR g.team2_id = $1)
+    ORDER BY t.id;`
 
 	games := make([]entities.TeamGame, 0)
 
-	rows, err := db.db.Query(ctx, query, teamID)
+	rows, err := db.db.Query(timeout, query, teamID)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to postgresql.GetTeamGames")
 		return nil, errors.New(pkgerr.ErrGetGameList)
