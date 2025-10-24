@@ -12,13 +12,13 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/valyala/bytebufferpool"
 	"google.golang.org/grpc/codes"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 )
 
 func decodeGetListRequest(ctx context.Context, r *http.Request) (interface{}, error) {
-	request := &entity.GetBarListRequest{}
+	request := &entities.GetBarListRequest{}
 
 	attrCityID := r.URL.Query().Get("cityID")
 	if attrCityID != "" {
@@ -38,7 +38,7 @@ func decodeGetListRequest(ctx context.Context, r *http.Request) (interface{}, er
 }
 
 func decodeCreateRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := &entity.CreateBarRequest{}
+	request := &entities.CreateBarRequest{}
 
 	buf := bytebufferpool.Get()
 	defer bytebufferpool.Put(buf)
@@ -57,7 +57,7 @@ func decodeCreateRequest(_ context.Context, r *http.Request) (interface{}, error
 }
 
 func decodeUpdateRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := &entity.UpdateBarRequest{}
+	request := &entities.UpdateBarRequest{}
 
 	buf := bytebufferpool.Get()
 	defer bytebufferpool.Put(buf)
@@ -76,7 +76,7 @@ func decodeUpdateRequest(_ context.Context, r *http.Request) (interface{}, error
 }
 
 func decodeDeleteRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := &entity.DeleteBarRequest{}
+	request := &entities.DeleteBarRequest{}
 
 	idParam := chi.URLParam(r, "id")
 	if idParam == "" {

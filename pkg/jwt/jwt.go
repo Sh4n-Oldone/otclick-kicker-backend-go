@@ -6,10 +6,10 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 )
 
-func NewToken(user entity.User, duration time.Duration, secretKey string) (string, error) {
+func NewToken(user entities.User, duration time.Duration, secretKey string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"id":        user.ID,
 		"email":     user.Email,

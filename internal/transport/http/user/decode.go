@@ -3,20 +3,22 @@ package user
 import (
 	"context"
 	"encoding/json"
-	stderr "errors"
+	"errors"
 	"io"
 	"net/http"
 	"strconv"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/valyala/bytebufferpool"
 	"google.golang.org/grpc/codes"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
+
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
+	pkgerr "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 )
 
 func decodeLoginRequest(ctx context.Context, r *http.Request) (interface{}, error) {
-	request := &entity.LoginUserRequest{}
+	request := &entities.LoginUserRequest{}
 
 	buf := bytebufferpool.Get()
 	defer bytebufferpool.Put(buf)
@@ -35,7 +37,7 @@ func decodeLoginRequest(ctx context.Context, r *http.Request) (interface{}, erro
 }
 
 func decodeCreateRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := &entity.CreateUserRequest{}
+	request := &entities.CreateUserRequest{}
 
 	buf := bytebufferpool.Get()
 	defer bytebufferpool.Put(buf)
@@ -54,7 +56,7 @@ func decodeCreateRequest(_ context.Context, r *http.Request) (interface{}, error
 }
 
 func decodeChangePasswordRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	request := &entity.ChangePasswordRequest{}
+	request := &entities.ChangePasswordRequest{}
 
 	buf := bytebufferpool.Get()
 	defer bytebufferpool.Put(buf)
@@ -75,19 +77,90 @@ func decodeChangePasswordRequest(_ context.Context, r *http.Request) (interface{
 func decodeCheckAuthRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	paramUserID := r.URL.Query().Get("id")
 	if paramUserID == "" {
-		err := stderr.New(errors.EmptyParameterError)
+		err := errors.New(pkgerr.EmptyParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 	paramToken := r.URL.Query().Get("token")
 	if paramToken == "" {
-		err := stderr.New(errors.EmptyParameterError)
+		err := errors.New(pkgerr.EmptyParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 	userID, err := strconv.Atoi(paramUserID)
 	if err != nil || userID <= 0 {
-		err = stderr.New(errors.WrongParameterError)
+		err = errors.New(pkgerr.WrongParameterError)
 		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
-	
-	return &entity.CheckAuthRequest{UserID: int64(userID), Token: paramToken}, nil
+
+	return &entities.CheckAuthRequest{UserID: int64(userID), Token: paramToken}, nil
+}
+
+func decodeCreateTournamentMasterRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	request := &entities.CreateTournamentMasterRequest{}
+
+	buf := bytebufferpool.Get()
+	defer bytebufferpool.Put(buf)
+
+	_, err := io.Copy(buf, r.Body) // buf.ReadFrom(r.Body)
+	if err != nil {
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	err = json.Unmarshal(buf.Bytes(), &request)
+	if err != nil {
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	return request, nil
+}
+
+func decodeUpdateTournamentMasterRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	request := &entities.UpdateTournamentMasterRequest{}
+
+	buf := bytebufferpool.Get()
+	defer bytebufferpool.Put(buf)
+
+	idParam := chi.URLParam(r, "id")
+	if idParam == "" {
+		err := errors.New(pkgerr.EmptyParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	id, err := strconv.ParseInt(idParam, 10, 64)
+	if err != nil {
+		err = errors.New(pkgerr.WrongParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	request.UserID = id
+
+	_, err = io.Copy(buf, r.Body) // buf.ReadFrom(r.Body)
+	if err != nil {
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	err = json.Unmarshal(buf.Bytes(), &request)
+	if err != nil {
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	return request, nil
+}
+
+func decodeIdRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	idParam := chi.URLParam(r, "id")
+	if idParam == "" {
+		err := errors.New(pkgerr.EmptyParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	id, err := strconv.ParseInt(idParam, 10, 64)
+	if err != nil {
+		err = errors.New(pkgerr.WrongParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	return id, nil
+}
+
+func decodeEmptyRequest(_ context.Context, _ *http.Request) (interface{}, error) {
+	return nil, nil
 }

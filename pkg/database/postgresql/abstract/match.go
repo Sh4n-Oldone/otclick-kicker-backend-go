@@ -1,0 +1,31 @@
+package abstract
+
+import (
+	"context"
+
+	"github.com/rs/zerolog"
+
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql/tx"
+)
+
+type IMatchR interface {
+	GetPastMatchesByPlayerID(logger zerolog.Logger, ctx context.Context, playerID int) ([]entities.MatchV2, error)
+	GetMatchListByGameID(ctx context.Context, logger zerolog.Logger, gameID int64, cfg *config.DBConfig) ([]entities.MatchV2, error)
+	GetMatchListByLeagueID(logger zerolog.Logger, ctx context.Context, leagueID int64) ([]entities.Match, error)
+	FetchMatches(logger zerolog.Logger, ctx context.Context, gameID int64) ([]entities.ShortMatch, error)
+}
+
+type IMatchRW interface {
+	CreateMatch(logger zerolog.Logger, ctx context.Context, match entities.Match) (id int64, err error)
+	CreateGameMatch(logger zerolog.Logger, ctx context.Context, match entities.GamesMatch, gameId int64, cfg *config.DBConfig) (id int64, err error)
+	UpdateMatch(logger zerolog.Logger, ctx context.Context, match entities.Match) error
+	DeleteMatch(logger zerolog.Logger, ctx context.Context, id int64) (bool, error)
+	DeleteOldGameMatches(logger zerolog.Logger, ctx context.Context, gameId int64, newMatchesIds []int, cfg *config.DBConfig) error
+	UpdateOldMatch(logger zerolog.Logger, ctx context.Context, gameId int64, match *entities.NewMatch, cfg *config.DBConfig) error
+	CreateNewMatch(logger zerolog.Logger, ctx context.Context, gameId int64, match *entities.NewMatch, cfg *config.DBConfig) error
+	DeleteGameMatches(logger zerolog.Logger, ctx context.Context, gameId int64, cfg *config.DBConfig) error
+	DeleteTournamentMatches(logger zerolog.Logger, ctx context.Context, tournamentId int64, tx tx.ITx) error
+	RewriteMatchesAndPlayerRatings(logger zerolog.Logger, ctx context.Context, matches []entities.Match, ratings map[int64]entities.Rating) error
+}

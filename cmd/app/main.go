@@ -11,10 +11,11 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/user"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql"
-	// "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/redis"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/helpers"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/logger"
 )
 
@@ -88,26 +89,13 @@ func main() {
 	}
 	defer rdb.Close()
 
-	rwdbOperationer, rdbOperationer := postgresql.NewOperationer(rwdb, rdb)
+	rwdbOperationer, rdbOperationer := postgresql.NewOperationer(rwdb, rdb, appConfig)
 
-	//rds, err := initRedisConnection(appConfig)
-	//if err != nil {
-	//	coreLogger.Fatal().Err(err).Msg("failed to establish a connection with the redis")
-	//} else {
-	//	coreLogger.Info().Msg("successful connection with the redis")
-	//}
-	//defer func(rds *goRedis.Client) {
-	//	err = rds.Close()
-	//	if err != nil {
-	//		coreLogger.Error().Msg("failed to close the redis connection")
-	//	}
-	//}(rds)
+	validation := helpers.NewCustomValidator()
 
-	// redisDB, err := redis.New(rds)
+	userService := user.NewService(appConfig, &apiLogger, validation, rwdbOperationer, rdbOperationer)
 
-	userService := user.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
-
-	serviceEndpoints := initEndpoints(appConfig, apiLogger, rwdbOperationer, rdbOperationer)
+	serviceEndpoints := initEndpoints(appConfig, apiLogger, validation, rwdbOperationer, rdbOperationer)
 	chiRouter := initHTTPRouter(appConfig)
 
 	initHealthChecker(appConfig, chiRouter)

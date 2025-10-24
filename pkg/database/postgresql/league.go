@@ -2,16 +2,15 @@ package postgresql
 
 import (
 	"context"
-	stderr "errors"
+	"errors"
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog"
-
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql/tx"
+	pkgerr "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 )
 
-func (db *RDBOperation) GetLeagueList(logger zerolog.Logger, ctx context.Context, cityID int64) ([]entity.League, error) {
+func (db *RDBOperation) GetLeagueList(logger zerolog.Logger, ctx context.Context, cityID int64) ([]entities.League, error) {
 	query := queryGetLeagueList
 
 	rows, err := db.db.Query(ctx, query, cityID)
@@ -22,10 +21,10 @@ func (db *RDBOperation) GetLeagueList(logger zerolog.Logger, ctx context.Context
 	}
 	defer rows.Close()
 
-	var leagues []entity.League
+	var leagues []entities.League
 
 	for rows.Next() {
-		var league entity.League
+		var league entities.League
 
 		err = rows.Scan(&league.ID, &league.Name, &league.CityID)
 		if err != nil {
@@ -39,7 +38,7 @@ func (db *RDBOperation) GetLeagueList(logger zerolog.Logger, ctx context.Context
 	return leagues, nil
 }
 
-func (db *RWDBOperation) CreateLeague(logger zerolog.Logger, ctx context.Context, league entity.League, teams []int64) (int64, error) {
+func (db *RWDBOperation) CreateLeague(logger zerolog.Logger, ctx context.Context, request *entities.CreateLeagueRequest) (int64, error) {
 	var id int64
 
 	tx, err := db.db.Begin(ctx)
@@ -48,14 +47,14 @@ func (db *RWDBOperation) CreateLeague(logger zerolog.Logger, ctx context.Context
 		return 0, DecodeDatabaseError(err)
 	}
 
-	err = tx.QueryRow(ctx, queryCreateLeague, league.Name, league.CityID).Scan(&id)
+	err = tx.QueryRow(ctx, queryCreateLeague, request.Name, request.CityID, request.SeasonID).Scan(&id)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to create League record")
 		_ = tx.Rollback(ctx)
 		return 0, DecodeDatabaseError(err)
 	}
 
-	for _, teamID := range teams {
+	for _, teamID := range request.Teams {
 		_, err = tx.Exec(ctx, queryUpdateTeamsLeagueID, teamID, id)
 		if err != nil {
 			logger.Error().Stack().Err(err).Msg("failed to create League record")
@@ -74,14 +73,14 @@ func (db *RWDBOperation) CreateLeague(logger zerolog.Logger, ctx context.Context
 	return id, nil
 }
 
-func (db *RWDBOperation) UpdateLeague(logger zerolog.Logger, ctx context.Context, league entity.League, teams []int64) error {
+func (db *RWDBOperation) UpdateLeague(logger zerolog.Logger, ctx context.Context, league entities.League, teams []int64) error {
 	tx, err := db.db.Begin(ctx)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to update League record")
 		return DecodeDatabaseError(err)
 	}
 
-	_, err = tx.Exec(ctx, queryUpdateLeague, league.Name, league.ID)
+	_, err = tx.Exec(ctx, queryUpdateLeague, league.ID, league.Name, league.SeasonID)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to update League record")
 		_ = tx.Rollback(ctx)
@@ -176,7 +175,7 @@ func (db *RDBOperation) GetLeaguesByPlayerID(logger zerolog.Logger, ctx context.
 	rows, err := db.db.Query(ctx, query, playerID)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to postgresql.GetLeaguesByPlayerID")
-		return nil, DecodeDatabaseError(stderr.New(errors.ErrGetLeagueList))
+		return nil, DecodeDatabaseError(errors.New(pkgerr.ErrGetLeagueList))
 	}
 
 	for rows.Next() {
@@ -185,11 +184,29 @@ func (db *RDBOperation) GetLeaguesByPlayerID(logger zerolog.Logger, ctx context.
 		err = rows.Scan(&league.ID, &league.Name, &league.CityID, &league.Rating)
 		if err != nil {
 			logger.Error().Err(err).Msg("failed to postgresql.GetLeaguesByPlayerID")
-			return nil, DecodeDatabaseError(stderr.New(errors.ErrGetLeague))
+			return nil, DecodeDatabaseError(errors.New(pkgerr.ErrGetLeague))
 		}
 
 		leagues = append(leagues, league)
 	}
 
 	return leagues, nil
+}
+
+func (db *RDBOperation) GetLeagueById(logger zerolog.Logger, ctx context.Context, leagueId int64, tx tx.ITx) (entities.League, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	const query string = `SELECT l.id, l.name, l.city_id, l.season_id FROM public.leagues l WHERE l.id = $1;`
+
+	var league entities.League
+
+	err := poolOrTx(db.db, tx).QueryRow(timeout, query, leagueId).
+		Scan(&league.ID, &league.Name, &league.CityID, &league.SeasonID)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to postgresql.GetLeagueById")
+		return entities.League{}, DecodeDatabaseError(err)
+	}
+
+	return league, nil
 }

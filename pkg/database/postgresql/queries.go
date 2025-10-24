@@ -468,9 +468,9 @@ const (
 			bar_id = COALESCE($2, bar_id),
 			table_id = COALESCE($3, table_id),
 			updated_at = NOW()
-		WHERE id = $1;`
+		WHERE id = $1 AND deleted_at IS NULL;`
 
-	queryDeletePlace string = `UPDATE places SET deleted_at = NOW() WHERE id = $1;`
+	queryDeletePlace string = `UPDATE places SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL;`
 	// <--
 
 	// League queries -->
@@ -481,18 +481,20 @@ const (
 		ORDER BY id;`
 
 	queryCreateLeague string = `
-		INSERT INTO leagues (name, city_id) 
+		INSERT INTO leagues (name, city_id, season_id) 
 		VALUES 
 		(
 			$1,
-			$2
+			$2,
+			$3
 		) RETURNING id;`
 
 	queryUpdateLeague string = `
 		UPDATE leagues
 		SET 
-		    name = $1
-		WHERE id = $2;`
+		    name = COALESCE($2, name),
+		    season_id = COALESCE($3, season_id)
+		WHERE id = $1;`
 
 	queryUpdateTeamsLeagueID = `
 		INSERT INTO teams_leagues_links (team_id, league_id)
@@ -525,8 +527,8 @@ const (
     ORDER BY year ASC;`
 
 	queryInsertGame string = `
-		INSERT INTO public.games (city_id, place_id, league_id, date, team1_id, team2_id, tech_loose_team_id)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO public.games (city_id, place_id, league_id, date, team1_id, team2_id, tech_loose_team_id, is_tiebreak)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING id;`
 
 	queryUpdateGame string = `
@@ -539,4 +541,46 @@ const (
 			team2_id = $6,
 			tech_loose_team_id = $7
 		WHERE id = $1;`
+
+	queryCreateSeason string = `
+		INSERT INTO seasons (name, description) 
+		VALUES 
+		(
+			$1,
+			$2
+		) RETURNING id;`
+
+	queryUpdateSeason string = `
+		UPDATE seasons
+		SET
+		    name = COALESCE($2, name),
+    		description = COALESCE($3, description)
+		WHERE id = $1;`
+
+	queryDeleteSeason string = `DELETE FROM seasons WHERE id = $1`
+
+	queryDeleteLeagueSeasonId string = `
+		UPDATE leagues
+		SET
+		    season_id = null
+		WHERE season_id = $1;`
+
+	queryGetSeasonList string = `
+		SELECT DISTINCT s.id, s.name, s.description 
+		FROM seasons s
+		WHERE 
+			($1::INT IS NULL OR s.id = $1::INT)
+			AND (
+				$2::INT IS NULL 
+				OR EXISTS (
+					SELECT 1 FROM tournaments t 
+					WHERE t.season_id = s.id AND t.city_id = $2::INT
+				)
+				OR EXISTS (
+					SELECT 1 FROM leagues l 
+					WHERE l.season_id = s.id AND l.city_id = $2::INT
+				)
+			);`
+
+	queryDeleteFutureGame string = `DELETE FROM public.games WHERE id = $1 AND date > NOW();`
 )

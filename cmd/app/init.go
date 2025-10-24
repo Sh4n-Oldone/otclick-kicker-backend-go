@@ -12,45 +12,44 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	kithttp "github.com/go-kit/kit/transport/http"
+	"github.com/go-playground/validator/v10"
 	"github.com/heptiolabs/healthcheck"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
 
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/healthchecker"
+	customMiddleware "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/middleware"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql"
 
-	epCity "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/city"
-	epGame "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/game"
-	epPlayer "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/player"
+	srvBar "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/bar"
 	srvCity "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/city"
 	srvGame "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/game"
-	srvPlayer "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/player"
-
-	epLeague "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/league"
 	srvLeague "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/league"
-
-	epUser "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/user"
+	srvMatch "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/match"
+	srvPlace "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/place"
+	srvPlayer "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/player"
+	srvRole "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/role"
+	srvSeason "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/season"
+	srvTable "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/table"
+	srvTeam "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/team"
+	srvTournament "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/tournament"
 	srvUser "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/user"
 
-	epMatch "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/match"
-	srvMatch "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/match"
-
-	epRole "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/role"
-	srvRole "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/role"
-
-	epTeam "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/team"
-	srvTeam "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/team"
-
-	epPlace "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/place"
-	srvPlace "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/place"
-
-	epTable "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/table"
-	srvTable "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/table"
-
 	epBar "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/bar"
-	srvBar "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/bar"
-
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/healthchecker"
+	epCity "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/city"
+	epGame "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/game"
+	epLeague "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/league"
+	epMatch "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/match"
+	epPlace "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/place"
+	epPlayer "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/player"
+	epRole "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/role"
+	epSeason "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/season"
+	epTable "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/table"
+	epTeam "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/team"
+	epTournament "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/tournament"
+	epUser "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/user"
 
 	tpHTTP "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http"
 	tpHTTPBar "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/bar"
@@ -61,13 +60,11 @@ import (
 	tpHTTPPlace "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/place"
 	tpHTTPPlayer "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/player"
 	tpHTTPRole "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/role"
+	tpHTTPSeason "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/season"
 	tpHTTPTable "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/table"
 	tpHTTPTeam "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/team"
+	tpHTTPTournament "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/tournament"
 	tpHTTPUser "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/user"
-
-	customMiddleware "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/middleware"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql"
-	// "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/redis"
 )
 
 func initRuntime(cpu, threads int, logger zerolog.Logger) {
@@ -204,6 +201,20 @@ func initKitHTTP(appConfig *config.Configuration, service srvUser.IService, endp
 			appConfig,
 			service))
 
+	router.Mount("/Kicker.v1.SeasonService/",
+		tpHTTPSeason.NewServer(
+			endpoints.SeasonEP,
+			serverOptions,
+			appConfig,
+			service))
+
+	router.Mount("/Kicker.v1.TournamentService/",
+		tpHTTPTournament.NewServer(
+			endpoints.TournamentEP,
+			serverOptions,
+			appConfig,
+			service))
+
 	if webDebugEnabled {
 		router.Mount("/dbg", ProfilerHandler())
 	}
@@ -251,67 +262,40 @@ func initDBConnection(dbConfig *config.DBConfig) (*pgxpool.Pool, error) {
 	return pool, nil
 }
 
-//func initRedisConnection(appConfig *config.Configuration) (*goRedis.Client, error) {
-//	opts, err := goRedis.ParseURL(appConfig.Redis.ConnectionString)
-//	if err != nil {
-//		return nil, err
-//	}
-//	rds := goRedis.NewClient(opts)
-//
-//	_, err = rds.Ping(context.Background()).Result()
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	return rds, nil
-//}
-
-/*func initCache(config *config.CacheConfig) (cache.ICache, error) {
-	return connector.NewCache(config.Type, config.ConnectionString, config.DialTimeout, config.MaxRetries)
-}
-
-func initServices(config *config.Configuration, cache cache.ICache, baseLogger zerolog.Logger,
-	rwdbOperationer operations.RWDBOperationer, rdbOperationer operations.RDBOperationer) serviceStruct.ServicesEndpoints {
-	return serviceStruct.ServicesEndpoints{
-		OperationsEP: epOperations.MakeEndpoints(svcOperations.NewOperationsService(
-			config, logger.NewComponentLogger(baseLogger, "api_operations"), cache, rwdbOperationer, rdbOperationer)),
-	}
-}*/
-
-/*func initSystemServiceEndpoint(config *config.Configuration, _ cache.ICache, apiLogger zerolog.Logger) epSystem.Endpoints {
-	svcs := svcSystem.NewService(apiLogger, config)
-	return epSystem.MakeEndpoints(svcs)
-}*/
-
 func initEndpoints(
 	appConfig *config.Configuration,
 	apiLogger zerolog.Logger,
+	validator *validator.Validate,
 	rwdbOperationer postgresql.RWDBOperationer,
 	rdbOperationer postgresql.RDBOperationer,
 ) endpoint.ServicesEndpoints {
 	citySrv := srvCity.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
-	userSrv := srvUser.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
+	userSrv := srvUser.NewService(appConfig, &apiLogger, validator, rwdbOperationer, rdbOperationer)
 	matchSrv := srvMatch.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
 	roleSrv := srvRole.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
-	playerSrv := srvPlayer.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
-	teamSrv := srvTeam.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
+	playerSrv := srvPlayer.NewService(appConfig, &apiLogger, validator, rwdbOperationer, rdbOperationer)
+	teamSrv := srvTeam.NewService(appConfig, &apiLogger, validator, rwdbOperationer, rdbOperationer, playerSrv)
 	leagueSrv := srvLeague.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
-	gameSrv := srvGame.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
+	gameSrv := srvGame.NewService(appConfig, &apiLogger, validator, rwdbOperationer, rdbOperationer)
 	tableSrv := srvTable.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
 	barSrv := srvBar.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
-	placeSrv := srvPlace.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
+	placeSrv := srvPlace.NewService(appConfig, &apiLogger, validator, rwdbOperationer, rdbOperationer)
+	seasonSrv := srvSeason.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
+	tournamentSrv := srvTournament.NewService(appConfig, &apiLogger, validator, rwdbOperationer, rdbOperationer)
 
 	return endpoint.ServicesEndpoints{
-		CityEP:   epCity.MakeEndpoints(citySrv),
-		UserEP:   epUser.MakeEndpoints(userSrv),
-		MatchEP:  epMatch.MakeEndpoints(matchSrv),
-		RoleEP:   epRole.MakeEndpoints(roleSrv),
-		PlayerEP: epPlayer.MakeEndpoints(playerSrv),
-		TeamEP:   epTeam.MakeEndpoints(teamSrv),
-		LeagueEP: epLeague.MakeEndpoints(leagueSrv),
-		GameEP:   epGame.MakeEndpoints(gameSrv),
-		TableEP:  epTable.MakeEndpoints(tableSrv),
-		BarEP:    epBar.MakeEndpoints(barSrv),
-		PlaceEP:  epPlace.MakeEndpoints(placeSrv),
+		CityEP:       epCity.MakeEndpoints(citySrv),
+		UserEP:       epUser.MakeEndpoints(userSrv),
+		MatchEP:      epMatch.MakeEndpoints(matchSrv),
+		RoleEP:       epRole.MakeEndpoints(roleSrv),
+		PlayerEP:     epPlayer.MakeEndpoints(playerSrv),
+		TeamEP:       epTeam.MakeEndpoints(teamSrv),
+		LeagueEP:     epLeague.MakeEndpoints(leagueSrv),
+		GameEP:       epGame.MakeEndpoints(gameSrv),
+		TableEP:      epTable.MakeEndpoints(tableSrv),
+		BarEP:        epBar.MakeEndpoints(barSrv),
+		PlaceEP:      epPlace.MakeEndpoints(placeSrv),
+		SeasonEP:     epSeason.MakeEndpoints(seasonSrv),
+		TournamentEP: epTournament.MakeEndpoints(tournamentSrv),
 	}
 }

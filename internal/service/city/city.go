@@ -3,10 +3,10 @@ package city
 import (
 	"context"
 
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 )
 
-func (s *Service) GetList(ctx context.Context, withDeleted bool) ([]entity.City, error) {
+func (s *Service) GetList(ctx context.Context, withDeleted bool) ([]entities.City, error) {
 	logger := s.logger.With().Interface("service", "GetCityList").Logger()
 
 	cities, err := s.rdbOperations.GetCityList(logger, ctx, withDeleted)
@@ -17,7 +17,7 @@ func (s *Service) GetList(ctx context.Context, withDeleted bool) ([]entity.City,
 	return cities, nil
 }
 
-func (s *Service) Create(ctx context.Context, city entity.City) (*int64, error) {
+func (s *Service) Create(ctx context.Context, city entities.City) (*int64, error) {
 	logger := s.logger.With().Interface("service", "CreateCity").Logger()
 
 	id, err := s.rwdbOperations.CreateCity(logger, ctx, city)
@@ -28,7 +28,7 @@ func (s *Service) Create(ctx context.Context, city entity.City) (*int64, error) 
 	return id, nil
 }
 
-func (s *Service) Update(ctx context.Context, city entity.City) error {
+func (s *Service) Update(ctx context.Context, city entities.City) error {
 	logger := s.logger.With().Interface("service", "UpdateCity").Logger()
 
 	err := s.rwdbOperations.UpdateCity(logger, ctx, city)

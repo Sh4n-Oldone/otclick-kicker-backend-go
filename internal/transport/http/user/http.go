@@ -1,10 +1,11 @@
 package user
 
 import (
+	"net/http"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	kithttp "github.com/go-kit/kit/transport/http"
-	"net/http"
 
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/endpoint/user"
@@ -31,6 +32,18 @@ func NewServer(endpoints user.Endpoints, options []kithttp.ServerOption, cfg *co
 
 	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
 		Post("/users", kithttp.NewServer(endpoints.Create, decodeCreateRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
+		Post("/users/tournament-masters", kithttp.NewServer(endpoints.CreateTournamentMaster, decodeCreateTournamentMasterRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
+		Patch("/users/tournament-masters/{id}", kithttp.NewServer(endpoints.UpdateTournamentMaster, decodeUpdateTournamentMasterRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.With(custom_middleware.Auth(cfg, service)).
+		Get("/users/tournament-masters/cities/{id}", kithttp.NewServer(endpoints.GetTournamentMasterByCityId, decodeIdRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.With(custom_middleware.Auth(cfg, service)).
+		Get("/users/tournament-masters/{id}", kithttp.NewServer(endpoints.GetTournamentMasterById, decodeIdRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.With(custom_middleware.Auth(cfg, service)).
+		Get("/users/tournament-masters", kithttp.NewServer(endpoints.GetTournamentMasterList, decodeEmptyRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
+		Delete("/users/tournament-masters/{id}", kithttp.NewServer(endpoints.DeleteTournamentMaster, decodeIdRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 
 	r.With(custom_middleware.Auth(cfg, service)).
 		Put("/users/change-password", kithttp.NewServer(endpoints.ChangePassword, decodeChangePasswordRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)

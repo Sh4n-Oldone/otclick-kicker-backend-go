@@ -6,23 +6,25 @@ import (
 )
 
 type Endpoints struct {
-	Create      endpoint.Endpoint
-	Delete      endpoint.Endpoint
-	Recover     endpoint.Endpoint
-	Update      endpoint.Endpoint
-	Get         endpoint.Endpoint
-	GetByTeam   endpoint.Endpoint
-	FindPlayers endpoint.Endpoint
+	Create                  endpoint.Endpoint
+	Delete                  endpoint.Endpoint
+	Recover                 endpoint.Endpoint
+	Update                  endpoint.Endpoint
+	Get                     endpoint.Endpoint
+	GetByTeam               endpoint.Endpoint
+	FindPlayers             endpoint.Endpoint
+	GetTournamentPlayerList endpoint.Endpoint
 }
 
 func MakeEndpoints(s player.IService) Endpoints {
 	return Endpoints{
-		Create:      makeCreate(s),
-		Delete:      makeDelete(s),
-		Recover:     makeRecover(s),
-		Update:      makeUpdate(s),
-		Get:         makeGet(s),
-		GetByTeam:   makeGetByTeamID(s),
-		FindPlayers: makeFindPlayers(s),
+		Create:                  makeCreate(s),
+		Delete:                  makeDelete(s),
+		Recover:                 makeRecover(s),
+		Update:                  makeUpdate(s),
+		Get:                     makeGet(s),
+		GetByTeam:               makeGetByTeamID(s),
+		FindPlayers:             makeFindPlayers(s),
+		GetTournamentPlayerList: makeGetTournamentPlayerList(s),
 	}
 }

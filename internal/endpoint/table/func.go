@@ -11,7 +11,7 @@ import (
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/helpers"
 
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/table"
 )
 
@@ -20,7 +20,7 @@ func makeGetList(s table.IService) endpoint.Endpoint {
 		// reqID, ctx := middleware.GetRequestID(ctx)
 		logger := s.GetLogger().With().Str("Source", "makeGetList Table").Logger()
 
-		req, err := helpers.CastRequest[*entity.GetTableListRequest](request)
+		req, err := helpers.CastRequest[*entities.GetTableListRequest](request)
 		if err != nil {
 			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.FailedCastRequest)
 			return nil, err
@@ -32,7 +32,7 @@ func makeGetList(s table.IService) endpoint.Endpoint {
 			return nil, err
 		}
 
-		return &entity.GetTableListResponse{Tables: records}, nil
+		return &entities.GetTableListResponse{Tables: records}, nil
 	}
 }
 
@@ -41,7 +41,7 @@ func makeCreate(s table.IService) endpoint.Endpoint {
 		// reqID, ctx := middleware.GetRequestID(ctx)
 		logger := s.GetLogger().With().Str("Source", "makeCreate Table").Logger()
 
-		req, err := helpers.CastRequest[*entity.CreateTableRequest](request)
+		req, err := helpers.CastRequest[*entities.CreateTableRequest](request)
 		if err != nil {
 			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.FailedCastRequest)
 			return nil, err
@@ -53,7 +53,7 @@ func makeCreate(s table.IService) endpoint.Endpoint {
 			return nil, err
 		}
 
-		entity := &entity.Table{
+		entity := &entities.Table{
 			Name: req.Name,
 		}
 
@@ -78,7 +78,7 @@ func makeUpdate(s table.IService) endpoint.Endpoint {
 		// reqID, ctx := middleware.GetRequestID(ctx)
 		logger := s.GetLogger().With().Str("Source", "makeUpdate Table").Logger()
 
-		req, err := helpers.CastRequest[*entity.UpdateTableRequest](request)
+		req, err := helpers.CastRequest[*entities.UpdateTableRequest](request)
 		if err != nil {
 			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.FailedCastRequest)
 			return nil, err
@@ -90,7 +90,7 @@ func makeUpdate(s table.IService) endpoint.Endpoint {
 			return nil, err
 		}
 
-		entity := &entity.Table{
+		entity := &entities.Table{
 			ID:   req.ID,
 			Name: req.Name,
 		}
@@ -116,7 +116,7 @@ func makeDelete(s table.IService) endpoint.Endpoint {
 		// reqID, ctx := middleware.GetRequestID(ctx)
 		logger := s.GetLogger().With().Str("Source", "makeDelete Table").Logger()
 
-		req, err := helpers.CastRequest[*entity.DeleteTableRequest](request)
+		req, err := helpers.CastRequest[*entities.DeleteTableRequest](request)
 		if err != nil {
 			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.FailedCastRequest)
 			return nil, err

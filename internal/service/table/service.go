@@ -7,13 +7,13 @@ import (
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql"
 
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 )
 
 type IService interface {
-	GetList(ctx context.Context, withDeleted bool) ([]entity.Table, error)
-	Create(ctx context.Context, entity entity.Table) (*int64, error)
-	Update(ctx context.Context, entity entity.Table) error
+	GetList(ctx context.Context, withDeleted bool) ([]entities.Table, error)
+	Create(ctx context.Context, entity entities.Table) (*int64, error)
+	Update(ctx context.Context, entity entities.Table) error
 	Delete(ctx context.Context, id int64) error
 
 	GetLogger() *zerolog.Logger

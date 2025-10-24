@@ -2,12 +2,19 @@ package place
 
 import (
 	"context"
+	"errors"
+	"net/http"
 
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
+	"google.golang.org/grpc/codes"
+
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/constant"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
+	pkgerr "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 )
 
-func (s *Service) GetList(ctx context.Context, barID, tableID, cityID *int64, withDeleted bool) ([]entity.Place, error) {
-	logger := s.logger.With().Interface("service", "GetPlaceList").Logger()
+func (s *Service) GetList(ctx context.Context, barID, tableID, cityID *int64, withDeleted bool) ([]entities.Place, error) {
+	logger := s.logger.With().Str("service", "GetPlaceList").Logger()
 
 	entities, err := s.rdbOperations.GetPlaceList(logger, ctx, barID, tableID, cityID, withDeleted)
 	if err != nil {
@@ -17,10 +24,10 @@ func (s *Service) GetList(ctx context.Context, barID, tableID, cityID *int64, wi
 	return entities, nil
 }
 
-func (s *Service) Get(ctx context.Context, id int64) (*entity.Place, error) {
-	logger := s.logger.With().Interface("service", "GetPlace").Logger()
+func (s *Service) Get(ctx context.Context, id int64) (*entities.Place, error) {
+	logger := s.logger.With().Str("service", "GetPlace").Logger()
 
-	entity, err := s.rdbOperations.GetPlaceByID(logger, ctx, id)
+	entity, err := s.rdbOperations.GetPlaceByID(logger, ctx, id, &s.config.RDB)
 	if err != nil {
 		return nil, err
 	}
@@ -28,10 +35,27 @@ func (s *Service) Get(ctx context.Context, id int64) (*entity.Place, error) {
 	return entity, nil
 }
 
-func (s *Service) Create(ctx context.Context, entity entity.Place) (*int64, error) {
-	logger := s.logger.With().Interface("service", "CreatePlace").Logger()
+func (s *Service) Create(ctx context.Context, request entities.CreatePlaceRequest) (*int64, error) {
+	logger := s.logger.With().Str("service", "Create").Logger()
 
-	id, err := s.rwdbOperations.CreatePlace(logger, ctx, entity)
+	if request.Creator.Role.Name == constant.TournamentMaster {
+		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, request.Creator.ID, &s.config.RDB)
+		if err != nil {
+			return nil, err
+		}
+
+		bar, err := s.rdbOperations.GetBarByID(logger, ctx, request.BarID, &s.config.RDB)
+		if err != nil {
+			return nil, err
+		}
+
+		if master.City.ID != bar.City.ID {
+			err = errors.New(pkgerr.ErrBarNotInMasterCity)
+			return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+	}
+
+	id, err := s.rwdbOperations.CreatePlace(logger, ctx, request, &s.config.RWDB)
 	if err != nil {
 		return nil, err
 	}
@@ -39,10 +63,27 @@ func (s *Service) Create(ctx context.Context, entity entity.Place) (*int64, erro
 	return id, nil
 }
 
-func (s *Service) Update(ctx context.Context, entity entity.Place) error {
-	logger := s.logger.With().Interface("service", "UpdatePlace").Logger()
+func (s *Service) Update(ctx context.Context, request entities.UpdatePlaceRequest) error {
+	logger := s.logger.With().Str("service", "Update").Logger()
 
-	err := s.rwdbOperations.UpdatePlace(logger, ctx, entity)
+	if request.Executor.Role.Name == constant.TournamentMaster {
+		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, request.Executor.ID, &s.config.RDB)
+		if err != nil {
+			return err
+		}
+
+		bar, err := s.rdbOperations.GetBarByID(logger, ctx, request.BarID, &s.config.RDB)
+		if err != nil {
+			return err
+		}
+
+		if master.City.ID != bar.City.ID {
+			err = errors.New(pkgerr.ErrBarNotInMasterCity)
+			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+	}
+
+	err := s.rwdbOperations.UpdatePlace(logger, ctx, request, &s.config.RWDB)
 	if err != nil {
 		return err
 	}
@@ -50,10 +91,32 @@ func (s *Service) Update(ctx context.Context, entity entity.Place) error {
 	return nil
 }
 
-func (s *Service) Delete(ctx context.Context, id int64) error {
-	logger := s.logger.With().Interface("service", "DeletePlace").Logger()
+func (s *Service) Delete(ctx context.Context, id int64, executor entities.User) error {
+	logger := s.logger.With().Str("service", "Delete").Logger()
 
-	err := s.rwdbOperations.DeletePlace(logger, ctx, id)
+	if executor.Role.Name == constant.TournamentMaster {
+		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, executor.ID, &s.config.RDB)
+		if err != nil {
+			return err
+		}
+
+		place, err := s.rdbOperations.GetPlaceByID(logger, ctx, id, &s.config.RDB)
+		if err != nil {
+			return err
+		}
+
+		bar, err := s.rdbOperations.GetBarByID(logger, ctx, place.Bar.ID, &s.config.RDB)
+		if err != nil {
+			return err
+		}
+
+		if master.City.ID != bar.City.ID {
+			err = errors.New(pkgerr.ErrBarNotInMasterCity)
+			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+	}
+
+	err := s.rwdbOperations.DeletePlace(logger, ctx, id, &s.config.RWDB)
 	if err != nil {
 		return err
 	}

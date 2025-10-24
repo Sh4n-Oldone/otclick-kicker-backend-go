@@ -2,15 +2,17 @@ package postgresql
 
 import (
 	"context"
-	stderr "errors"
+	"errors"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/entity"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
+
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
+	pkgerr "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 )
 
-func (db *RDBOperation) GetPlaceList(logger zerolog.Logger, ctx context.Context, barID, tableID, cityID *int64, withDeleted bool) ([]entity.Place, error) {
+func (db *RDBOperation) GetPlaceList(logger zerolog.Logger, ctx context.Context, barID, tableID, cityID *int64, withDeleted bool) ([]entities.Place, error) {
 	queries := map[string]string{
 		"queryGetPlaceList":                             queryGetPlaceList,
 		"queryGetPlaceListWithDeleted":                  queryGetPlaceListWithDeleted,
@@ -57,54 +59,54 @@ func (db *RDBOperation) GetPlaceList(logger zerolog.Logger, ctx context.Context,
 	}
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.GetPlaceList")
-		return nil, stderr.New(errors.ErrGetPlaceList)
+		return nil, errors.New(pkgerr.ErrGetPlaceList)
 	}
 	defer rows.Close()
 
-	var entities []entity.Place
+	var places []entities.Place
 
 	for rows.Next() {
-		var bar entity.Bar
-		var table entity.Table
-		var place entity.Place
-
-		place.Bar = bar
-		place.Table = table
+		var place entities.Place
+		place.Bar = entities.Bar{}
+		place.Table = entities.Table{}
 
 		err = rows.Scan(&place.ID, &place.Bar.ID, &place.Bar.Name, &place.Table.ID, &place.Table.Name, &place.UpdatedAt, &place.DeletedAt)
 		if err != nil {
 			logger.Error().Stack().Err(err).Msg("failed scan to postgresql.GetPlaceList")
-			return nil, stderr.New(errors.ErrGetPlaceList)
+			return nil, errors.New(pkgerr.ErrGetPlaceList)
 		}
 
-		entities = append(entities, place)
+		places = append(places, place)
 	}
 
-	return entities, nil
+	return places, nil
 }
 
-func (db *RDBOperation) GetPlaceByID(logger zerolog.Logger, ctx context.Context, id int64) (*entity.Place, error) {
-	var rel1 entity.Bar
-	var rel2 entity.Table
-	var entity entity.Place
+func (db *RDBOperation) GetPlaceByID(logger zerolog.Logger, ctx context.Context, id int64, cfg *config.DBConfig) (*entities.Place, error) {
+	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+	defer cancel()
 
-	entity.Bar = rel1
-	entity.Table = rel2
+	var place entities.Place
+	place.Bar = entities.Bar{}
+	place.Table = entities.Table{}
 
-	err := db.db.QueryRow(ctx, queryGetPlaceByID, id).
-		Scan(&entity.ID, &entity.Bar.ID, &entity.Table.ID, &entity.UpdatedAt, &entity.DeletedAt)
+	err := db.db.QueryRow(timeout, queryGetPlaceByID, id).
+		Scan(&place.ID, &place.Bar.ID, &place.Table.ID, &place.UpdatedAt, &place.DeletedAt)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.GetBarByID")
-		return nil, DecodeDatabaseError(stderr.New(errors.ErrGetPlayer))
+		return nil, DecodeDatabaseError(err)
 	}
 
-	return &entity, nil
+	return &place, nil
 }
 
-func (db *RWDBOperation) CreatePlace(logger zerolog.Logger, ctx context.Context, entity entity.Place) (*int64, error) {
+func (db *RWDBOperation) CreatePlace(logger zerolog.Logger, ctx context.Context, place entities.CreatePlaceRequest, cfg *config.DBConfig) (*int64, error) {
+	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
 	var id int64
 
-	err := db.db.QueryRow(ctx, queryCreatePlace, entity.Bar.ID, entity.Table.ID).Scan(&id)
+	err := db.db.QueryRow(timeout, queryCreatePlace, place.BarID, place.TableID).Scan(&id)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.CreatePlace")
 		return nil, DecodeDatabaseError(err)
@@ -113,8 +115,11 @@ func (db *RWDBOperation) CreatePlace(logger zerolog.Logger, ctx context.Context,
 	return &id, nil
 }
 
-func (db *RWDBOperation) UpdatePlace(logger zerolog.Logger, ctx context.Context, entity entity.Place) error {
-	res, err := db.db.Exec(ctx, queryUpdatePlace, entity.ID, entity.Bar.ID, entity.Table.ID)
+func (db *RWDBOperation) UpdatePlace(logger zerolog.Logger, ctx context.Context, request entities.UpdatePlaceRequest, cfg *config.DBConfig) error {
+	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	res, err := db.db.Exec(timeout, queryUpdatePlace, request.PlaceID, request.BarID, request.TableID)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.UpdatePlace")
 		return DecodeDatabaseError(err)
@@ -129,8 +134,11 @@ func (db *RWDBOperation) UpdatePlace(logger zerolog.Logger, ctx context.Context,
 	return nil
 }
 
-func (db *RWDBOperation) DeletePlace(logger zerolog.Logger, ctx context.Context, id int64) error {
-	res, err := db.db.Exec(ctx, queryDeletePlace, id)
+func (db *RWDBOperation) DeletePlace(logger zerolog.Logger, ctx context.Context, id int64, cfg *config.DBConfig) error {
+	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	res, err := db.db.Exec(timeout, queryDeletePlace, id)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.DeletePlace")
 		return DecodeDatabaseError(err)
