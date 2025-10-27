@@ -13,6 +13,7 @@ import (
 
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/constant"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/calculator"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
 	pkgerr "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/helpers"
@@ -1327,4 +1328,167 @@ func haveStartedGames(games []entities.TournamentGame) bool {
 		}
 	}
 	return false
+}
+
+func (s *Service) Recalc(ctx context.Context, id int64) error {
+	logger := s.logger.With().Str("service", "Recalc").Logger()
+
+	// Get all players from tournament
+	playerIDs, err := s.rdbOperations.GetPlayerIdsByTournamentId(logger, ctx, id)
+	if err != nil {
+		return err
+	}
+
+	// Reset ratings for all players from tournament
+	ratings := make(map[int64]entities.TournamentRating, len(playerIDs))
+	for _, playerID := range playerIDs {
+		rating := &entities.TournamentRating{
+			PlayerID:     playerID,
+			TournamentID: id,
+			Value:        int64(constant.DefaultRating),
+		}
+		ratings[playerID] = *rating
+	}
+
+	// Get all matches from tournament
+	matches, err := s.rdbOperations.GetMatchListByTournamentId(logger, ctx, id)
+	if err != nil {
+		return err
+	}
+
+	// Recalc and update all matches
+	for i, match := range matches {
+		if match.Player1Team1ID == nil || match.Player1Team2ID == nil || match.Player2Team1ID == nil || match.Player2Team2ID == nil {
+			msg := fmt.Sprintf("nil player id from match id: %d", match.ID)
+			return errors.New(msg)
+		}
+
+		var _rating11, _rating12, _rating21, _rating22 int64
+
+		_, ok := ratings[int64(*match.Player1Team1ID)]
+		if ok {
+			_rating11 = ratings[int64(*match.Player1Team1ID)].Value
+		} else {
+			rating := &entities.TournamentRating{
+				PlayerID:     int64(*match.Player1Team1ID),
+				TournamentID: id,
+				Value:        int64(constant.DefaultRating),
+			}
+			ratings[int64(*match.Player1Team1ID)] = *rating
+			_rating11 = rating.Value
+		}
+
+		_, ok = ratings[int64(*match.Player1Team2ID)]
+		if ok {
+			_rating12 = ratings[int64(*match.Player1Team2ID)].Value
+		} else {
+			rating := &entities.TournamentRating{
+				PlayerID:     int64(*match.Player1Team2ID),
+				TournamentID: id,
+				Value:        int64(constant.DefaultRating),
+			}
+			ratings[int64(*match.Player1Team2ID)] = *rating
+			_rating12 = rating.Value
+		}
+
+		_rating21 = 0
+		if match.Player2Team1ID != nil && *match.Player2Team1ID > 0 {
+			_, ok = ratings[int64(*match.Player2Team1ID)]
+			if ok {
+				_rating21 = ratings[int64(*match.Player2Team1ID)].Value
+			} else {
+				rating := &entities.TournamentRating{
+					PlayerID:     int64(*match.Player2Team1ID),
+					TournamentID: id,
+					Value:        int64(constant.DefaultRating),
+				}
+				ratings[int64(*match.Player2Team1ID)] = *rating
+				_rating21 = rating.Value
+			}
+		}
+
+		_rating22 = 0
+		if match.Player2Team2ID != nil && *match.Player2Team2ID > 0 {
+			_, ok = ratings[int64(*match.Player2Team2ID)]
+			if ok {
+				_rating22 = ratings[int64(*match.Player2Team2ID)].Value
+			} else {
+				rating := &entities.TournamentRating{
+					PlayerID:     int64(*match.Player2Team2ID),
+					TournamentID: id,
+					Value:        int64(constant.DefaultRating),
+				}
+				ratings[int64(*match.Player2Team2ID)] = *rating
+				_rating22 = rating.Value
+			}
+		}
+
+		matches[i].Player1Team1RateBefore = &_rating11
+		matches[i].Player1Team2RateBefore = &_rating12
+		matches[i].Player2Team1RateBefore = &_rating21
+		matches[i].Player2Team2RateBefore = &_rating22
+
+		rating11, rating12, rating21, rating22, err := calculator.MatchRatingCalculation(ctx, int(*match.ScoreTeam1), int(*match.ScoreTeam2), int(_rating11), int(_rating12), int(_rating21), int(_rating22))
+		if err != nil {
+			return err
+		}
+
+		var zero int64
+		matches[i].Player2Team1RateAfter = &zero
+		matches[i].Player2Team2RateAfter = &zero
+
+		r11 := int64(rating11)
+		matches[i].Player1Team1RateAfter = &r11
+		r12 := int64(rating12)
+		matches[i].Player1Team2RateAfter = &r12
+
+		ratings[int64(*match.Player1Team1ID)] = entities.TournamentRating{
+			PlayerID:     int64(*match.Player1Team1ID),
+			TournamentID: id,
+			Value:        int64(rating11),
+		}
+		ratings[int64(*match.Player1Team2ID)] = entities.TournamentRating{
+			PlayerID:     int64(*match.Player1Team2ID),
+			TournamentID: id,
+			Value:        int64(rating12),
+		}
+		if match.Player2Team1ID != nil && *match.Player2Team1ID > 0 {
+			r21 := int64(rating21)
+			matches[i].Player2Team1RateAfter = &r21
+
+			ratings[int64(*match.Player2Team1ID)] = entities.TournamentRating{
+				PlayerID:     int64(*match.Player2Team1ID),
+				TournamentID: id,
+				Value:        int64(rating21),
+			}
+		}
+		if match.Player2Team2ID != nil && *match.Player2Team2ID > 0 {
+			r22 := int64(rating22)
+			matches[i].Player2Team2RateAfter = &r22
+
+			ratings[int64(*match.Player2Team2ID)] = entities.TournamentRating{
+				PlayerID:     int64(*match.Player2Team2ID),
+				TournamentID: id,
+				Value:        int64(rating22),
+			}
+		}
+	}
+
+	tx, err := s.rwdbOperations.BeginTx(ctx, logger)
+	if err != nil {
+		return err
+	}
+
+	err = s.rwdbOperations.RewriteTournamentMatchesAndPlayerRatings(logger, ctx, matches, ratings, tx)
+	if err != nil {
+		tx.Rollback(ctx)
+		return err
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		tx.Rollback(ctx)
+		return err
+	}
+
+	return nil
 }

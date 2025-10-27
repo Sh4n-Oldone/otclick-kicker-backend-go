@@ -107,3 +107,7 @@ type GetTournamentListRequest struct {
 	TournamentID     *int64 `validate:"omitempty,gt=0"`
 	TournamentTypeID *int64 `validate:"omitempty,gt=0"`
 }
+
+type RecalcTournamentRequest struct {
+	Id int64 `validate:"required,gt=0"`
+}

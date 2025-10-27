@@ -239,3 +239,23 @@ func decodeGetTournamentListRequest(_ context.Context, r *http.Request) (interfa
 
 	return request, nil
 }
+
+func decodeRecalcRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	request := &entities.RecalcTournamentRequest{}
+
+	idParam := chi.URLParam(r, "id")
+	if idParam == "" {
+		err := errors.New(pkgerr.EmptyParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	tournamentId, err := strconv.ParseInt(idParam, 10, 64)
+	if err != nil {
+		err := errors.New(pkgerr.WrongParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	request.Id = tournamentId
+
+	return request, nil
+}

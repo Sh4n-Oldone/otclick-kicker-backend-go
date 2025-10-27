@@ -508,13 +508,14 @@ const (
 	// <--
 
 	// Rating queries -->
-	queryGetRatingList                    = `SELECT player_id, league_id, value FROM rating;`
-	queryGetRatingListByPlayerID          = `SELECT player_id, league_id, value FROM rating WHERE player_id = $1;`
-	queryGetRatingListByLeagueID          = `SELECT player_id, league_id, value FROM rating WHERE league_id = $1;`
-	queryGetRatingByPlayerIDAndByLeagueID = `SELECT value FROM rating WHERE player_id = $1 AND league_id = $2;`
-	queryCreateRating                     = `INSERT INTO rating (player_id, league_id, value) VALUES ($1, $2, $3);`
-	queryCreateRatingInsertIgnore         = `INSERT INTO rating (player_id, league_id, value) VALUES ($1, $2, $3) ON CONFLICT (player_id, league_id) DO UPDATE SET value = $3;`
-	queryUpdateRating                     = `UPDATE rating SET value = $3, updated_at = NOW() WHERE player_id = $1 AND league_id = $2;`
+	queryGetRatingList                      = `SELECT player_id, league_id, value FROM rating;`
+	queryGetRatingListByPlayerID            = `SELECT player_id, league_id, value FROM rating WHERE player_id = $1;`
+	queryGetRatingListByLeagueID            = `SELECT player_id, league_id, value FROM rating WHERE league_id = $1;`
+	queryGetRatingByPlayerIDAndByLeagueID   = `SELECT value FROM rating WHERE player_id = $1 AND league_id = $2;`
+	queryCreateRating                       = `INSERT INTO rating (player_id, league_id, value) VALUES ($1, $2, $3);`
+	queryCreateRatingInsertIgnore           = `INSERT INTO rating (player_id, league_id, value) VALUES ($1, $2, $3) ON CONFLICT (player_id, league_id) DO UPDATE SET value = $3;`
+	queryCreateTournamentRatingInsertIgnore = `INSERT INTO tournament_rating (player_id, tournament_id, value) VALUES ($1, $2, $3) ON CONFLICT (player_id, tournament_id) DO UPDATE SET value = $3;`
+	queryUpdateRating                       = `UPDATE rating SET value = $3, updated_at = NOW() WHERE player_id = $1 AND league_id = $2;`
 
 	queryDeleteRatingByLeagueID = `DELETE FROM rating WHERE league_id = $1;`
 	// <--

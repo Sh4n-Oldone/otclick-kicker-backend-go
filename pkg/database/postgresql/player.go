@@ -393,6 +393,42 @@ func (db *RDBOperation) GetPlayerIDsByLeagueID(logger zerolog.Logger, ctx contex
 	return iDs, nil
 }
 
+func (db *RDBOperation) GetPlayerIdsByTournamentId(logger zerolog.Logger, ctx context.Context, tournamentId int64) ([]int64, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	const query string = `
+		SELECT p.id
+		FROM public.players p
+			JOIN public.players_teams_links ptl ON p.id = ptl.player_id
+			JOIN public.tournaments_teams_link ttl ON ptl.team_id = ttl.team_id
+			JOIN public.tournaments t ON ttl.tournament_id = t.id
+			WHERE t.id = $1 AND p.deleted_at IS NULL;`
+
+	var ids []int64
+
+	rows, err := db.db.Query(timeout, query, tournamentId)
+	if err != nil {
+		logger.Error().Stack().Err(err).Msg("failed to postgresql.GetPlayerIDsByTournamentId")
+		return nil, DecodeDatabaseError(errors.New(pkgerr.ErrGetPlayerList))
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var id int64
+
+		err = rows.Scan(&id)
+		if err != nil {
+			logger.Error().Stack().Err(err).Msg("failed to postgresql.GetPlayerIDsByTournamentId")
+			return nil, DecodeDatabaseError(errors.New(pkgerr.ErrGetPlayer))
+		}
+
+		ids = append(ids, id)
+	}
+
+	return ids, nil
+}
+
 func (db *RDBOperation) GetTournamentPlayers(ctx context.Context, logger zerolog.Logger, tournamentId int64, withDeleted bool, tx tx.ITx) ([]entities.TournamentPlayer, error) {
 	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
