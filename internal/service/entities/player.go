@@ -103,24 +103,18 @@ type Player struct {
 }
 
 type FullPlayerV2 struct {
-	ID           int     `json:"id"`
-	Name         *string `json:"name,omitempty"`
-	SecondName   *string `json:"secondName,omitempty"`
-	LastName     string  `json:"lastName,omitempty"`
-	Avatar       []byte  `json:"avatar,omitempty"`
-	ActivePlayer *bool   `json:"activePlayer"`
-	Deleted      bool    `json:"deleted"`
-	CityID       *int    `json:"cityId"`
-	CityName     *string `json:"cityName"`
-
-	Leagues []LeagueItem `json:"leagues,omitempty"`
-
-	// total stats
-	MatchesPlayed             int     `json:"matchesPlayed"`
-	GoalsScoredNumber         int     `json:"goalsScoredNumber"`
-	GoalsConcededNumber       int     `json:"goalsConcededNumber"`
-	GamesPlayedNumber         int     `json:"gamesPlayedNumber"`
-	PercentageOfParticipation float32 `json:"percentageOfParticipation"`
+	ID           int              `json:"id"`
+	Name         *string          `json:"name,omitempty"`
+	SecondName   *string          `json:"secondName,omitempty"`
+	LastName     string           `json:"lastName,omitempty"`
+	Avatar       []byte           `json:"avatar,omitempty"`
+	ActivePlayer *bool            `json:"activePlayer"`
+	Deleted      bool             `json:"deleted"`
+	CityID       *int             `json:"cityId"`
+	CityName     *string          `json:"cityName"`
+	Leagues      []LeagueItem     `json:"leagues,omitempty"`
+	Tournament   []TournamentItem `json:"tournament,omitempty"`
+	TotalStat    PlayerTotalStat  `json:"totalStat"`
 
 	// deprecated
 	// TeamName                  *string      `json:"teamName"`
@@ -175,4 +169,12 @@ type TournamentPlayerItem struct {
 	Player     TournamentPlayer `json:"player"`
 	SelfTeam   *TournamentTeam  `json:"selfTeam,omitempty"`
 	OtherTeams []TournamentTeam `json:"otherTeams,omitempty"`
+}
+
+type PlayerTotalStat struct {
+	GamesPlayedNumber         int     `json:"gamesPlayedNumber"`
+	MatchesPlayed             int     `json:"matchesPlayed"`
+	GoalsScoredNumber         int     `json:"goalsScoredNumber"`
+	GoalsConcededNumber       int     `json:"goalsConcededNumber"`
+	PercentageOfParticipation float32 `json:"percentageOfParticipation"`
 }

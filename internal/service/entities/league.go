@@ -92,12 +92,12 @@ type LeagueItem struct {
 
 	Teams []TeamItem `json:"teams,omitempty"`
 }
-
 type TeamItem struct {
-	ID        int    `json:"id"`
-	Name      string `json:"name,omitempty"`
-	ShortName string `json:"shortName,omitempty"`
-	Avatar    []byte `json:"avatar,omitempty"`
-	CityID    int    `json:"cityId"`
-	Leagues   []int  `json:"leagues"`
+	ID          int    `json:"id"`
+	Name        string `json:"name,omitempty"`
+	ShortName   string `json:"shortName,omitempty"`
+	Avatar      []byte `json:"avatar,omitempty"`
+	CityID      int    `json:"cityId"`
+	Leagues     []int  `json:"leagues"`
+	Tournaments []int  `json:"tournaments"`
 }

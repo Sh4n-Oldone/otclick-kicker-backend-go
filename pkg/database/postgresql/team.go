@@ -5,8 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql/tx"
 	"strings"
+
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql/tx"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog"
@@ -747,9 +748,14 @@ func (db *RDBOperation) GetTeamsByPlayerID(logger zerolog.Logger, ctx context.Co
 	COALESCE(
 		ARRAY_AGG(
 			DISTINCT tll.league_id ORDER BY tll.league_id) 
-				FILTER (WHERE tll.league_id IS NOT NULL), ARRAY[]::int8[]) AS leagues
+				FILTER (WHERE tll.league_id IS NOT NULL), ARRAY[]::int8[]) AS leagues,
+	COALESCE(
+		ARRAY_AGG(
+			DISTINCT ttl.tournament_id ORDER BY ttl.tournament_id) 
+				FILTER (WHERE ttl.tournament_id IS NOT NULL), ARRAY[]::int8[]) AS tournaments			
 	FROM teams t
 	LEFT JOIN teams_leagues_links tll ON t.id = tll.team_id
+	LEFT JOIN tournaments_teams_link ttl ON t.id = ttl.team_id
 	JOIN players_teams_links ptl ON t.id = ptl.team_id
 	WHERE ptl.player_id = $1
 	GROUP BY t.id;`
@@ -766,7 +772,7 @@ func (db *RDBOperation) GetTeamsByPlayerID(logger zerolog.Logger, ctx context.Co
 	for rows.Next() {
 		var team entities.TeamItem
 
-		err = rows.Scan(&team.ID, &team.Name, &team.ShortName, &team.Avatar, &team.CityID, &team.Leagues)
+		err = rows.Scan(&team.ID, &team.Name, &team.ShortName, &team.Avatar, &team.CityID, &team.Leagues, &team.Tournaments)
 		if err != nil {
 			logger.Error().Err(err).Msg("failed to scan team list")
 			return nil, DecodeDatabaseError(err)

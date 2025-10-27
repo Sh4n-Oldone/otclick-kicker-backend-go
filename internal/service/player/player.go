@@ -146,6 +146,7 @@ func (s *Service) Find(ctx context.Context, player entities.FindPlayersRequest) 
 		var (
 			pastMatches []entities.MatchV2
 			leagues     []entities.PlayersLeague
+			tournaments []entities.PlayersTournament
 			pastGames   []entities.GameShort
 			teams       []entities.TeamItem
 		)
@@ -170,6 +171,12 @@ func (s *Service) Find(ctx context.Context, player entities.FindPlayersRequest) 
 			return err
 		})
 
+		g.Go(func() error {
+			var err error
+			tournaments, err = s.rdbOperations.GetTournamentListByPlayerID(logger, ctx, int64(p.ID))
+			return err
+		})
+
 		if err = g.Wait(); err != nil {
 			return entities.FindPlayersResponse{}, err
 		}
@@ -184,7 +191,7 @@ func (s *Service) Find(ctx context.Context, player entities.FindPlayersRequest) 
 			return entities.FindPlayersResponse{}, err
 		}
 
-		fullPlayer := buildFullPlayer(p, pastMatches, leagues, teams, pastGames)
+		fullPlayer := buildFullPlayer(p, pastMatches, leagues, tournaments, teams, pastGames)
 
 		fullPlayers[i] = fullPlayer
 	}
@@ -221,10 +228,11 @@ func (s *Service) FindV2(ctx context.Context, player entities.FindPlayersRequest
 
 		g.Go(func() error {
 			var (
-				pastMatches []entities.MatchV2
-				leagues     []entities.PlayersLeague
-				pastGames   []entities.GameShort
-				teams       []entities.TeamItem
+				pastMatches            []entities.MatchV2
+				leagues                []entities.PlayersLeague
+				tournaments            []entities.PlayersTournament
+				pastGamesOfPlayerTeams []entities.GameShort
+				teams                  []entities.TeamItem
 			)
 
 			// внутренний errgroup для параллельных запросов по одному игроку
@@ -248,6 +256,12 @@ func (s *Service) FindV2(ctx context.Context, player entities.FindPlayersRequest
 				return err
 			})
 
+			innerG.Go(func() error {
+				var err error
+				tournaments, err = s.rdbOperations.GetTournamentListByPlayerID(logger, ctx, int64(p.ID))
+				return err
+			})
+
 			if err = innerG.Wait(); err != nil {
 				return err
 			}
@@ -257,12 +271,12 @@ func (s *Service) FindV2(ctx context.Context, player entities.FindPlayersRequest
 				teamIds = append(teamIds, team.ID)
 			}
 
-			pastGames, err = s.rdbOperations.GetPastGamesByPlayersTeams(logger, gCtx, teamIds)
+			pastGamesOfPlayerTeams, err = s.rdbOperations.GetPastGamesByPlayersTeams(logger, gCtx, teamIds)
 			if err != nil {
 				return err
 			}
 
-			fullPlayer := buildFullPlayer(p, pastMatches, leagues, teams, pastGames)
+			fullPlayer := buildFullPlayer(p, pastMatches, leagues, tournaments, teams, pastGamesOfPlayerTeams)
 			fullPlayers[i] = fullPlayer
 
 			return nil
@@ -289,6 +303,7 @@ func (s *Service) Get(ctx context.Context, id int) (entities.FullPlayerV2, error
 		player      entities.Player
 		pastMatches []entities.MatchV2
 		leagues     []entities.PlayersLeague
+		tournaments []entities.PlayersTournament
 		teams       []entities.TeamItem
 	)
 
@@ -318,6 +333,12 @@ func (s *Service) Get(ctx context.Context, id int) (entities.FullPlayerV2, error
 		return err
 	})
 
+	g.Go(func() error {
+		var err error
+		tournaments, err = s.rdbOperations.GetTournamentListByPlayerID(logger, ctx, int64(id))
+		return err
+	})
+
 	if err := g.Wait(); err != nil {
 		return entities.FullPlayerV2{}, err
 	}
@@ -333,7 +354,7 @@ func (s *Service) Get(ctx context.Context, id int) (entities.FullPlayerV2, error
 		return entities.FullPlayerV2{}, err
 	}
 
-	fullPlayer := buildFullPlayer(player, pastMatches, leagues, teams, pastGamesOfPlayersTeam)
+	fullPlayer := buildFullPlayer(player, pastMatches, leagues, tournaments, teams, pastGamesOfPlayersTeam)
 
 	return fullPlayer, nil
 }
@@ -409,11 +430,34 @@ func (s *Service) GetTournamentPlayerList(ctx context.Context, req *entities.Get
 	return items, nil
 }
 
-func buildFullPlayer(player entities.Player, pastMatches []entities.MatchV2, leagues []entities.PlayersLeague, teams []entities.TeamItem, pastGames []entities.GameShort) entities.FullPlayerV2 {
+func buildFullPlayer(player entities.Player, pastMatches []entities.MatchV2, leagues []entities.PlayersLeague, tournaments []entities.PlayersTournament, teams []entities.TeamItem, pastGamesOfPlayerTeams []entities.GameShort) entities.FullPlayerV2 {
+
+	leagueItems := getLeaguesStat(player, leagues, teams, pastMatches, pastGamesOfPlayerTeams)
+	tournamentItems := getTournamentsStat(player, tournaments, teams, pastMatches, pastGamesOfPlayerTeams)
+	totalStat := getTotalStat(player, pastMatches, pastGamesOfPlayerTeams)
+
+	return entities.FullPlayerV2{
+		ID:           player.ID,
+		Name:         player.Name,
+		SecondName:   player.SecondName,
+		LastName:     player.LastName,
+		Avatar:       player.Avatar,
+		ActivePlayer: player.ActivePlayer,
+		Deleted:      player.DeletedAt != nil,
+		CityID:       player.CityID,
+		CityName:     player.CityName,
+		Leagues:      leagueItems,
+		Tournament:   tournamentItems,
+		TotalStat:    totalStat,
+	}
+}
+
+func getLeaguesStat(player entities.Player, leagues []entities.PlayersLeague, teams []entities.TeamItem, pastMatches []entities.MatchV2, pastGamesOfPlayerTeams []entities.GameShort) []entities.LeagueItem {
+
 	type leagueStat struct {
 		goalsScoredNumber   int
 		goalsConcededNumber int
-		playersGames        map[int]bool
+		playersGames        map[int]struct{}
 		playersMatches      int
 	}
 
@@ -421,7 +465,7 @@ func buildFullPlayer(player entities.Player, pastMatches []entities.MatchV2, lea
 
 	for _, match := range pastMatches {
 		var stat leagueStat
-		stat.playersGames = make(map[int]bool)
+		stat.playersGames = make(map[int]struct{})
 
 		if match.LeagueID != nil {
 			if entry, ok := leagueStats[*match.LeagueID]; ok {
@@ -430,7 +474,7 @@ func buildFullPlayer(player entities.Player, pastMatches []entities.MatchV2, lea
 		}
 
 		// заполняем игры игрока
-		stat.playersGames[match.GameID] = false
+		stat.playersGames[match.GameID] = struct{}{}
 
 		// подсчет голов
 		if match.Player1Team1ID == player.ID || (match.Player2Team1ID != nil && *match.Player2Team1ID == player.ID) {
@@ -450,7 +494,7 @@ func buildFullPlayer(player entities.Player, pastMatches []entities.MatchV2, lea
 	}
 
 	leaguePlayedGames := make(map[int]int)
-	for _, game := range pastGames {
+	for _, game := range pastGamesOfPlayerTeams {
 		games := 0
 		if game.LeagueID != nil {
 			if entry, ok := leaguePlayedGames[*game.LeagueID]; ok {
@@ -494,16 +538,121 @@ func buildFullPlayer(player entities.Player, pastMatches []entities.MatchV2, lea
 		}
 	}
 
-	return entities.FullPlayerV2{
-		ID:           player.ID,
-		Name:         player.Name,
-		SecondName:   player.SecondName,
-		LastName:     player.LastName,
-		Avatar:       player.Avatar,
-		ActivePlayer: player.ActivePlayer,
-		Deleted:      player.DeletedAt != nil,
-		CityID:       player.CityID,
-		CityName:     player.CityName,
-		Leagues:      leagueItems,
+	return leagueItems
+}
+
+func getTournamentsStat(player entities.Player, tournaments []entities.PlayersTournament, teams []entities.TeamItem, pastMatches []entities.MatchV2, pastGamesOfPlayerTeams []entities.GameShort) []entities.TournamentItem {
+
+	type tournamentStat struct {
+		goalsScoredNumber   int
+		goalsConcededNumber int
+		playersGames        map[int]struct{}
+		playersMatches      int
 	}
+
+	tournamentStats := make(map[int]tournamentStat)
+
+	for _, match := range pastMatches {
+		var stat tournamentStat
+		stat.playersGames = make(map[int]struct{})
+
+		if match.TournamentID != nil {
+			if entry, ok := tournamentStats[*match.TournamentID]; ok {
+				stat = entry
+			}
+		}
+
+		// заполняем игры игрока
+		stat.playersGames[match.GameID] = struct{}{}
+
+		// подсчет голов
+		if match.Player1Team1ID == player.ID || (match.Player2Team1ID != nil && *match.Player2Team1ID == player.ID) {
+			stat.goalsScoredNumber += match.ScoreTeam1
+			stat.goalsConcededNumber += match.ScoreTeam2
+			stat.playersMatches++
+		}
+		if match.Player1Team2ID == player.ID || (match.Player2Team2ID != nil && *match.Player2Team2ID == player.ID) {
+			stat.goalsScoredNumber += match.ScoreTeam2
+			stat.goalsConcededNumber += match.ScoreTeam1
+			stat.playersMatches++
+		}
+
+		if match.TournamentID != nil {
+			tournamentStats[*match.TournamentID] = stat
+		}
+	}
+
+	tournamentPlayedGames := make(map[int]int)
+	for _, game := range pastGamesOfPlayerTeams {
+		games := 0
+		if game.TournamentID != nil {
+			if entry, ok := tournamentPlayedGames[*game.TournamentID]; ok {
+				games = entry
+			}
+			games++
+			tournamentPlayedGames[*game.TournamentID] = games
+		}
+	}
+
+	tournamentItems := make([]entities.TournamentItem, len(tournaments))
+	for i, tournament := range tournaments {
+		tournamentItems[i].ID = int(tournament.ID)
+		tournamentItems[i].Name = tournament.Name
+		if tournament.Rating != nil {
+			tournamentItems[i].Rating = int(*tournament.Rating)
+		} else {
+			tournamentItems[i].Rating = constant.DefaultRating
+		}
+
+		games := 0
+		if entry, ok := tournamentPlayedGames[int(tournament.ID)]; ok {
+			games = entry
+		}
+
+		if entry, ok := tournamentStats[int(tournament.ID)]; ok {
+			tournamentItems[i].GamesPlayedNumber = len(entry.playersGames)
+			tournamentItems[i].GoalsScoredNumber = entry.goalsScoredNumber
+			tournamentItems[i].GoalsConcededNumber = entry.goalsConcededNumber
+			tournamentItems[i].MatchesPlayed = entry.playersMatches
+
+			if games > 0 {
+				tournamentItems[i].PercentageOfParticipation = (float32(len(entry.playersGames)) / float32(games)) * 100
+			}
+		}
+
+		for _, team := range teams {
+			if slices.Contains(team.Tournaments, int(tournament.ID)) {
+				tournamentItems[i].Teams = append(tournamentItems[i].Teams, team)
+			}
+		}
+	}
+
+	return tournamentItems
+}
+
+func getTotalStat(player entities.Player, pastMatches []entities.MatchV2, pastGamesOfPlayerTeams []entities.GameShort) entities.PlayerTotalStat {
+
+	totalStat := entities.PlayerTotalStat{}
+
+	totalStat.MatchesPlayed = len(pastMatches)
+	gamesPlayedByPlayer := make(map[int]struct{})
+
+	for _, match := range pastMatches {
+
+		gamesPlayedByPlayer[match.GameID] = struct{}{}
+
+		if match.Player1Team1ID == player.ID || (match.Player2Team1ID != nil && *match.Player2Team1ID == player.ID) {
+			totalStat.GoalsScoredNumber += match.ScoreTeam1
+			totalStat.GoalsConcededNumber += match.ScoreTeam2
+		}
+		if match.Player1Team2ID == player.ID || (match.Player2Team2ID != nil && *match.Player2Team2ID == player.ID) {
+			totalStat.GoalsScoredNumber += match.ScoreTeam2
+			totalStat.GoalsConcededNumber += match.ScoreTeam1
+		}
+	}
+
+	totalStat.GamesPlayedNumber = len(gamesPlayedByPlayer)
+	totalStat.PercentageOfParticipation = float32(len(gamesPlayedByPlayer)) / float32(len(pastGamesOfPlayerTeams)) * 100
+
+	return totalStat
 }

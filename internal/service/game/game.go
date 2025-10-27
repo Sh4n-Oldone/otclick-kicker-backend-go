@@ -96,98 +96,41 @@ func (s *Service) Create(ctx context.Context, request entities.CreateGameRequest
 				continue
 			}
 
-			player1team1rate := 0
 			player1team1ID := match.Player1Team1Id
-			value, ok := rates[player1team1ID]
-			if ok {
-				player1team1rate = value
-			} else {
-				resp, err := s.rdbOperations.GetRatingByPlayerIDAndByLeagueID(logger, ctx, int64(player1team1ID), leagueID)
-				if err != nil {
-					if outputError, ok := (err).(*error_templates.OutputError); ok {
-						code, _ := outputError.GetHTTP()
-						if code == http.StatusNotFound {
-							resp = 1000
-						} else {
-							return entities.CreateGameResponse{}, err
-						}
-					} else {
-						return entities.CreateGameResponse{}, err
-					}
-				}
-				player1team1rate = int(resp)
-			}
-
-			player1team2rate := 0
 			player1team2ID := match.Player1Team2Id
-			value, ok = rates[player1team2ID]
-			if ok {
-				player1team2rate = value
-			} else {
-				resp, err := s.rdbOperations.GetRatingByPlayerIDAndByLeagueID(logger, ctx, int64(player1team2ID), leagueID)
-				if err != nil {
-					if outputError, ok := (err).(*error_templates.OutputError); ok {
-						code, _ := outputError.GetHTTP()
-						if code == http.StatusNotFound {
-							resp = 1000
-						} else {
-							return entities.CreateGameResponse{}, err
-						}
-					} else {
-						return entities.CreateGameResponse{}, err
-					}
-				}
-				player1team2rate = int(resp)
+
+			// Получаем рейтинги для всех игроков
+			player1team1rate, err := s.getPlayerRating(ctx, logger, player1team1ID, leagueID, rates)
+			if err != nil {
+				return entities.CreateGameResponse{}, err
 			}
 
-			var player2team1ID, player2team1rate int
+			player1team2rate, err := s.getPlayerRating(ctx, logger, player1team2ID, leagueID, rates)
+			if err != nil {
+				return entities.CreateGameResponse{}, err
+			}
+
+			var player2team1rate, player2team2rate int
+			var player2team1ID, player2team2ID int
+
+			// Получаем рейтинг для player2team1 (если существует и > 0)
 			if match.Player2Team1Id != nil {
 				player2team1ID = *match.Player2Team1Id
 				if player2team1ID > 0 {
-					value, ok = rates[player2team1ID]
-					if ok {
-						player2team1rate = value
-					} else {
-						resp, err := s.rdbOperations.GetRatingByPlayerIDAndByLeagueID(logger, ctx, int64(player2team1ID), leagueID)
-						if err != nil {
-							if outputError, ok := (err).(*error_templates.OutputError); ok {
-								code, _ := outputError.GetHTTP()
-								if code == http.StatusNotFound {
-									resp = 1000
-								} else {
-									return entities.CreateGameResponse{}, err
-								}
-							} else {
-								return entities.CreateGameResponse{}, err
-							}
-						}
-						player2team1rate = int(resp)
+					player2team1rate, err = s.getPlayerRating(ctx, logger, player2team1ID, leagueID, rates)
+					if err != nil {
+						return entities.CreateGameResponse{}, err
 					}
 				}
 			}
 
-			var player2team2ID, player2team2rate int
+			// Получаем рейтинг для player2team2 (если существует и > 0)
 			if match.Player2Team2Id != nil {
 				player2team2ID = *match.Player2Team2Id
 				if player2team2ID > 0 {
-					value, ok = rates[player2team2ID]
-					if ok {
-						player2team2rate = value
-					} else {
-						resp, err := s.rdbOperations.GetRatingByPlayerIDAndByLeagueID(logger, ctx, int64(player2team2ID), leagueID)
-						if err != nil {
-							if outputError, ok := (err).(*error_templates.OutputError); ok {
-								code, _ := outputError.GetHTTP()
-								if code == http.StatusNotFound {
-									resp = 1000
-								} else {
-									return entities.CreateGameResponse{}, err
-								}
-							} else {
-								return entities.CreateGameResponse{}, err
-							}
-						}
-						player2team2rate = int(resp)
+					player2team2rate, err = s.getPlayerRating(ctx, logger, player2team2ID, leagueID, rates)
+					if err != nil {
+						return entities.CreateGameResponse{}, err
 					}
 				}
 			}
@@ -504,98 +447,41 @@ func (s *Service) Update(ctx context.Context, request entities.UpdateGameRequest
 			continue
 		}
 
-		player1team1rate := 0
 		player1team1ID := match.Player1Team1Id
-		val, ok := rates[player1team1ID]
-		if ok {
-			player1team1rate = val
-		} else {
-			resp, err := s.rdbOperations.GetRatingByPlayerIDAndByLeagueID(logger, ctx, int64(player1team1ID), leagueID)
-			if err != nil {
-				if outputError, ok := (err).(*error_templates.OutputError); ok {
-					code, _ := outputError.GetHTTP()
-					if code == http.StatusNotFound {
-						resp = 1000
-					} else {
-						return err
-					}
-				} else {
-					return err
-				}
-			}
-			player1team1rate = int(resp)
-		}
-
-		player1team2rate := 0
 		player1team2ID := match.Player1Team2Id
-		val, ok = rates[player1team2ID]
-		if ok {
-			player1team2rate = val
-		} else {
-			resp, err := s.rdbOperations.GetRatingByPlayerIDAndByLeagueID(logger, ctx, int64(player1team2ID), leagueID)
-			if err != nil {
-				if outputError, ok := (err).(*error_templates.OutputError); ok {
-					code, _ := outputError.GetHTTP()
-					if code == http.StatusNotFound {
-						resp = 1000
-					} else {
-						return err
-					}
-				} else {
-					return err
-				}
-			}
-			player1team2rate = int(resp)
+
+		// Получаем рейтинги для всех игроков
+		player1team1rate, err := s.getPlayerRating(ctx, logger, player1team1ID, leagueID, rates)
+		if err != nil {
+			return err
 		}
 
-		var player2team1ID, player2team1rate int
+		player1team2rate, err := s.getPlayerRating(ctx, logger, player1team2ID, leagueID, rates)
+		if err != nil {
+			return err
+		}
+
+		var player2team1rate, player2team2rate int
+		var player2team1ID, player2team2ID int
+
+		// Получаем рейтинг для player2team1 (если существует и > 0)
 		if match.Player2Team1Id != nil {
 			player2team1ID = *match.Player2Team1Id
 			if player2team1ID > 0 {
-				val, ok = rates[player2team1ID]
-				if ok {
-					player2team1rate = val
-				} else {
-					resp, err := s.rdbOperations.GetRatingByPlayerIDAndByLeagueID(logger, ctx, int64(player2team1ID), leagueID)
-					if err != nil {
-						if outputError, ok := (err).(*error_templates.OutputError); ok {
-							code, _ := outputError.GetHTTP()
-							if code == http.StatusNotFound {
-								resp = 1000
-							} else {
-								return err
-							}
-						} else {
-							return err
-						}
-					}
-					player2team1rate = int(resp)
+				player2team1rate, err = s.getPlayerRating(ctx, logger, player2team1ID, leagueID, rates)
+				if err != nil {
+					return err
 				}
 			}
 		}
 
-		var player2team2ID, player2team2rate int
+		// Получаем рейтинг для player2team2 (если существует и > 0)
 		if match.Player2Team2Id != nil {
 			player2team2ID = *match.Player2Team2Id
 			if player2team2ID > 0 {
-				val, ok = rates[player2team2ID]
-				if ok {
-					player2team2rate = val
-				} else {
-					resp, err := s.rdbOperations.GetRatingByPlayerIDAndByLeagueID(logger, ctx, int64(player2team2ID), leagueID)
-					if err != nil {
-						if outputError, ok := (err).(*error_templates.OutputError); ok {
-							code, _ := outputError.GetHTTP()
-							if code == http.StatusNotFound {
-								resp = 1000
-							} else {
-								return err
-							}
-						} else {
-							return err
-						}
-					}
-					player2team2rate = int(resp)
+				player2team2rate, err = s.getPlayerRating(ctx, logger, player2team2ID, leagueID, rates)
+				if err != nil {
+					return err
 				}
 			}
 		}
@@ -1307,90 +1193,41 @@ func (s *Service) CreatePlayedTournamentGame(ctx context.Context, request *entit
 				continue
 			}
 
-			player1team1rate := 0
 			player1team1ID := match.Player1Team1Id
-			value, ok := rates[player1team1ID]
-			if ok {
-				player1team1rate = value
-			} else {
-				resp, err := s.rdbOperations.GetPlayerRatingByTournamentId(logger, ctx, int64(player1team1ID), tournament.ID)
-				if err != nil {
-					var outputError *error_templates.OutputError
-					if errors.As(err, &outputError) {
-						if code, _ := outputError.GetHTTP(); code == http.StatusNotFound {
-							resp = 1000
-						} else {
-							return 0, err
-						}
-					}
-				}
-				player1team1rate = int(resp)
-			}
-
-			player1team2rate := 0
 			player1team2ID := match.Player1Team2Id
-			value, ok = rates[player1team2ID]
-			if ok {
-				player1team2rate = value
-			} else {
-				resp, err := s.rdbOperations.GetPlayerRatingByTournamentId(logger, ctx, int64(player1team2ID), tournament.ID)
-				if err != nil {
-					var outputError *error_templates.OutputError
-					if errors.As(err, &outputError) {
-						if code, _ := outputError.GetHTTP(); code == http.StatusNotFound {
-							resp = 1000
-						} else {
-							return 0, err
-						}
-					}
-				}
-				player1team2rate = int(resp)
+
+			// Получаем рейтинги для всех игроков
+			player1team1rate, err := s.getPlayerRating(ctx, logger, player1team1ID, tournament.ID, rates)
+			if err != nil {
+				return 0, err
 			}
 
-			var player2team1ID, player2team1rate int
+			player1team2rate, err := s.getPlayerRating(ctx, logger, player1team2ID, tournament.ID, rates)
+			if err != nil {
+				return 0, err
+			}
+
+			var player2team1rate, player2team2rate int
+			var player2team1ID, player2team2ID int
+
+			// Получаем рейтинг для player2team1 (если существует и > 0)
 			if match.Player2Team1Id != nil {
 				player2team1ID = *match.Player2Team1Id
 				if player2team1ID > 0 {
-					value, ok = rates[player2team1ID]
-					if ok {
-						player2team1rate = value
-					} else {
-						resp, err := s.rdbOperations.GetPlayerRatingByTournamentId(logger, ctx, int64(player2team1ID), tournament.ID)
-						if err != nil {
-							var outputError *error_templates.OutputError
-							if errors.As(err, &outputError) {
-								if code, _ := outputError.GetHTTP(); code == http.StatusNotFound {
-									resp = 1000
-								} else {
-									return 0, err
-								}
-							}
-						}
-						player2team1rate = int(resp)
+					player2team1rate, err = s.getPlayerRating(ctx, logger, player2team1ID, tournament.ID, rates)
+					if err != nil {
+						return 0, err
 					}
 				}
 			}
 
-			var player2team2ID, player2team2rate int
+			// Получаем рейтинг для player2team2 (если существует и > 0)
 			if match.Player2Team2Id != nil {
 				player2team2ID = *match.Player2Team2Id
 				if player2team2ID > 0 {
-					value, ok = rates[player2team2ID]
-					if ok {
-						player2team2rate = value
-					} else {
-						resp, err := s.rdbOperations.GetPlayerRatingByTournamentId(logger, ctx, int64(player2team2ID), tournament.ID)
-						if err != nil {
-							var outputError *error_templates.OutputError
-							if errors.As(err, &outputError) {
-								if code, _ := outputError.GetHTTP(); code == http.StatusNotFound {
-									resp = 1000
-								} else {
-									return 0, err
-								}
-							}
-						}
-						player2team2rate = int(resp)
+					player2team2rate, err = s.getPlayerRating(ctx, logger, player2team2ID, tournament.ID, rates)
+					if err != nil {
+						return 0, err
 					}
 				}
 			}
@@ -1605,90 +1442,41 @@ func (s *Service) UpdatePlayedTournamentGame(ctx context.Context, request *entit
 			continue
 		}
 
-		player1team1rate := 0
 		player1team1ID := match.Player1Team1Id
-		val, ok := newRates[player1team1ID]
-		if ok {
-			player1team1rate = val
-		} else {
-			resp, err := s.rdbOperations.GetPlayerRatingByTournamentId(logger, ctx, int64(player1team1ID), tournament.ID)
-			if err != nil {
-				var outputError *error_templates.OutputError
-				if errors.As(err, &outputError) {
-					if code, _ := outputError.GetHTTP(); code == http.StatusNotFound {
-						resp = 1000
-					} else {
-						return err
-					}
-				}
-			}
-			player1team1rate = int(resp)
-		}
-
-		player1team2rate := 0
 		player1team2ID := match.Player1Team2Id
-		val, ok = newRates[player1team2ID]
-		if ok {
-			player1team2rate = val
-		} else {
-			resp, err := s.rdbOperations.GetPlayerRatingByTournamentId(logger, ctx, int64(player1team2ID), tournament.ID)
-			if err != nil {
-				var outputError *error_templates.OutputError
-				if errors.As(err, &outputError) {
-					if code, _ := outputError.GetHTTP(); code == http.StatusNotFound {
-						resp = 1000
-					} else {
-						return err
-					}
-				}
-			}
-			player1team2rate = int(resp)
+
+		// Получаем рейтинги для всех игроков
+		player1team1rate, err := s.getPlayerRating(ctx, logger, player1team1ID, tournament.ID, newRates)
+		if err != nil {
+			return err
 		}
 
-		var player2team1ID, player2team1rate int
+		player1team2rate, err := s.getPlayerRating(ctx, logger, player1team2ID, tournament.ID, newRates)
+		if err != nil {
+			return err
+		}
+
+		var player2team1rate, player2team2rate int
+		var player2team1ID, player2team2ID int
+
+		// Получаем рейтинг для player2team1 (если существует и > 0)
 		if match.Player2Team1Id != nil {
 			player2team1ID = *match.Player2Team1Id
 			if player2team1ID > 0 {
-				val, ok = newRates[player2team1ID]
-				if ok {
-					player2team1rate = val
-				} else {
-					resp, err := s.rdbOperations.GetPlayerRatingByTournamentId(logger, ctx, int64(player2team1ID), tournament.ID)
-					if err != nil {
-						var outputError *error_templates.OutputError
-						if errors.As(err, &outputError) {
-							if code, _ := outputError.GetHTTP(); code == http.StatusNotFound {
-								resp = 1000
-							} else {
-								return err
-							}
-						}
-					}
-					player2team1rate = int(resp)
+				player2team1rate, err = s.getPlayerRating(ctx, logger, player2team1ID, tournament.ID, newRates)
+				if err != nil {
+					return err
 				}
 			}
 		}
 
-		var player2team2ID, player2team2rate int
+		// Получаем рейтинг для player2team2 (если существует и > 0)
 		if match.Player2Team2Id != nil {
 			player2team2ID = *match.Player2Team2Id
 			if player2team2ID > 0 {
-				val, ok = newRates[player2team2ID]
-				if ok {
-					player2team2rate = val
-				} else {
-					resp, err := s.rdbOperations.GetPlayerRatingByTournamentId(logger, ctx, int64(player2team2ID), tournament.ID)
-					if err != nil {
-						var outputError *error_templates.OutputError
-						if errors.As(err, &outputError) {
-							if code, _ := outputError.GetHTTP(); code == http.StatusNotFound {
-								resp = 1000
-							} else {
-								return err
-							}
-						}
-					}
-					player2team2rate = int(resp)
+				player2team2rate, err = s.getPlayerRating(ctx, logger, player2team2ID, tournament.ID, newRates)
+				if err != nil {
+					return err
 				}
 			}
 		}
@@ -2168,6 +1956,7 @@ func checkDeleteRegularTournamentGame(logger zerolog.Logger, game *entities.Tour
 // checkCreateRegularTournamentGame проверяет условия при которых создание игры турнира Regular невозможны
 func checkCreateRegularTournamentGame(logger zerolog.Logger, isTiebreak bool) error {
 	// для этого типа турнира можно создать только Tiebreak, потому что при создании турнира вся турнирная сетка создается сразу
+	// TODO: уточнить корректность условия для создания игры регулярного турнира
 	if isTiebreak != true {
 		err := errors.New("для регулярного турнира c одной игрой можно создать дополнительно только tiebreak игру")
 		logger.Error().Err(err).Msg("not tiebreak in Regular")
@@ -2175,4 +1964,22 @@ func checkCreateRegularTournamentGame(logger zerolog.Logger, isTiebreak bool) er
 	}
 
 	return nil
+}
+
+func (s *Service) getPlayerRating(ctx context.Context, logger zerolog.Logger, playerID int, leagueID int64, rates map[int]int) (int, error) {
+	if value, ok := rates[playerID]; ok {
+		return value, nil
+	}
+	resp, err := s.rdbOperations.GetRatingByPlayerIDAndByLeagueID(logger, ctx, int64(playerID), leagueID)
+	if err != nil {
+		if outputError, ok := (err).(*error_templates.OutputError); ok {
+			code, _ := outputError.GetHTTP()
+			if code == http.StatusNotFound {
+				return 1000, nil
+			}
+			return 0, err
+		}
+		return 0, err
+	}
+	return int(resp), nil
 }
