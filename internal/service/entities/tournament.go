@@ -108,6 +108,21 @@ type GetTournamentListRequest struct {
 	TournamentTypeID *int64 `validate:"omitempty,gt=0"`
 }
 
+type TournamentItem struct {
+	ID     int    `json:"id"`
+	Name   string `json:"name"`
+	Rating int    `json:"rating"`
+
+	// tournament stats
+	MatchesPlayed             int     `json:"matchesPlayed"`
+	GoalsScoredNumber         int     `json:"goalsScoredNumber"`
+	GoalsConcededNumber       int     `json:"goalsConcededNumber"`
+	GamesPlayedNumber         int     `json:"gamesPlayedNumber"`
+	PercentageOfParticipation float32 `json:"percentageOfParticipation"`
+
+	Teams []TeamItem `json:"teams,omitempty"`
+}
+
 type RecalcTournamentRequest struct {
 	Id int64 `validate:"required,gt=0"`
 }

@@ -3,12 +3,12 @@ package postgresql
 import (
 	"context"
 	"errors"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql/tx"
 
 	"github.com/rs/zerolog"
 
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql/tx"
 )
 
 func (db *RWDBOperation) CreateMatch(logger zerolog.Logger, ctx context.Context, match entities.Match) (int64, error) {
@@ -141,25 +141,28 @@ func (db *RWDBOperation) DeleteMatch(logger zerolog.Logger, ctx context.Context,
 
 func (db *RDBOperation) GetPastMatchesByPlayerID(logger zerolog.Logger, ctx context.Context, playerID int) ([]entities.MatchV2, error) {
 	query := `
-		SELECT pm.id, 
-			pm.date, 
+		SELECT 
+			pm.id,
+			pm.date,
 			pg.league_id,
-			pm.game_id, 
-			pm.team1_id, 
-			pm.team2_id, 
-			pm.player1_team1_id, 
-			pm.player2_team1_id, 
-			pm.player1_team2_id, 
-			pm.player2_team2_id, 
-			pm.score_team1, 
+			pm.game_id,
+			ts.tournament_id,
+			pm.team1_id,
+			pm.team2_id,
+			pm.player1_team1_id,
+			pm.player2_team1_id,
+			pm.player1_team2_id,
+			pm.player2_team2_id,
+			pm.score_team1,
 			pm.score_team2
-		FROM public.matches AS pm  
+		FROM public.matches AS pm
 		JOIN public.games AS pg ON pm.game_id = pg.id
+		LEFT JOIN public.tournament_stages AS ts ON pg.stage_id = ts.id
 		WHERE (pm.player1_team1_id = $1
 		   OR pm.player2_team1_id = $1
 		   OR pm.player1_team2_id = $1
 		   OR pm.player2_team2_id = $1)
-		   AND pm.date < NOW()
+		  AND pm.date < NOW()
 		ORDER BY pm.sort, pm.updated_at;`
 
 	matches := make([]entities.MatchV2, 0)
@@ -173,7 +176,7 @@ func (db *RDBOperation) GetPastMatchesByPlayerID(logger zerolog.Logger, ctx cont
 
 	for rows.Next() {
 		var m entities.MatchV2
-		err = rows.Scan(&m.ID, &m.Date, &m.LeagueID, &m.GameID, &m.Team1ID, &m.Team2ID, &m.Player1Team1ID, &m.Player2Team1ID,
+		err = rows.Scan(&m.ID, &m.Date, &m.LeagueID, &m.GameID, &m.TournamentID, &m.Team1ID, &m.Team2ID, &m.Player1Team1ID, &m.Player2Team1ID,
 			&m.Player1Team2ID, &m.Player2Team2ID, &m.ScoreTeam1, &m.ScoreTeam2)
 		if err != nil {
 			logger.Error().Err(err).Msg("failed to postgresql.GetPastMatchesByPlayerID")

@@ -78,9 +78,17 @@ func (db *RDBOperation) GetPastGamesByTeamAndLeague(logger zerolog.Logger, ctx c
 
 func (db *RDBOperation) GetPastGamesByPlayersTeams(logger zerolog.Logger, ctx context.Context, teamIDs []int) ([]entities.GameShort, error) {
 	const query string = `
-		SELECT id, league_id, city_id, date, team1_id, team2_id
-		FROM public.games
-		WHERE (team1_id = ANY ($1::int[])) OR (team2_id = ANY ($1::int[])) AND date < NOW();
+		SELECT 
+			pg.id,
+			pg.league_id, 
+			pg.city_id, 
+			pg.date,
+			pg.team1_id, 
+			pg.team2_id,
+			ts.tournament_id
+		FROM public.games AS pg
+			LEFT JOIN public.tournament_stages ts ON pg.stage_id = ts.id
+		WHERE ((pg.team1_id = ANY ($1::int[])) OR (pg.team2_id = ANY ($1::int[]))) AND pg.date < NOW();
 	`
 
 	var games []entities.GameShort
@@ -95,7 +103,7 @@ func (db *RDBOperation) GetPastGamesByPlayersTeams(logger zerolog.Logger, ctx co
 	for rows.Next() {
 		var game entities.GameShort
 
-		err = rows.Scan(&game.ID, &game.LeagueID, &game.CityID, &game.Date, &game.Team1ID, &game.Team2ID)
+		err = rows.Scan(&game.ID, &game.LeagueID, &game.CityID, &game.Date, &game.Team1ID, &game.Team2ID, &game.TournamentID)
 		if err != nil {
 			logger.Error().Err(err).Msg("failed to postgresql.GetPastGamesByPlayersTeams")
 			return nil, DecodeDatabaseError(errors.New(pkgerr.ErrGetGame))

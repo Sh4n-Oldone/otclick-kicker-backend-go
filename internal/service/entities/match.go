@@ -67,6 +67,7 @@ type MatchV2 struct {
 	ID                     int
 	Date                   time.Time
 	LeagueID               *int
+	TournamentID           *int
 	GameID                 int
 	Team1ID                int
 	Team2ID                int

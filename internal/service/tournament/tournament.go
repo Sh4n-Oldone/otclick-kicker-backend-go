@@ -40,12 +40,6 @@ func (s *Service) Create(ctx context.Context, request *entities.CreateTournament
 
 	var err error
 
-	// валидируем соответствие типа турнира входящим параметрам
-	if err = validateRulesTypesIds(request.Rules, request.TournamentTypeID, request.TeamsIDs, request.PlayersIDs); err != nil {
-		logger.Error().Err(err).Msg("failed to set tournament type")
-		return 0, err
-	}
-
 	// если запрос от мастера по ткрнирам, то тщательно проверяем соответствие города мастера
 	// городу из запроса, которого ожидается, что не будет указано,но на всякий случай
 	if request.Creator.Role.Name == constant.TournamentMaster {
@@ -74,6 +68,12 @@ func (s *Service) Create(ctx context.Context, request *entities.CreateTournament
 			logger.Error().Err(err).Msgf("forbidden for this role: %s", request.Creator.Role.Name)
 			return 0, error_templates.New(err.Error(), err, codes.Unauthenticated, http.StatusForbidden)
 		}
+	}
+
+	// валидируем соответствие типа турнира входящим параметрам
+	if err = validateRulesTypesIds(request.Rules, request.TournamentTypeID, request.TeamsIDs, request.PlayersIDs); err != nil {
+		logger.Error().Err(err).Msg("failed to set tournament type")
+		return 0, err
 	}
 
 	for _, tId := range request.TeamsIDs {
@@ -456,7 +456,7 @@ func (s *Service) createRegularOneVsOne(ctx context.Context, request entities.Cr
 	for _, p := range players {
 		teamAlreadyExist, existingTeam := false, entities.TeamItem{}
 
-		// получаем все команды игрока, если команл нет,ошибки быть не должно
+		// получаем все команды игрока, если команд нет,ошибки быть не должно
 		teams, err := s.rdbOperations.GetTeamsByPlayerID(logger, ctx, p.ID, tx)
 		if err != nil {
 			tx.Rollback(ctx)
@@ -576,7 +576,7 @@ func (s *Service) createPlayoff(ctx context.Context, request entities.CreateTour
 	}
 
 	// Т.к. кол-во команд равно степени двойки, то можем вычислить кол-во этапов общее.
-	// Создаем второй и последующие этапов, без игр, т.к. победителей заранее знать не можем.
+	// Создаем второй и последующие этапы, без игр, т.к. победителей заранее знать не можем.
 	// Делим команды на два пока их не остнется две (финальный этап между финалистами)
 	for numGames := len(teams1Ids) / 2; numGames > 1; numGames = numGames / 2 {
 		_, err = s.rwdbOperations.CreateTournamentStageTx(logger, ctx, tournamentId, tx)

@@ -128,12 +128,13 @@ type GameTiebreak struct {
 }
 
 type GameShort struct {
-	ID       int
-	CityID   int
-	Date     *time.Time
-	Team1ID  int
-	Team2ID  int
-	LeagueID *int
+	ID           int
+	CityID       int
+	Date         *time.Time
+	Team1ID      int
+	Team2ID      int
+	LeagueID     *int
+	TournamentID *int
 }
 
 type CreateGameRequest struct {
