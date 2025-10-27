@@ -1,0 +1,5 @@
+BEGIN;
+
+ALTER TABLE tournament_stages ADD COLUMN number VARCHAR DEFAULT '1/1' NOT NULL;
+
+COMMIT;
