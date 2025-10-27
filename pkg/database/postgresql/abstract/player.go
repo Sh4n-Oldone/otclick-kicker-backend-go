@@ -15,6 +15,7 @@ type IPlayerR interface {
 	GetPlayerRatingByTournamentId(logger zerolog.Logger, ctx context.Context, playerID, tournamentID int64) (int64, error)
 	GetTournamentPlayers(ctx context.Context, logger zerolog.Logger, tournamentId int64, withDeleted bool, tx tx.ITx) ([]entities.TournamentPlayer, error)
 	GetPlayerIDsByLeagueID(logger zerolog.Logger, ctx context.Context, leagueID int64) ([]int64, error)
+	GetPlayerIdsByTournamentId(logger zerolog.Logger, ctx context.Context, tournamentId int64) ([]int64, error)
 	GetPlayerByID(logger zerolog.Logger, ctx context.Context, playerID int, tx tx.ITx) (entities.Player, error)
 	GetPlayersByTeamID(logger zerolog.Logger, ctx context.Context, teamID int, tx tx.ITx) ([]entities.Player, error)
 	FindPlayers(logger zerolog.Logger, ctx context.Context, player entities.FindPlayersRequest) ([]entities.Player, error)

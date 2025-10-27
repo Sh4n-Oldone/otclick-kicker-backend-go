@@ -298,6 +298,79 @@ func (db *RDBOperation) GetMatchListByLeagueID(logger zerolog.Logger, ctx contex
 	return matches, nil
 }
 
+func (db *RDBOperation) GetMatchListByTournamentId(logger zerolog.Logger, ctx context.Context, tournamentId int64) ([]entities.Match, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	query := `
+		SELECT m.id,
+			m.date,
+			m.game_id,
+			m.team1_id,
+			m.team2_id,
+			m.player1_team1_id,
+			m.player2_team1_id,
+			m.player1_team2_id,
+			m.player2_team2_id,
+			m.score_team1,
+			m.score_team2,
+			m.player1_team1_rate_before,
+			m.player1_team2_rate_before,
+			m.player2_team1_rate_before,
+			m.player2_team2_rate_before,
+			m.player1_team1_rate_after,
+			m.player1_team2_rate_after,
+			m.player2_team1_rate_after,
+			m.player2_team2_rate_after 
+		FROM matches as m
+		JOIN games as g ON m.game_id = g.id
+		JOIN tournaments_teams_link as t1 ON g.team1_id = t1.team_id
+		JOIN tournaments_teams_link as t2 ON g.team2_id = t2.team_id
+		JOIN tournaments as tt ON t1.tournament_id = tt.id AND t2.tournament_id = tt.id
+		WHERE tt.id = $1
+		ORDER BY g.date, g.updated_at, m.sort, m.updated_at;`
+
+	matches := make([]entities.Match, 0)
+
+	rows, err := db.db.Query(timeout, query, tournamentId)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to postgresql.GetMatchListByTournamentId")
+		return nil, DecodeDatabaseError(err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var m entities.Match
+		err = rows.Scan(&m.ID,
+			&m.Date,
+			&m.GameID,
+			&m.Team1ID,
+			&m.Team2ID,
+			&m.Player1Team1ID,
+			&m.Player2Team1ID,
+			&m.Player1Team2ID,
+			&m.Player2Team2ID,
+			&m.ScoreTeam1,
+			&m.ScoreTeam2,
+			&m.Player1Team1RateBefore,
+			&m.Player1Team2RateBefore,
+			&m.Player2Team1RateBefore,
+			&m.Player2Team2RateBefore,
+			&m.Player1Team1RateAfter,
+			&m.Player1Team2RateAfter,
+			&m.Player2Team1RateAfter,
+			&m.Player2Team2RateAfter)
+		if err != nil {
+			logger.Error().Err(err).Msg("failed to postgresql.GetMatchListByTournamentId")
+			return nil, DecodeDatabaseError(err)
+		}
+
+		matches = append(matches, m)
+	}
+
+	return matches, nil
+}
+
 func (db *RWDBOperation) RewriteMatchesAndPlayerRatings(logger zerolog.Logger, ctx context.Context, matches []entities.Match, ratings map[int64]entities.Rating) error {
 	tx, err := db.db.Begin(ctx)
 	if err != nil {
@@ -371,6 +444,73 @@ func (db *RWDBOperation) RewriteMatchesAndPlayerRatings(logger zerolog.Logger, c
 		_ = tx.Rollback(ctx)
 		logger.Error().Err(err).Msg("failed to postgresql.RewriteMatchesAndPlayerRatings")
 		return DecodeDatabaseError(err)
+	}
+
+	return nil
+}
+
+func (db *RWDBOperation) RewriteTournamentMatchesAndPlayerRatings(logger zerolog.Logger, ctx context.Context, matches []entities.Match, ratings map[int64]entities.TournamentRating, tx tx.ITx) error {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	exec := poolOrTx(db.db, tx)
+
+	for _, match := range matches {
+
+		if match.Player2Team1ID != nil && *match.Player2Team1ID == 0 {
+			match.Player2Team1ID = nil
+		}
+		if match.Player2Team2ID != nil && *match.Player2Team2ID == 0 {
+			match.Player2Team2ID = nil
+		}
+
+		res, err := exec.Exec(timeout, queryUpdateMatchWithRatings,
+			match.ID,
+			match.Date,
+			match.GameID,
+			match.Team1ID,
+			match.Team2ID,
+			match.Player1Team1ID,
+			match.Player2Team1ID,
+			match.Player1Team2ID,
+			match.Player2Team2ID,
+			match.ScoreTeam1,
+			match.ScoreTeam2,
+			match.Player1Team1RateBefore,
+			match.Player1Team2RateBefore,
+			match.Player2Team1RateBefore,
+			match.Player2Team2RateBefore,
+			match.Player1Team1RateAfter,
+			match.Player1Team2RateAfter,
+			match.Player2Team1RateAfter,
+			match.Player2Team2RateAfter)
+
+		if err != nil {
+			logger.Error().Err(err).Msg("failed to update match in postgresql.RewriteTournamentMatchesAndPlayerRatings")
+			return DecodeDatabaseError(err)
+		}
+		if res.RowsAffected() == 0 {
+			err = errors.New("no rows affected")
+			logger.Error().Err(err).Msg("failed to update match in postgresql.RewriteTournamentMatchesAndPlayerRatings")
+			return DecodeDatabaseError(err)
+		}
+	}
+
+	for _, rating := range ratings {
+		res, err := exec.Exec(timeout, queryCreateTournamentRatingInsertIgnore,
+			rating.PlayerID,
+			rating.TournamentID,
+			rating.Value,
+		)
+		if err != nil {
+			logger.Error().Err(err).Msg("failed to update match in postgresql.RewriteTournamentMatchesAndPlayerRatings")
+			return DecodeDatabaseError(err)
+		}
+		if res.RowsAffected() == 0 {
+			err = errors.New("no rows affected")
+			logger.Error().Err(err).Msg("failed to update match in postgresql.RewriteTournamentMatchesAndPlayerRatings")
+			return DecodeDatabaseError(err)
+		}
 	}
 
 	return nil

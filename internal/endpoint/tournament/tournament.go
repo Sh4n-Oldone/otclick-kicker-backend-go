@@ -14,6 +14,7 @@ type Endpoints struct {
 	FinishStage            endpoint.Endpoint
 	GetTournamentStageList endpoint.Endpoint
 	GetTournamentList      endpoint.Endpoint
+	Recalc                 endpoint.Endpoint
 }
 
 func MakeEndpoints(s tournament.IService) Endpoints {
@@ -25,5 +26,6 @@ func MakeEndpoints(s tournament.IService) Endpoints {
 		FinishStage:            makeFinishStage(s),
 		GetTournamentStageList: makeGetTournamentStageList(s),
 		GetTournamentList:      makeGetTournamentList(s),
+		Recalc:                 makeRecalc(s),
 	}
 }
