@@ -3,6 +3,7 @@ package helpers
 import (
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"net/mail"
 	"time"
@@ -321,6 +322,38 @@ func ValidateGetGameList(request entities.GetGameListRequest) error {
 	if err != nil {
 		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
+	return nil
+}
+
+func ValidatePlayoffTournamentOnCreate(req *entities.CreateTournamentRequest) error {
+	regular := req.Rules.Regular
+	playOff := req.Rules.PlayOff
+
+	if len(req.TeamsIDs) == 0 || len(req.PlayersIDs) > 0 {
+		err := errors.New("для турнира типа Playoff команды обязательны а игроков быть не должно")
+		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	if playOff == nil {
+		err := errors.New("правила для турнира типа Playoff не заполнены")
+		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	} else {
+		if IsPowTwo(len(req.TeamsIDs)) == false {
+			err := errors.New("в турнире типа Playoff команд должно быть 2^N штук")
+			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+
+		if len(req.TeamsIDs) != int(math.Pow(2, float64(len(playOff.Stages)))) {
+			err := errors.New("неверное кол-во этапов, считается по формуле \"кол-во_команд = 2 ^ кол-во_этапов\"")
+			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+	}
+
+	if regular != nil {
+		err := errors.New("для турнира типа Playoff поле \"regular\" не должно быть заполнено")
+		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
 	return nil
 }
 

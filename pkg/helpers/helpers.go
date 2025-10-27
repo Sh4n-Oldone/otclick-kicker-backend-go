@@ -1,6 +1,8 @@
 package helpers
 
 import (
+	"errors"
+	"sort"
 	"strconv"
 	"strings"
 	"unicode"
@@ -117,4 +119,25 @@ func BuildTeamName(name, secondName *string, lastName string, id int64) (string,
 	short := strings.Join(letters, "") + "+" + strconv.FormatInt(id, 10)
 
 	return fullName, short
+}
+
+func SortKeysValues[K int64 | int, T any](m map[K]T) ([]K, []T, error) {
+	keys := make([]K, 0, len(m))
+	vals := make([]T, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		return keys[i] < keys[j]
+	})
+
+	for i, k := range keys {
+		if K(i+1) != k {
+			err := errors.New("нарушена нумерация значений")
+			return nil, nil, err
+		}
+		vals = append(vals, m[k])
+	}
+
+	return keys, vals, nil
 }

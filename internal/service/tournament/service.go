@@ -2,6 +2,7 @@ package tournament
 
 import (
 	"context"
+
 	"github.com/go-playground/validator/v10"
 	"github.com/rs/zerolog"
 

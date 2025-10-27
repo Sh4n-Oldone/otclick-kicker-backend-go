@@ -503,8 +503,8 @@ func (s *Service) GetTournamentTeamVsTeamTable(ctx context.Context, cityID, seas
 				bodyItem.Score = 0
 				bodyItem.DifferenceInScore = 0
 				bodyItem.GamesPlayed = 0
-				bodyItem.GamesToPlay = int64((len(teams) - 1)) // сейчас только для bo1
-				for _, t := range teams {                      // и отображаем нулевой счет
+				bodyItem.GamesToPlay = int64(len(teams) - 1) // сейчас только для bo1
+				for _, t := range teams {                    // и отображаем нулевой счет
 					var cell entities.TableCellTournament
 
 					cell.GameId = 0

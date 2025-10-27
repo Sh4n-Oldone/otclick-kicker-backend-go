@@ -77,12 +77,16 @@ type Regular struct {
 }
 
 type PlayOff struct {
-	BestOf int64   `json:"bestOf" validate:"required,gt=0"`
-	Looser *Looser `json:"looser,omitempty"`
+	Stages map[int64]BestOf `json:"stages" validate:"required=true"`
+	Looser *Looser          `json:"looser,omitempty"`
 }
 
 type Looser struct {
-	BestOf int64 `json:"bestOf" validate:"required,gt=0"`
+	Stages map[int64]BestOf `json:"stages validate:required=true"`
+}
+
+type BestOf struct {
+	Bo int64 `json:"bo" validate:"required,gt=0"`
 }
 
 type FinishStageRequest struct {

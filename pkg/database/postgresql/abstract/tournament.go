@@ -18,8 +18,7 @@ type ITournamentRW interface {
 	AddTeamsToTournamentTx(logger zerolog.Logger, ctx context.Context, teams []int64, tournamentId int64, tx tx.ITx) error
 	DeleteTournament(logger zerolog.Logger, ctx context.Context, tournamentId int64, tx tx.ITx) error
 	DeleteTournamentGamesTeamLinks(logger zerolog.Logger, ctx context.Context, tournamentId int64, tx tx.ITx) error
-	CreateTournamentStage(logger zerolog.Logger, ctx context.Context, tournamentID int64, tx tx.ITx) (int64, error)
-	CreateTournamentStageTx(logger zerolog.Logger, ctx context.Context, tournamentID int64, tx tx.ITx) (int64, error)
+	CreateTournamentStage(logger zerolog.Logger, ctx context.Context, tournamentID int64, number string, tx tx.ITx) (int64, error)
 	UpdateTournamentStage(logger zerolog.Logger, ctx context.Context, stage entities.NullableStage) error
 	UnlinkTeamsFromTournament(logger zerolog.Logger, ctx context.Context, tournamentID int64, tx tx.ITx) error
 	DeleteTournamentStages(logger zerolog.Logger, ctx context.Context, tournamentID int64, tx tx.ITx) error
