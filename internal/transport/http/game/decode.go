@@ -13,12 +13,9 @@ import (
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
 	pkgerr "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/helpers"
 	"strconv"
 	"time"
 )
-
-var validate = helpers.NewCustomValidator()
 
 func decodeCreateRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	request := entities.CreateGameRequest{Creator: entities.User{Role: &entities.Role{}, Team: &entities.Team{}}}

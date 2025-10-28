@@ -357,6 +357,80 @@ func ValidatePlayoffTournamentOnCreate(req *entities.CreateTournamentRequest) er
 	return nil
 }
 
+// ValidatePlayoffTournamentOnUpdate при обновлении турнира Playoff будет вызывать два раза:
+// первый раз - при валидации входящего запроса, второй - при сборке всех данных турнира на основании старых из базы и новых из запроса
+// с приоритетом нового запроса.
+// А это значит, что при первом вызове параметр newReq должен быть nil
+func ValidatePlayoffTournamentOnUpdate(req entities.UpdateTournamentRequest, newReq *entities.UpdateTournamentRequest) error {
+	if len(req.PlayersIDs) > 0 {
+		err := errors.New("для турнира \"Playoff\" игроков быть не должно")
+		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	// блок для валидации входящего запроса при первом вызове
+	if newReq == nil {
+
+		if req.Rules != nil {
+			regular := req.Rules.Regular
+			playOff := req.Rules.PlayOff
+
+			if regular != nil {
+				err := errors.New("для турнира \"Playoff\" поле \"regular\" должно быть null")
+				return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+			}
+
+			if playOff == nil {
+				err := errors.New("для турнира \"Playoff\" правила должны быть  заполнены")
+				return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+			}
+
+			if len(req.TeamsIDs) > 0 {
+				if IsPowTwo(len(req.TeamsIDs)) == false {
+					err := errors.New("в турнире типа Playoff команд должно быть 2^N штук")
+					return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+				}
+
+				if len(req.TeamsIDs) != int(math.Pow(2, float64(len(playOff.Stages)))) {
+					err := errors.New("неверное кол-во этапов, считается по формуле \"кол-во_команд = 2 ^ кол-во_этапов\"")
+					return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+				}
+			}
+		}
+
+	} else {
+
+		if newReq.Rules == nil || newReq.Rules.PlayOff == nil {
+			err := errors.New("в существующем турнире \"Playoff\" правила должны быть заполнены")
+			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+
+		regular := newReq.Rules.Regular
+		playOff := newReq.Rules.PlayOff
+
+		if regular != nil {
+			err := errors.New("для турнира типа Playoff поле \"regular\" не должно быть заполнено")
+			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+
+		if len(newReq.TeamsIDs) == 0 || len(newReq.PlayersIDs) > 0 {
+			err := errors.New("для турнира типа Playoff команды обязательны а игроков быть не должно")
+			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+
+		if IsPowTwo(len(newReq.TeamsIDs)) == false {
+			err := errors.New("в турнире типа Playoff команд должно быть 2^N штук")
+			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+
+		if len(newReq.TeamsIDs) != int(math.Pow(2, float64(len(playOff.Stages)))) {
+			err := errors.New("неверное кол-во этапов, считается по формуле \"кол-во_команд = 2 ^ кол-во_этапов\"")
+			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+	}
+
+	return nil
+}
+
 /**/
 
 func NewCustomValidator() *validator.Validate {

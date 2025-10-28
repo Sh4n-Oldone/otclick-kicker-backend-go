@@ -163,8 +163,8 @@ func (s *Service) Update(ctx context.Context, request *entities.UpdateTournament
 		// если это админы и турнир начат можно обновить минимальную инфу без перетасовки команд и изменения типа и сетки турнира
 		if haveFinishedStage(tournament.Stages) == true || haveStartedGames(games) == true || haveMatches == true {
 			if request.CityID != nil || request.Rules != nil || request.TeamsIDs != nil || request.PlayersIDs != nil {
-				err = fmt.Errorf("турнир с завершенными или начатыми играми не могут обновляться поля: cityId, rules, teamIds, playersIDs")
-				logger.Error().Err(err).Msg("Failed tournament.Update: finished stage or started games	")
+				err = fmt.Errorf("турнир с завершенными или начатыми играми не могут обновляться поля: cityId, rules, teamIds, playersIds")
+				logger.Error().Err(err).Msg("Failed tournament.Update: finished stage or started games")
 				return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 			}
 
@@ -585,7 +585,7 @@ func (s *Service) createPlayoff(ctx context.Context, request entities.CreateTour
 		// создаем строку вида <порядковый_номер_этапа>/<кол-во_этапов>, образец: 1/4, 2/4, 3/4, 4/4 - финал
 		stageSlashNumberOfStages := strconv.FormatInt(stageNum, 10) + "/" + strconv.Itoa(len(request.Rules.PlayOff.Stages))
 
-		// создаем первый этап
+		// создаем этап
 		stageId, err := s.rwdbOperations.CreateTournamentStage(logger, ctx, tournamentId, stageSlashNumberOfStages, tx)
 		if err != nil {
 			tx.Rollback(ctx)
@@ -968,41 +968,41 @@ func (s *Service) updateRegularOneVsOne(ctx context.Context, logger zerolog.Logg
 }
 
 func (s *Service) updatePlayoff(ctx context.Context, logger zerolog.Logger, req entities.UpdateTournamentRequest, tournament entities.Tournament) error {
-	if len(req.PlayersIDs) > 0 {
-		err := errors.New("для обновления тура типа Playoff playersIDs не должны быть заполнены")
-		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	// вызываем первый раз для валидации только входящих данных, второй параметр поэтому равен nil
+	err := helpers.ValidatePlayoffTournamentOnUpdate(req, nil)
+	if err != nil {
+		logger.Error().Err(err).Msg("helpers.ValidatePlayoffTournamentOnUpdate")
+		return err
 	}
 
+	// собираем запрос с учетом старых данных турнира
 	newReq := entities.UpdateTournamentRequest{
 		ID:               req.ID,
 		Executor:         req.Executor,
 		TournamentTypeID: req.TournamentTypeID,
 	}
-
 	if req.CityID != nil {
 		newReq.CityID = req.CityID
 	} else {
 		newReq.CityID = &tournament.CityID
 	}
-
 	if req.SeasonID != nil {
 		newReq.SeasonID = req.SeasonID
 	} else {
 		newReq.SeasonID = &tournament.SeasonID
 	}
-
 	if req.Name != nil {
 		newReq.Name = req.Name
 	} else {
 		newReq.Name = &tournament.Name
 	}
-
 	if req.Rules != nil {
 		newReq.Rules = req.Rules
 	} else {
 		newReq.Rules = &tournament.Rules
 	}
 
+	// если в запросе были новые команды, то заново их проверить на соответствие городу
 	if len(req.TeamsIDs) > 0 {
 		err := s.checkTeamsCityIds(ctx, logger, req.TeamsIDs, tournament, newReq.CityID)
 		if err != nil {
@@ -1013,8 +1013,10 @@ func (s *Service) updatePlayoff(ctx context.Context, logger zerolog.Logger, req 
 		newReq.TeamsIDs = tournament.TeamIDs
 	}
 
-	err := validateRulesTypesIds(*newReq.Rules, newReq.TournamentTypeID, newReq.TeamsIDs, nil)
+	// вызываем второй раз для валидации собранных данных турнира
+	err = helpers.ValidatePlayoffTournamentOnUpdate(req, &newReq)
 	if err != nil {
+		logger.Error().Err(err).Msg("helpers.ValidatePlayoffTournamentOnUpdate")
 		return err
 	}
 
@@ -1050,35 +1052,47 @@ func (s *Service) updatePlayoff(ctx context.Context, logger zerolog.Logger, req 
 		}
 
 		// добавим новые команды в турнир
-		if err = s.rwdbOperations.AddTeamsToTournamentTx(logger, ctx, req.TeamsIDs, tournament.ID, tx); err != nil {
+		if err = s.rwdbOperations.AddTeamsToTournamentTx(logger, ctx, newReq.TeamsIDs, tournament.ID, tx); err != nil {
 			tx.Rollback(ctx)
 			return err
 		}
 
-		// первый этап
-		stageId, err := s.rwdbOperations.CreateTournamentStage(logger, ctx, tournament.ID, "firstStage", tx)
+		// создаем номера этапов и параметр BestOf каждому из них
+		stageNums, stageBestOfList, err := helpers.SortKeysValues(newReq.Rules.PlayOff.Stages)
 		if err != nil {
-			tx.Rollback(ctx)
-			return err
+			logger.Error().Err(err).Msg("helpers.SortKeysValues")
+			err = errors.New("нарушена нумерация этапов")
+			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 		}
 
-		teams1Ids, teams2Ids := helpers.GeneratePlayoffPairs(req.TeamsIDs, int(0))
+		// id первого этапа, чтобы потом игры в него сохранить
+		var firstStageId int64
 
-		// игры первого этапа
-		if err = s.rwdbOperations.CreateFutureTournamentStageGames(logger, ctx, stageId, *newReq.CityID, teams1Ids, teams2Ids, tx); err != nil {
-			tx.Rollback(ctx)
-			return err
-		}
+		for i, stageNum := range stageNums {
 
-		// Т.к. кол-во команд равно степени двойки, то можем вычислить кол-во этапов общее.
-		// Создаем второй и последующие этапов, без игр, т.к. победителей заранее знать не можем.
-		// Делим команды на два пока их не остнется две (финальный этап между финалистами)
-		for numGames := len(teams1Ids) / 2; numGames > 1; numGames = numGames / 2 {
-			_, err = s.rwdbOperations.CreateTournamentStage(logger, ctx, tournament.ID, "firstStage", tx)
+			// создаем строку вида <порядковый_номер_этапа>/<кол-во_этапов>, образец: 1/4, 2/4, 3/4, 4/4 - финал
+			stageSlashNumberOfStages := strconv.FormatInt(stageNum, 10) + "/" + strconv.Itoa(len(newReq.Rules.PlayOff.Stages))
+
+			// создаем этап
+			stageId, err := s.rwdbOperations.CreateTournamentStage(logger, ctx, tournament.ID, stageSlashNumberOfStages, tx)
 			if err != nil {
 				tx.Rollback(ctx)
 				return err
 			}
+
+			// сохраним id первого этапа, чтобы потом туда положить готовые игры
+			if i == indexZero {
+				firstStageId = stageId
+			}
+		}
+
+		// расставляем пары для первого этапа
+		// BestOf берётся из первого элемента мапы реквеста - stages
+		teams1Ids, teams2Ids := helpers.GeneratePlayoffPairs(newReq.TeamsIDs, int(stageBestOfList[indexZero].Bo))
+		// создаем игры первого этапа
+		if err = s.rwdbOperations.CreateFutureTournamentStageGames(logger, ctx, firstStageId, *newReq.CityID, teams1Ids, teams2Ids, tx); err != nil {
+			tx.Rollback(ctx)
+			return err
 		}
 	}
 
@@ -1105,7 +1119,7 @@ func (s *Service) checkTournamentMasterCredentials(ctx context.Context, logger z
 			}
 
 			if pointer.GetValue(team.CityId) != master.City.ID {
-				err = fmt.Errorf("город(id: %d) команды не совпадает с городом(id: %d) мастера по турнирам)", pointer.GetValue(team.CityId), master.City.ID)
+				err = fmt.Errorf("город(id: %d) команды не совпадает с городом(id: %d) мастера по турнирам", pointer.GetValue(team.CityId), master.City.ID)
 				return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 			}
 		}
