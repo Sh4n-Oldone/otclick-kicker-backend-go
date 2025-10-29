@@ -216,22 +216,16 @@ func (s *Service) Delete(ctx context.Context, request *entities.DeleteTournament
 		return err
 	}
 
-	if request.Creator.Role.Name != constant.SuperUserRole && request.Creator.Role.Name != constant.AdminRole && request.Creator.Role.Name != constant.TournamentMaster {
+	if request.Executor.Role.Name != constant.SuperUserRole && request.Executor.Role.Name != constant.AdminRole && request.Executor.Role.Name != constant.TournamentMaster {
 		err = errors.New(pkgerr.WrongUserRole)
-		logger.Error().Err(err).Msgf("forbidden for this role: %s", request.Creator.Role.Name)
+		logger.Error().Err(err).Msgf("forbidden for this role: %s", request.Executor.Role.Name)
 		return error_templates.New(err.Error(), err, codes.Unauthenticated, http.StatusForbidden)
 	}
 
-	if request.Creator.Role.Name == constant.TournamentMaster {
-		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, request.Creator.ID, &s.config.RDB)
+	if request.Executor.Role.Name == constant.TournamentMaster {
+		err = s.checkTournamentMasterCredentialsOnDelete(ctx, logger, request, tournament)
 		if err != nil {
 			return err
-		}
-
-		if tournament.CityID != master.City.ID {
-			err = errors.New(pkgerr.ErrCityIdNotEqualMasterCityId)
-			logger.Error().Err(err).Msg("cityIdParam not equal masterCityId in tournament.Delete")
-			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 		}
 	}
 
@@ -548,9 +542,9 @@ func (s *Service) createRegularOneVsOne(ctx context.Context, request entities.Cr
 }
 
 func (s *Service) createPlayoff(ctx context.Context, request entities.CreateTournamentRequest, logger zerolog.Logger) (int64, error) {
-	err := helpers.ValidatePlayoffTournamentOnCreate(&request)
+	err := helpers.ValidatePlayoffTournamentRulesOnCreate(&request)
 	if err != nil {
-		logger.Error().Err(err).Msg("helpers.ValidatePlayoffTournamentOnCreate")
+		logger.Error().Err(err).Msg("helpers.ValidatePlayoffTournamentRulesOnCreate")
 		return 0, err
 	}
 
@@ -969,9 +963,9 @@ func (s *Service) updateRegularOneVsOne(ctx context.Context, logger zerolog.Logg
 
 func (s *Service) updatePlayoff(ctx context.Context, logger zerolog.Logger, req entities.UpdateTournamentRequest, tournament entities.Tournament) error {
 	// вызываем первый раз для валидации только входящих данных, второй параметр поэтому равен nil
-	err := helpers.ValidatePlayoffTournamentOnUpdate(req, nil)
+	err := helpers.ValidatePlayoffTournamentRulesOnUpdate(req, nil)
 	if err != nil {
-		logger.Error().Err(err).Msg("helpers.ValidatePlayoffTournamentOnUpdate")
+		logger.Error().Err(err).Msg("helpers.ValidatePlayoffTournamentRulesOnUpdate")
 		return err
 	}
 
@@ -1014,9 +1008,9 @@ func (s *Service) updatePlayoff(ctx context.Context, logger zerolog.Logger, req 
 	}
 
 	// вызываем второй раз для валидации собранных данных турнира
-	err = helpers.ValidatePlayoffTournamentOnUpdate(req, &newReq)
+	err = helpers.ValidatePlayoffTournamentRulesOnUpdate(req, &newReq)
 	if err != nil {
-		logger.Error().Err(err).Msg("helpers.ValidatePlayoffTournamentOnUpdate")
+		logger.Error().Err(err).Msg("helpers.ValidatePlayoffTournamentRulesOnUpdate")
 		return err
 	}
 
@@ -1198,6 +1192,73 @@ func (s *Service) checkTournamentMasterCredentials(ctx context.Context, logger z
 				master.City.ID,
 			)
 			logger.Error().Err(err).Msg("Failed tournament.Update by tournament master")
+			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+	}
+
+	return nil
+}
+
+func (s *Service) checkTournamentMasterCredentialsOnDelete(ctx context.Context, logger zerolog.Logger, req *entities.DeleteTournamentRequest, tournament entities.Tournament) error {
+	master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, req.Executor.ID, &s.config.RDB)
+	if err != nil {
+		return err
+	}
+
+	games, err := s.rdbOperations.GetTournamentGameList(logger, ctx, &entities.GetTournamentGameList{TournamentId: &tournament.ID})
+	if err != nil {
+		return err
+	}
+
+	if tournament.CityID != master.City.ID {
+		err = fmt.Errorf(
+			"город турнира(ID: %d) не совпадает с городом мастера по турнирам(ID: %d)",
+			tournament.CityID,
+			master.City.ID,
+		)
+		logger.Error().Err(err).Msg("Failed GetTournamentGameList")
+		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	if haveFinishedStage(tournament.Stages) == true {
+		err = errors.New("турнир не может меняться мастером по турнирам если имеет завершенные этапы")
+		logger.Error().Err(err).Msg("have finished stages")
+		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	for _, game := range games {
+		if game.Date != nil && time.Now().After(*game.Date) {
+			err = fmt.Errorf(
+				"турнир \"%s\"(ID: %d) не может удаляться мастером по турнирам если имеет завершенные/текущие игры",
+				tournament.Name,
+				tournament.ID,
+			)
+			logger.Error().Err(err).Msg("game is played")
+			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+
+		matches, err := s.rdbOperations.GetMatchListByGameID(ctx, logger, game.ID, &s.config.RDB)
+		if err != nil {
+			logger.Error().Err(err).Msg("Failed GetMatchListByGameID")
+			return err
+		}
+		if len(matches) > 0 {
+			err = fmt.Errorf(
+				"турнир \"%s\"(ID: %d) не может удаляться мастером по турнирам если есть сыгранные матчи",
+				tournament.Name,
+				tournament.ID,
+			)
+			logger.Error().Err(err).Msg("have matches")
+			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+
+		if game.CityID != master.City.ID {
+			err = fmt.Errorf(
+				"город игры(ID: %d) не совпадает с городом мастера по турнирам(ID: %d)",
+				game.CityID,
+				master.City.ID,
+			)
+			logger.Error().Err(err).Msg("Game city not equal master city")
 			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 		}
 	}

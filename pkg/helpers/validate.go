@@ -325,7 +325,7 @@ func ValidateGetGameList(request entities.GetGameListRequest) error {
 	return nil
 }
 
-func ValidatePlayoffTournamentOnCreate(req *entities.CreateTournamentRequest) error {
+func ValidatePlayoffTournamentRulesOnCreate(req *entities.CreateTournamentRequest) error {
 	regular := req.Rules.Regular
 	playOff := req.Rules.PlayOff
 
@@ -357,11 +357,11 @@ func ValidatePlayoffTournamentOnCreate(req *entities.CreateTournamentRequest) er
 	return nil
 }
 
-// ValidatePlayoffTournamentOnUpdate при обновлении турнира Playoff будет вызывать два раза:
+// ValidatePlayoffTournamentRulesOnUpdate при обновлении турнира Playoff будет вызывать два раза:
 // первый раз - при валидации входящего запроса, второй - при сборке всех данных турнира на основании старых из базы и новых из запроса
 // с приоритетом нового запроса.
 // А это значит, что при первом вызове параметр newReq должен быть nil
-func ValidatePlayoffTournamentOnUpdate(req entities.UpdateTournamentRequest, newReq *entities.UpdateTournamentRequest) error {
+func ValidatePlayoffTournamentRulesOnUpdate(req entities.UpdateTournamentRequest, newReq *entities.UpdateTournamentRequest) error {
 	if len(req.PlayersIDs) > 0 {
 		err := errors.New("для турнира \"Playoff\" игроков быть не должно")
 		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
