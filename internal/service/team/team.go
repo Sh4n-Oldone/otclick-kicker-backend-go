@@ -510,7 +510,7 @@ func (s *Service) GetTournamentTeamVsTeamTable(ctx context.Context, cityID, seas
 					cell.GameId = 0
 					cell.Score = "0:0"
 
-					bodyItem.TableCell[t.ShortName] = cell
+					bodyItem.TableCell[t.ShortName] = append(bodyItem.TableCell[t.ShortName], cell)
 				}
 				dataItem.Table.Body = append(dataItem.Table.Body, bodyItem)
 			}
@@ -519,7 +519,7 @@ func (s *Service) GetTournamentTeamVsTeamTable(ctx context.Context, cityID, seas
 
 		for _, team := range teams { // Проходим по командам текущего турнира
 			var bodyItem entities.BodyTournament
-			bodyItem.TableCell = make(map[string]entities.TableCellTournament, 0)
+			bodyItem.TableCell = make(map[string][]entities.TableCellTournament, 0)
 
 			gamesToPlay, err := s.rdbOperations.FetchTournamentTeamGames(logger, ctx, tournament.ID, team.ID)
 			if err != nil {
@@ -541,7 +541,7 @@ func (s *Service) GetTournamentTeamVsTeamTable(ctx context.Context, cityID, seas
 				cell.Score = "0:0"
 
 				if t.ID == team.ID {
-					bodyItem.TableCell[t.ShortName] = cell
+					bodyItem.TableCell[t.ShortName] = append(bodyItem.TableCell[t.ShortName], cell)
 					continue //команда сама с собой не играет
 				}
 
@@ -555,59 +555,61 @@ func (s *Service) GetTournamentTeamVsTeamTable(ctx context.Context, cityID, seas
 				}
 
 				if len(games) == 0 { //если нет игр
-					bodyItem.TableCell[t.ShortName] = cell
+					bodyItem.TableCell[t.ShortName] = append(bodyItem.TableCell[t.ShortName], cell)
 					continue
 				}
-				cell.GameId = int64(games[0].ID)
 
-				var match1Team1Score int64 = 0
-				var match1Team2Score int64 = 0
+				for _, g := range games {
+					cell.GameId = g.ID
 
-				cell.GameId = int64(games[0].ID)
-				if games[0].TechLooseTeamID != nil && *games[0].TechLooseTeamID == team.ID { // Если команда с тех.проигрышем(team.ID) то "30:42" (эта команда проиграла)
-					cell.Score = "30:42"
-					bodyItem.DifferenceInScore -= 12 // Разницу учитываем
-					bodyItem.GamesPlayed += 1
-					bodyItem.GamesToPlay -= 1
-				} else if games[0].TechLooseTeamID != nil && *games[0].TechLooseTeamID == t.ID { // Если противника команда с тех.проигрышем(t.ID) то "42:30" (противник проиграл)
-					cell.Score = "42:30"
-					bodyItem.DifferenceInScore += 12 // Разницу учитываем
-					bodyItem.Score += 2              // Добавим себе 2 очка(в целом по игре), если команда противника с тех.проигрышем
-					bodyItem.GamesPlayed += 1
-					bodyItem.GamesToPlay -= 1
-				} else {
-					gamesMatches, err := s.rdbOperations.FetchMatches(logger, ctx, cell.GameId)
+					var match1Team1Score int64 = 0
+					var match1Team2Score int64 = 0
+
+					if games[0].TechLooseTeamID != nil && *games[0].TechLooseTeamID == team.ID { // Если команда с тех.проигрышем(team.ID) то "30:42" (эта команда проиграла)
+						cell.Score = "30:42"
+						bodyItem.DifferenceInScore -= 12 // Разницу учитываем
+						bodyItem.GamesPlayed += 1
+						bodyItem.GamesToPlay -= 1
+					} else if games[0].TechLooseTeamID != nil && *games[0].TechLooseTeamID == t.ID { // Если противника команда с тех.проигрышем(t.ID) то "42:30" (противник проиграл)
+						cell.Score = "42:30"
+						bodyItem.DifferenceInScore += 12 // Разницу учитываем
+						bodyItem.Score += 2              // Добавим себе 2 очка(в целом по игре), если команда противника с тех.проигрышем
+						bodyItem.GamesPlayed += 1
+						bodyItem.GamesToPlay -= 1
+					} else {
+						gamesMatches, err := s.rdbOperations.FetchMatches(logger, ctx, cell.GameId)
+						if err != nil {
+							return entities.GetTournamentTeamVsTeamTableResponse{}, err
+						}
+
+						for _, match := range gamesMatches { // Проходим по матчам
+							if match.Team1ID == team.ID {
+								match1Team1Score += match.ScoreTeam1
+								match1Team2Score += match.ScoreTeam2
+							} else {
+								match1Team1Score += match.ScoreTeam2
+								match1Team2Score += match.ScoreTeam1
+							}
+						}
+						cell.Score = strconv.FormatInt(match1Team1Score, 10) + ":" + strconv.FormatInt(match1Team2Score, 10)
+
+						if len(gamesMatches) != 0 {
+							bodyItem.GamesPlayed += 1
+							bodyItem.GamesToPlay -= 1
+						}
+					}
+
+					bodyItem.Score = resumScore(bodyItem.Score, match1Team1Score, match1Team2Score)
+
+					extraPoints, err := s.rdbOperations.GetTournamentTeamExtraPointsCount(logger, ctx, team.ID, tournament.ID)
 					if err != nil {
 						return entities.GetTournamentTeamVsTeamTableResponse{}, err
 					}
+					bodyItem.Score += extraPoints // Один раз за турнир считаем дополнительные очки команды
 
-					for _, match := range gamesMatches { // Проходим по матчам
-						if match.Team1ID == team.ID {
-							match1Team1Score += match.ScoreTeam1
-							match1Team2Score += match.ScoreTeam2
-						} else {
-							match1Team1Score += match.ScoreTeam2
-							match1Team2Score += match.ScoreTeam1
-						}
-					}
-					cell.Score = strconv.FormatInt(match1Team1Score, 10) + ":" + strconv.FormatInt(match1Team2Score, 10)
-
-					if len(gamesMatches) != 0 {
-						bodyItem.GamesPlayed += 1
-						bodyItem.GamesToPlay -= 1
-					}
+					bodyItem.DifferenceInScore += (match1Team1Score - match1Team2Score)
+					bodyItem.TableCell[t.ShortName] = append(bodyItem.TableCell[t.ShortName], cell) // Выставили ячейку со счетом
 				}
-
-				bodyItem.Score = resumScore(bodyItem.Score, match1Team1Score, match1Team2Score)
-
-				extraPoints, err := s.rdbOperations.GetTournamentTeamExtraPointsCount(logger, ctx, team.ID, tournament.ID)
-				if err != nil {
-					return entities.GetTournamentTeamVsTeamTableResponse{}, err
-				}
-				bodyItem.Score += extraPoints // Один раз за турнир считаем дополнительные очки команды
-
-				bodyItem.DifferenceInScore += (match1Team1Score - match1Team2Score)
-				bodyItem.TableCell[t.ShortName] = cell // Выставили ячейку со счетом
 			} // команды соперников
 
 			dataItem.Table.Body = append(dataItem.Table.Body, bodyItem)

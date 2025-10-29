@@ -228,7 +228,7 @@ type BodyTournament struct {
 	DifferenceInScore int64  `json:"differenceInScore"`
 	GamesPlayed       int64  `json:"gamesPlayed"`
 	GamesToPlay       int64  `json:"gamesToPlay"`
-	TableCell         map[string]TableCellTournament
+	TableCell         map[string][]TableCellTournament
 }
 
 type TableCellTournament struct {
