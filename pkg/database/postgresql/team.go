@@ -436,7 +436,8 @@ func (db *RDBOperation) FetchTournamentPastGames(logger zerolog.Logger, ctx cont
 		WHEN $5 = true THEN is_tiebreak = true
 		WHEN $5 = false THEN is_tiebreak = false
 		WHEN $5 IS NULL THEN true
-		END`
+		END
+	ORDER BY g.id`
 
 	rows, err := db.db.Query(ctx, query, teamId1, teamId2, cityId, tournamentId, tiebreak)
 
