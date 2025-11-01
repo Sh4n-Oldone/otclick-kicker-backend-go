@@ -268,7 +268,7 @@ func (s *Service) GetTournamentMasterListByCityId(ctx context.Context, cityID in
 func (s *Service) GetTournamentMasterByUserId(ctx context.Context, userID int64) (entities.TournamentMaster, error) {
 	logger := s.logger.With().Str("service", "GetTournamentMasterByUserId").Logger()
 
-	tMaster, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, userID, &s.config.RDB)
+	tMaster, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, userID)
 	if err != nil {
 		return entities.TournamentMaster{}, err
 	}
@@ -290,7 +290,7 @@ func (s *Service) GetTournamentMasterList(ctx context.Context) ([]entities.Tourn
 func (s *Service) DeleteTournamentMaster(ctx context.Context, userID int64) error {
 	logger := s.logger.With().Str("service", "DeleteTournamentMaster").Logger()
 
-	master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, userID, &s.config.RDB)
+	master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, userID)
 	if err != nil {
 		return err
 	}

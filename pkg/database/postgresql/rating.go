@@ -7,7 +7,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog"
 
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 )
 
@@ -88,15 +87,15 @@ func (db *RWDBOperation) CreateRating(logger zerolog.Logger, ctx context.Context
 	return nil
 }
 
-func (db *RWDBOperation) CreateTournamentRating(logger zerolog.Logger, ctx context.Context, playerID, value, tournamentID int64, cfg *config.DBConfig) error {
-	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+func (db *RWDBOperation) CreateTournamentRating(logger zerolog.Logger, ctx context.Context, playerID, value, tournamentID int64, tx tx.ITx) error {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 
 	const query string = `
 		INSERT INTO tournament_rating (player_id, tournament_id, value) 
 		VALUES ($1, $2, $3)  ON CONFLICT (player_id, tournament_id) DO UPDATE SET value = $3;`
 
-	_, err := db.db.Exec(timeout, query, playerID, tournamentID, value)
+	_, err := poolOrTx(db.db, tx).Exec(timeout, query, playerID, tournamentID, value)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to postgresql.CreateTournamentRating")
 		return DecodeDatabaseError(err)

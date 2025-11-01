@@ -24,7 +24,16 @@ import (
 const (
 	indexZero int    = 0
 	oneStage  string = "1/1"
+	separator string = "/"
 )
+
+type stageStat struct {
+	stage     entities.TournamentStage
+	number    int64
+	gameStats []entities.GameStat
+	winners   []int64
+	bestOf    int64
+}
 
 func (s *Service) GetTournamentTypeList(ctx context.Context, withDeleted bool) ([]entities.TournamentType, error) {
 	logger := s.logger.With().Str("service", "GetTournamentTypeList").Logger()
@@ -51,7 +60,7 @@ func (s *Service) Create(ctx context.Context, request *entities.CreateTournament
 	// если запрос от мастера по турнирам, то тщательно проверяем соответствие города мастера
 	// городу из запроса, которого ожидается, что не будет указано,но на всякий случай
 	if request.Creator.Role.Name == constant.TournamentMaster {
-		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, request.Creator.ID, &s.config.RDB)
+		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, request.Creator.ID)
 		if err != nil {
 			return 0, err
 		}
@@ -127,7 +136,7 @@ func (s *Service) Create(ctx context.Context, request *entities.CreateTournament
 func (s *Service) Update(ctx context.Context, request *entities.UpdateTournamentRequest) error {
 	logger := s.logger.With().Str("service", "Update").Logger()
 
-	tournament, err := s.rdbOperations.GetTournamentById(logger, ctx, request.ID, &s.config.RDB)
+	tournament, err := s.rdbOperations.GetTournamentById(logger, ctx, request.ID)
 	if err != nil {
 		return err
 	}
@@ -211,7 +220,7 @@ func (s *Service) Delete(ctx context.Context, request *entities.DeleteTournament
 	logger := s.logger.With().Str("service", "Delete").Logger()
 
 	var err error
-	tournament, err := s.rdbOperations.GetTournamentById(logger, ctx, request.ID, &s.config.RDB)
+	tournament, err := s.rdbOperations.GetTournamentById(logger, ctx, request.ID)
 	if err != nil {
 		return err
 	}
@@ -292,19 +301,19 @@ func (s *Service) FinishStage(ctx context.Context, request *entities.FinishStage
 		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
-	tournament, err := s.rdbOperations.GetTournamentById(logger, ctx, stage.TournamentID, &s.config.RDB)
+	tournament, err := s.rdbOperations.GetTournamentById(logger, ctx, stage.TournamentID)
 	if err != nil {
 		return err
 	}
 
-	games, err := s.rdbOperations.GetTournamentStageGames(logger, ctx, request.ID, &s.config.RDB)
+	games, err := s.rdbOperations.GetTournamentStageGames(logger, ctx, request.ID)
 	if err != nil {
 		return err
 	}
 
 	// проверка соответствия города у мастера
 	if request.Finisher.Role.Name == constant.TournamentMaster {
-		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, request.Finisher.ID, &s.config.RDB)
+		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, request.Finisher.ID)
 		if err != nil {
 			return err
 		}
@@ -372,7 +381,7 @@ func (s *Service) GetTournamentStageList(ctx context.Context, id int64) ([]entit
 	var stageItems []entities.TournamentStageItem
 
 	for _, stage := range stages {
-		games, err := s.rdbOperations.GetTournamentStageGames(logger, ctx, stage.ID, &s.config.RDB)
+		games, err := s.rdbOperations.GetTournamentStageGames(logger, ctx, stage.ID)
 		if err != nil {
 			return nil, err
 		}
@@ -395,6 +404,364 @@ func (s *Service) GetTournamentList(ctx context.Context, request *entities.GetTo
 	}
 
 	return list, count, nil
+}
+
+func (s *Service) Recalc(ctx context.Context, id int64) error {
+	logger := s.logger.With().Str("service", "Recalc").Logger()
+
+	// Get all players from tournament
+	playerIDs, err := s.rdbOperations.GetPlayerIdsByTournamentId(logger, ctx, id)
+	if err != nil {
+		return err
+	}
+
+	// Reset ratings for all players from tournament
+	ratings := make(map[int64]entities.TournamentRating, len(playerIDs))
+	for _, playerID := range playerIDs {
+		rating := &entities.TournamentRating{
+			PlayerID:     playerID,
+			TournamentID: id,
+			Value:        int64(constant.DefaultRating),
+		}
+		ratings[playerID] = *rating
+	}
+
+	// Get all matches from tournament
+	matches, err := s.rdbOperations.GetMatchListByTournamentId(logger, ctx, id)
+	if err != nil {
+		return err
+	}
+
+	// Recalc and update all matches
+	for i, match := range matches {
+		if match.Player1Team1ID == nil || match.Player1Team2ID == nil || match.Player2Team1ID == nil || match.Player2Team2ID == nil {
+			msg := fmt.Sprintf("nil player id from match id: %d", match.ID)
+			return errors.New(msg)
+		}
+
+		var _rating11, _rating12, _rating21, _rating22 int64
+
+		_, ok := ratings[int64(*match.Player1Team1ID)]
+		if ok {
+			_rating11 = ratings[int64(*match.Player1Team1ID)].Value
+		} else {
+			rating := &entities.TournamentRating{
+				PlayerID:     int64(*match.Player1Team1ID),
+				TournamentID: id,
+				Value:        int64(constant.DefaultRating),
+			}
+			ratings[int64(*match.Player1Team1ID)] = *rating
+			_rating11 = rating.Value
+		}
+
+		_, ok = ratings[int64(*match.Player1Team2ID)]
+		if ok {
+			_rating12 = ratings[int64(*match.Player1Team2ID)].Value
+		} else {
+			rating := &entities.TournamentRating{
+				PlayerID:     int64(*match.Player1Team2ID),
+				TournamentID: id,
+				Value:        int64(constant.DefaultRating),
+			}
+			ratings[int64(*match.Player1Team2ID)] = *rating
+			_rating12 = rating.Value
+		}
+
+		_rating21 = 0
+		if match.Player2Team1ID != nil && *match.Player2Team1ID > 0 {
+			_, ok = ratings[int64(*match.Player2Team1ID)]
+			if ok {
+				_rating21 = ratings[int64(*match.Player2Team1ID)].Value
+			} else {
+				rating := &entities.TournamentRating{
+					PlayerID:     int64(*match.Player2Team1ID),
+					TournamentID: id,
+					Value:        int64(constant.DefaultRating),
+				}
+				ratings[int64(*match.Player2Team1ID)] = *rating
+				_rating21 = rating.Value
+			}
+		}
+
+		_rating22 = 0
+		if match.Player2Team2ID != nil && *match.Player2Team2ID > 0 {
+			_, ok = ratings[int64(*match.Player2Team2ID)]
+			if ok {
+				_rating22 = ratings[int64(*match.Player2Team2ID)].Value
+			} else {
+				rating := &entities.TournamentRating{
+					PlayerID:     int64(*match.Player2Team2ID),
+					TournamentID: id,
+					Value:        int64(constant.DefaultRating),
+				}
+				ratings[int64(*match.Player2Team2ID)] = *rating
+				_rating22 = rating.Value
+			}
+		}
+
+		matches[i].Player1Team1RateBefore = &_rating11
+		matches[i].Player1Team2RateBefore = &_rating12
+		matches[i].Player2Team1RateBefore = &_rating21
+		matches[i].Player2Team2RateBefore = &_rating22
+
+		rating11, rating12, rating21, rating22, err := calculator.MatchRatingCalculation(ctx, int(*match.ScoreTeam1), int(*match.ScoreTeam2), int(_rating11), int(_rating12), int(_rating21), int(_rating22))
+		if err != nil {
+			return err
+		}
+
+		var zero int64
+		matches[i].Player2Team1RateAfter = &zero
+		matches[i].Player2Team2RateAfter = &zero
+
+		r11 := int64(rating11)
+		matches[i].Player1Team1RateAfter = &r11
+		r12 := int64(rating12)
+		matches[i].Player1Team2RateAfter = &r12
+
+		ratings[int64(*match.Player1Team1ID)] = entities.TournamentRating{
+			PlayerID:     int64(*match.Player1Team1ID),
+			TournamentID: id,
+			Value:        int64(rating11),
+		}
+		ratings[int64(*match.Player1Team2ID)] = entities.TournamentRating{
+			PlayerID:     int64(*match.Player1Team2ID),
+			TournamentID: id,
+			Value:        int64(rating12),
+		}
+		if match.Player2Team1ID != nil && *match.Player2Team1ID > 0 {
+			r21 := int64(rating21)
+			matches[i].Player2Team1RateAfter = &r21
+
+			ratings[int64(*match.Player2Team1ID)] = entities.TournamentRating{
+				PlayerID:     int64(*match.Player2Team1ID),
+				TournamentID: id,
+				Value:        int64(rating21),
+			}
+		}
+		if match.Player2Team2ID != nil && *match.Player2Team2ID > 0 {
+			r22 := int64(rating22)
+			matches[i].Player2Team2RateAfter = &r22
+
+			ratings[int64(*match.Player2Team2ID)] = entities.TournamentRating{
+				PlayerID:     int64(*match.Player2Team2ID),
+				TournamentID: id,
+				Value:        int64(rating22),
+			}
+		}
+	}
+
+	tx, err := s.rwdbOperations.BeginTx(ctx, logger)
+	if err != nil {
+		return err
+	}
+
+	err = s.rwdbOperations.RewriteTournamentMatchesAndPlayerRatings(logger, ctx, matches, ratings, tx)
+	if err != nil {
+		tx.Rollback(ctx)
+		return err
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		tx.Rollback(ctx)
+		return err
+	}
+
+	return nil
+}
+
+func (s *Service) StartNextStage(ctx context.Context, req *entities.StartNextStageRequest) (int64, error) {
+	logger := s.logger.With().Str("service", "StartNextStage").Logger()
+
+	tournament, err := s.rdbOperations.GetTournamentById(logger, ctx, req.TournamentID)
+	if err != nil {
+		return 0, err
+	}
+
+	// если запрос от мастера по турнирам, то тщательно проверяем соответствие города мастера
+	// городу из запроса, которого ожидается, что не будет указано,но на всякий случай
+	if req.Executor.Role.Name == constant.TournamentMaster {
+		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, req.Executor.ID)
+		if err != nil {
+			return 0, err
+		}
+
+		if tournament.CityID != master.City.ID {
+			err = errors.New(pkgerr.ErrCityIdNotEqualMasterCityId)
+			logger.Error().Err(err).Msg("cityIdParam not equal masterCityId in tournament.Create")
+			return 0, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+	}
+
+	// этот метода вернет ошибку для всех одноэтапных турниров
+	if tournament.TypeID == constant.RegularTournamentTypeID || tournament.TypeID == constant.RegularOneVsOneTournamentTypeID {
+		err = errors.New("у турниров типа \"Regular\" и \"RegularOneVsOne\" может быть только один этап")
+		return 0, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	if tournament.TypeID == constant.PlayoffTournamentTypeID {
+		// все этапы турнира,
+		stages, err := s.rdbOperations.GetTournamentStageList(logger, ctx, tournament.ID)
+		if err != nil {
+			return 0, err
+		}
+
+		// слайс для сортировки этапов
+		orderedStages := make([]stageStat, len(stages))
+
+		for _, stage := range stages {
+			var sSt stageStat
+
+			// все игры этапа
+			games, err := s.rdbOperations.GetTournamentStageGames(logger, ctx, stage.ID)
+			if err != nil {
+				return 0, err
+			}
+
+			for _, g := range games {
+				var gs entities.GameStat
+				gs.Game = g
+
+				// если есть тех. поражение,то матчи не смотрим, проверяем кто проиграл и ставим отметки
+				if g.TechLooseTeamID != nil {
+
+					if *g.TechLooseTeamID == g.Team1ID {
+						gs.WinnerId = g.Team2ID
+					} else if *g.TechLooseTeamID == g.Team2ID {
+						gs.WinnerId = g.Team1ID
+					}
+
+					gs.Matches = nil
+
+				} else { // если тех. поражения нет, то проверяем матчи
+					matches, err := s.rdbOperations.FetchMatches(logger, ctx, g.ID)
+					if err != nil {
+						return 0, err
+					}
+
+					var totalScoreTeam1 int64
+					var totalScoreTeam2 int64
+
+					gs.Matches = matches
+
+					// суммируем все очки матчей для каждой команды
+					for _, m := range matches {
+						totalScoreTeam1 += m.ScoreTeam1
+						totalScoreTeam2 += m.ScoreTeam2
+					}
+
+					// если у кого-то есть преимущество по очкам - то он победитель, иначе - ничего не делаем
+					if totalScoreTeam1 > totalScoreTeam2 {
+						gs.WinnerId = g.Team1ID
+					} else if totalScoreTeam2 > totalScoreTeam1 {
+						gs.WinnerId = g.Team2ID
+					}
+				}
+
+				sSt.gameStats = append(sSt.gameStats, gs)
+			}
+
+			// пополняем список победителей этапа
+			sSt.winners = helpers.ExtractWinners(sSt.gameStats)
+
+			// парсим порядковый номер этапа
+			orderNumberStr := strings.Split(stage.Number, separator)
+			orderNumber, err := strconv.ParseInt(orderNumberStr[indexZero], 10, 64)
+			if err != nil || orderNumber <= 0 {
+				logger.Error().Err(err).Msg("failed to parse stage number")
+				return 0, error_templates.New(err.Error(), err, codes.Internal, http.StatusInternalServerError)
+			}
+
+			sSt.number = orderNumber
+			sSt.stage = stage
+
+			// bestOf у каждого этапа свой
+			sSt.bestOf = tournament.Rules.PlayOff.Stages[orderNumber].Bo
+
+			// выстраиваем этапы по порядку
+			orderedStages[orderNumber-1] = sSt
+		}
+
+		var nextStage stageStat         // потенциальный следующий этап
+		var previousStage stageStat     // этап перед следующим(может быть не завершенным)
+		var foundNextStage bool = false // отметка нашелся ли следующий этап
+
+		// следующим считается этап который первый попался без игр, и он гарантировано не первый в цикле
+		for i, stage := range orderedStages {
+			if len(stage.gameStats) == 0 && i == indexZero {
+				err = errors.New("первый этап не может быть без игр")
+				logger.Error().Err(err).Msg("first stage games not found")
+				return 0, error_templates.New(err.Error(), err, codes.Internal, http.StatusInternalServerError)
+			}
+
+			if len(stage.gameStats) == 0 && i > indexZero {
+				nextStage = stage
+				previousStage = orderedStages[i-1]
+				if len(previousStage.gameStats) == 0 {
+					err = errors.New("предыдущий этап не может быть без игр")
+					logger.Error().Err(err).Msg("last stage games not found")
+					return 0, error_templates.New(err.Error(), err, codes.Internal, http.StatusInternalServerError)
+				} else {
+					for _, g := range previousStage.gameStats {
+						if g.Game.Date == nil || time.Now().Before(*g.Game.Date) {
+							err = errors.New("предыдущий этап содержит игру с будущей датой")
+							logger.Error().Err(err).Msg("last stage games have future date")
+							return 0, error_templates.New(err.Error(), err, codes.FailedPrecondition, http.StatusConflict)
+						}
+
+						if g.Game.TechLooseTeamID == nil && len(g.Matches) == 0 {
+							err = errors.New("предыдущий этап содержит игру без матчей и без присуждения тех. поражения")
+							logger.Error().Err(err).Msg("matches and tech loose not found")
+							return 0, error_templates.New(err.Error(), err, codes.FailedPrecondition, http.StatusConflict)
+						}
+					}
+				}
+				foundNextStage = true
+				break
+			}
+		}
+
+		// если такой не нашелся - либо играется последний этап, либо непредвиденный косяк
+		if foundNextStage == false {
+			err = errors.New("не найден следующий этап")
+			logger.Error().Err(err).Msg("next stage not found")
+			return 0, error_templates.New(err.Error(), err, codes.FailedPrecondition, http.StatusConflict)
+		}
+
+		// если в предыдущем этапе посчиталось неправильное кол-во победителей,
+		// то это либо получилась ничья, либо непредвиденный косяк
+		err = helpers.CheckQtyWinners(len(tournament.TeamIDs), len(previousStage.winners), int(nextStage.number), len(stages))
+		if err != nil {
+			logger.Error().Err(err).Msg("helpers.CheckQtyWinners")
+			return 0, err
+		}
+
+		// если предыдущий этап не завершён, не даем создать новый
+		if previousStage.stage.IsFinished == false {
+			err = errors.New("предыдущий этап не завершён")
+			return 0, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+
+		teams1Ids, teams2Ids := helpers.GeneratePlayoffPairs(previousStage.winners, int(nextStage.bestOf))
+
+		tx, err := s.rwdbOperations.BeginTx(ctx, logger)
+		if err != nil {
+			return 0, err
+		}
+
+		if err = s.rwdbOperations.CreateFutureTournamentStageGames(logger, ctx, nextStage.stage.ID, tournament.CityID, teams1Ids, teams2Ids, tx); err != nil {
+			tx.Rollback(ctx)
+			return 0, err
+		}
+
+		if err = tx.Commit(ctx); err != nil {
+			tx.Rollback(ctx)
+			return 0, err
+		}
+
+		return nextStage.stage.ID, nil
+	}
+
+	return 0, errors.New("not implemented")
 }
 
 /*local methods*/
@@ -1100,7 +1467,7 @@ func (s *Service) updatePlayoff(ctx context.Context, logger zerolog.Logger, req 
 }
 
 func (s *Service) checkTournamentMasterCredentials(ctx context.Context, logger zerolog.Logger, req *entities.UpdateTournamentRequest, tournament entities.Tournament, games []entities.TournamentGame) error {
-	master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, req.Executor.ID, &s.config.RDB)
+	master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, req.Executor.ID)
 	if err != nil {
 		return err
 	}
@@ -1200,7 +1567,7 @@ func (s *Service) checkTournamentMasterCredentials(ctx context.Context, logger z
 }
 
 func (s *Service) checkTournamentMasterCredentialsOnDelete(ctx context.Context, logger zerolog.Logger, req *entities.DeleteTournamentRequest, tournament entities.Tournament) error {
-	master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, req.Executor.ID, &s.config.RDB)
+	master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, req.Executor.ID)
 	if err != nil {
 		return err
 	}
@@ -1399,167 +1766,4 @@ func haveStartedGames(games []entities.TournamentGame) bool {
 		}
 	}
 	return false
-}
-
-func (s *Service) Recalc(ctx context.Context, id int64) error {
-	logger := s.logger.With().Str("service", "Recalc").Logger()
-
-	// Get all players from tournament
-	playerIDs, err := s.rdbOperations.GetPlayerIdsByTournamentId(logger, ctx, id)
-	if err != nil {
-		return err
-	}
-
-	// Reset ratings for all players from tournament
-	ratings := make(map[int64]entities.TournamentRating, len(playerIDs))
-	for _, playerID := range playerIDs {
-		rating := &entities.TournamentRating{
-			PlayerID:     playerID,
-			TournamentID: id,
-			Value:        int64(constant.DefaultRating),
-		}
-		ratings[playerID] = *rating
-	}
-
-	// Get all matches from tournament
-	matches, err := s.rdbOperations.GetMatchListByTournamentId(logger, ctx, id)
-	if err != nil {
-		return err
-	}
-
-	// Recalc and update all matches
-	for i, match := range matches {
-		if match.Player1Team1ID == nil || match.Player1Team2ID == nil || match.Player2Team1ID == nil || match.Player2Team2ID == nil {
-			msg := fmt.Sprintf("nil player id from match id: %d", match.ID)
-			return errors.New(msg)
-		}
-
-		var _rating11, _rating12, _rating21, _rating22 int64
-
-		_, ok := ratings[int64(*match.Player1Team1ID)]
-		if ok {
-			_rating11 = ratings[int64(*match.Player1Team1ID)].Value
-		} else {
-			rating := &entities.TournamentRating{
-				PlayerID:     int64(*match.Player1Team1ID),
-				TournamentID: id,
-				Value:        int64(constant.DefaultRating),
-			}
-			ratings[int64(*match.Player1Team1ID)] = *rating
-			_rating11 = rating.Value
-		}
-
-		_, ok = ratings[int64(*match.Player1Team2ID)]
-		if ok {
-			_rating12 = ratings[int64(*match.Player1Team2ID)].Value
-		} else {
-			rating := &entities.TournamentRating{
-				PlayerID:     int64(*match.Player1Team2ID),
-				TournamentID: id,
-				Value:        int64(constant.DefaultRating),
-			}
-			ratings[int64(*match.Player1Team2ID)] = *rating
-			_rating12 = rating.Value
-		}
-
-		_rating21 = 0
-		if match.Player2Team1ID != nil && *match.Player2Team1ID > 0 {
-			_, ok = ratings[int64(*match.Player2Team1ID)]
-			if ok {
-				_rating21 = ratings[int64(*match.Player2Team1ID)].Value
-			} else {
-				rating := &entities.TournamentRating{
-					PlayerID:     int64(*match.Player2Team1ID),
-					TournamentID: id,
-					Value:        int64(constant.DefaultRating),
-				}
-				ratings[int64(*match.Player2Team1ID)] = *rating
-				_rating21 = rating.Value
-			}
-		}
-
-		_rating22 = 0
-		if match.Player2Team2ID != nil && *match.Player2Team2ID > 0 {
-			_, ok = ratings[int64(*match.Player2Team2ID)]
-			if ok {
-				_rating22 = ratings[int64(*match.Player2Team2ID)].Value
-			} else {
-				rating := &entities.TournamentRating{
-					PlayerID:     int64(*match.Player2Team2ID),
-					TournamentID: id,
-					Value:        int64(constant.DefaultRating),
-				}
-				ratings[int64(*match.Player2Team2ID)] = *rating
-				_rating22 = rating.Value
-			}
-		}
-
-		matches[i].Player1Team1RateBefore = &_rating11
-		matches[i].Player1Team2RateBefore = &_rating12
-		matches[i].Player2Team1RateBefore = &_rating21
-		matches[i].Player2Team2RateBefore = &_rating22
-
-		rating11, rating12, rating21, rating22, err := calculator.MatchRatingCalculation(ctx, int(*match.ScoreTeam1), int(*match.ScoreTeam2), int(_rating11), int(_rating12), int(_rating21), int(_rating22))
-		if err != nil {
-			return err
-		}
-
-		var zero int64
-		matches[i].Player2Team1RateAfter = &zero
-		matches[i].Player2Team2RateAfter = &zero
-
-		r11 := int64(rating11)
-		matches[i].Player1Team1RateAfter = &r11
-		r12 := int64(rating12)
-		matches[i].Player1Team2RateAfter = &r12
-
-		ratings[int64(*match.Player1Team1ID)] = entities.TournamentRating{
-			PlayerID:     int64(*match.Player1Team1ID),
-			TournamentID: id,
-			Value:        int64(rating11),
-		}
-		ratings[int64(*match.Player1Team2ID)] = entities.TournamentRating{
-			PlayerID:     int64(*match.Player1Team2ID),
-			TournamentID: id,
-			Value:        int64(rating12),
-		}
-		if match.Player2Team1ID != nil && *match.Player2Team1ID > 0 {
-			r21 := int64(rating21)
-			matches[i].Player2Team1RateAfter = &r21
-
-			ratings[int64(*match.Player2Team1ID)] = entities.TournamentRating{
-				PlayerID:     int64(*match.Player2Team1ID),
-				TournamentID: id,
-				Value:        int64(rating21),
-			}
-		}
-		if match.Player2Team2ID != nil && *match.Player2Team2ID > 0 {
-			r22 := int64(rating22)
-			matches[i].Player2Team2RateAfter = &r22
-
-			ratings[int64(*match.Player2Team2ID)] = entities.TournamentRating{
-				PlayerID:     int64(*match.Player2Team2ID),
-				TournamentID: id,
-				Value:        int64(rating22),
-			}
-		}
-	}
-
-	tx, err := s.rwdbOperations.BeginTx(ctx, logger)
-	if err != nil {
-		return err
-	}
-
-	err = s.rwdbOperations.RewriteTournamentMatchesAndPlayerRatings(logger, ctx, matches, ratings, tx)
-	if err != nil {
-		tx.Rollback(ctx)
-		return err
-	}
-
-	if err = tx.Commit(ctx); err != nil {
-		tx.Rollback(ctx)
-		return err
-	}
-
-	return nil
 }

@@ -519,11 +519,11 @@ func (db *RWDBOperation) RewriteTournamentMatchesAndPlayerRatings(logger zerolog
 	return nil
 }
 
-func (db *RWDBOperation) DeleteOldGameMatches(logger zerolog.Logger, ctx context.Context, gameId int64, newMatchesIds []int, cfg *config.DBConfig) error {
-	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+func (db *RWDBOperation) DeleteOldGameMatches(logger zerolog.Logger, ctx context.Context, gameId int64, newMatchesIds []int, tx tx.ITx) error {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 
-	_, err := db.db.Exec(timeout, queryDeleteMatchesToUpdateGame, newMatchesIds, gameId)
+	_, err := poolOrTx(db.db, tx).Exec(timeout, queryDeleteMatchesToUpdateGame, newMatchesIds, gameId)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to postgresql.DeleteOldGameMatches")
 		return DecodeDatabaseError(err)
@@ -532,11 +532,11 @@ func (db *RWDBOperation) DeleteOldGameMatches(logger zerolog.Logger, ctx context
 	return nil
 }
 
-func (db *RWDBOperation) CreateNewMatch(logger zerolog.Logger, ctx context.Context, gameId int64, match *entities.NewMatch, cfg *config.DBConfig) error {
-	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+func (db *RWDBOperation) CreateNewMatch(logger zerolog.Logger, ctx context.Context, gameId int64, match *entities.NewMatch, tx tx.ITx) error {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 
-	_, err := db.db.Exec(
+	_, err := poolOrTx(db.db, tx).Exec(
 		timeout,
 		queryInsertMatchesToUpdateGame,
 		match.Date,
@@ -567,11 +567,11 @@ func (db *RWDBOperation) CreateNewMatch(logger zerolog.Logger, ctx context.Conte
 	return nil
 }
 
-func (db *RWDBOperation) UpdateOldMatch(logger zerolog.Logger, ctx context.Context, gameId int64, match *entities.NewMatch, cfg *config.DBConfig) error {
-	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+func (db *RWDBOperation) UpdateOldMatch(logger zerolog.Logger, ctx context.Context, gameId int64, match *entities.NewMatch, tx tx.ITx) error {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 
-	tag2, err := db.db.Exec(timeout, queryUpdateMatchesToUpdateGame,
+	tag, err := poolOrTx(db.db, tx).Exec(timeout, queryUpdateMatchesToUpdateGame,
 		match.ID,
 		match.Date,
 		match.Team1ID,
@@ -596,7 +596,7 @@ func (db *RWDBOperation) UpdateOldMatch(logger zerolog.Logger, ctx context.Conte
 		logger.Error().Err(err).Msg("failed to update match in postgresql.UpdateGame")
 		return DecodeDatabaseError(err)
 	}
-	if tag2.RowsAffected() == 0 {
+	if tag.RowsAffected() == 0 {
 		err = errors.New("no rows affected")
 		logger.Error().Err(err).Msg("failed to update match in postgresql.UpdateGame")
 		return DecodeDatabaseError(err)

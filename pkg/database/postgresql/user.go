@@ -155,8 +155,8 @@ func (db *RWDBOperation) UpdateTournamentMaster(logger zerolog.Logger, ctx conte
 	return nil
 }
 
-func (db *RDBOperation) GetTournamentMasterByUserId(logger zerolog.Logger, ctx context.Context, userId int64, cfg *config.DBConfig) (entities.TournamentMaster, error) {
-	timeoutCtx, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+func (db *RDBOperation) GetTournamentMasterByUserId(logger zerolog.Logger, ctx context.Context, userId int64) (entities.TournamentMaster, error) {
+	timeoutCtx, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 
 	const query string = `

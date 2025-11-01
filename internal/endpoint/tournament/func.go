@@ -265,3 +265,38 @@ func makeRecalc(s tournament.IService) endpoint.Endpoint {
 		return nil, nil
 	}
 }
+
+func makeStartNextStage(s tournament.IService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "makeStartNextStage").Str("request_id", reqID).Logger()
+
+		req, err := helpers.CastRequest[*entities.StartNextStageRequest](request)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed to cast request")
+			return nil, error_templates.WrapErrorEndpoint(
+				error_templates.New(pkgerr.FailedCastRequest, err, codes.InvalidArgument, http.StatusBadRequest), reqID)
+		}
+
+		err = s.GetValidator().Struct(req)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed validation in makeStartNextStage")
+			return nil, error_templates.WrapErrorEndpoint(
+				error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest), reqID)
+		}
+
+		id, err := s.StartNextStage(ctx, req)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed s.StartNextStage")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		return struct {
+			TournamentId int64 `json:"tournamentId"`
+			StageId      int64 `json:"startedStageId"`
+		}{
+			TournamentId: req.TournamentID,
+			StageId:      id,
+		}, nil
+	}
+}
