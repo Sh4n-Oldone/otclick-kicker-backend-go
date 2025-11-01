@@ -641,7 +641,7 @@ func (s *Service) Create(ctx context.Context, request *entities.CreateTeamReques
 	logger := s.logger.With().Str("service", "Create").Logger()
 
 	if request.Creator.Role.Name == constant.TournamentMaster {
-		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, request.Creator.ID, &s.config.RDB)
+		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, request.Creator.ID)
 		if err != nil {
 			return 0, err
 		}
@@ -699,7 +699,7 @@ func (s *Service) Update(ctx context.Context, request *entities.UpdateTeamReques
 			return false, err
 		}
 
-		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, request.Updater.ID, &s.config.RDB)
+		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, request.Updater.ID)
 		if err != nil {
 			return false, err
 		}
@@ -762,7 +762,7 @@ func (s *Service) AddPlayerIntoTeam(ctx context.Context, req *entities.MovingPla
 	}
 
 	if req.Executor.Role != nil && req.Executor.Role.Name == constant.TournamentMaster {
-		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, req.Executor.ID, &s.config.RDB)
+		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, req.Executor.ID)
 		if err != nil {
 			return false, err
 		}
@@ -800,7 +800,7 @@ func (s *Service) RemovePlayerFromTeam(ctx context.Context, req *entities.Moving
 	logger := s.logger.With().Str("service", "RemovePlayerFromTeam").Logger()
 
 	if req.Executor.Role != nil && req.Executor.Role.Name == constant.TournamentMaster {
-		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, req.Executor.ID, &s.config.RDB)
+		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, req.Executor.ID)
 		if err != nil {
 			return false, err
 		}

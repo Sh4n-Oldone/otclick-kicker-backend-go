@@ -55,7 +55,7 @@ func (s *Service) Create(ctx context.Context, request entities.CreateGameRequest
 
 	// проверяем город мастера по турнирам на соответствие городу лиги и команд
 	if request.Creator.Role.Name == constant.TournamentMaster {
-		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, request.Creator.ID, &s.config.RDB)
+		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, request.Creator.ID)
 		if err != nil {
 			return entities.CreateGameResponse{}, err
 		}
@@ -227,7 +227,7 @@ func (s *Service) Delete(ctx context.Context, req *entities.DeleteGameRequest) e
 	}
 
 	if req.Executor.Role.Name == constant.TournamentMaster {
-		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, req.Executor.ID, &s.config.RDB)
+		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, req.Executor.ID)
 		if err != nil {
 			return err
 		}
@@ -366,7 +366,7 @@ func (s *Service) Update(ctx context.Context, request entities.UpdateGameRequest
 
 	// проверяем город мастера по турнирам на соответствие городу лиги и команд
 	if request.Executor.Role.Name == constant.TournamentMaster {
-		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, request.Executor.ID, &s.config.RDB)
+		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, request.Executor.ID)
 		if err != nil {
 			return err
 		}
@@ -584,7 +584,7 @@ func (s *Service) UpdateFutureGame(ctx context.Context, request entities.UpdateF
 
 	// проверяем город мастера по турнирам на соответствие городу лиги и команд
 	if request.Executor.Role.Name == constant.TournamentMaster {
-		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, request.Executor.ID, &s.config.RDB)
+		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, request.Executor.ID)
 		if err != nil {
 			return err
 		}
@@ -700,7 +700,7 @@ func (s *Service) CreateFutureGame(ctx context.Context, request entities.CreateF
 
 	// проверяем город мастера по турнирам на соответствие городу лиги и команд
 	if request.Creator.Role.Name == constant.TournamentMaster {
-		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, request.Creator.ID, &s.config.RDB)
+		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, request.Creator.ID)
 		if err != nil {
 			return entities.CreateFutureGameResponse{}, err
 		}
@@ -786,7 +786,7 @@ func (s *Service) DeleteFutureGame(ctx context.Context, req entities.DeleteFutur
 	}
 
 	if req.Executor.Role.Name == constant.TournamentMaster {
-		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, req.Executor.ID, &s.config.RDB)
+		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, req.Executor.ID)
 		if err != nil {
 			return err
 		}
@@ -834,7 +834,7 @@ func (s *Service) DeleteFutureGame(ctx context.Context, req entities.DeleteFutur
 func (s *Service) CreateFutureTournamentGame(ctx context.Context, request *entities.CreateFutureTournamentGameRequest) (int64, error) {
 	logger := s.logger.With().Str("service", "game.CreateFutureTournamentGame").Logger()
 
-	tournament, err := s.rdbOperations.GetTournamentById(logger, ctx, request.TournamentID, &s.config.RDB)
+	tournament, err := s.rdbOperations.GetTournamentById(logger, ctx, request.TournamentID)
 	if err != nil {
 		return 0, err
 	}
@@ -923,7 +923,7 @@ func (s *Service) UpdateFutureTournamentGame(ctx context.Context, request *entit
 		return err
 	}
 
-	tournament, err := s.rdbOperations.GetTournamentById(logger, ctx, stage.TournamentID, &s.config.RDB)
+	tournament, err := s.rdbOperations.GetTournamentById(logger, ctx, stage.TournamentID)
 	if err != nil {
 		return err
 	}
@@ -975,7 +975,7 @@ func (s *Service) UpdateFutureTournamentGame(ctx context.Context, request *entit
 	}
 
 	if tournament.TypeID == constant.RegularTournamentTypeID || tournament.TypeID == constant.RegularOneVsOneTournamentTypeID {
-		err = checkUpdateRegularTournamentGame(logger, *updReq.Team1ID, *updReq.Team2ID, &game)
+		err = checkTournamentGamePairs(logger, *updReq.Team1ID, *updReq.Team2ID, &game)
 		if err != nil {
 			return err
 		}
@@ -1005,7 +1005,7 @@ func (s *Service) DeleteFutureTournamentGame(ctx context.Context, request *entit
 		return err
 	}
 
-	tournament, err := s.rdbOperations.GetTournamentById(logger, ctx, stage.TournamentID, &s.config.RDB)
+	tournament, err := s.rdbOperations.GetTournamentById(logger, ctx, stage.TournamentID)
 	if err != nil {
 		return err
 	}
@@ -1067,7 +1067,7 @@ func (s *Service) DeleteFutureTournamentGame(ctx context.Context, request *entit
 func (s *Service) CreatePlayedTournamentGame(ctx context.Context, request *entities.CreatePlayedTournamentGameRequest) (int64, error) {
 	logger := s.logger.With().Str("service", "game.CreatePlayedTournamentGame").Logger()
 
-	tournament, err := s.rdbOperations.GetTournamentById(logger, ctx, request.TournamentID, &s.config.RDB)
+	tournament, err := s.rdbOperations.GetTournamentById(logger, ctx, request.TournamentID)
 	if err != nil {
 		return 0, err
 	}
@@ -1281,7 +1281,7 @@ func (s *Service) CreatePlayedTournamentGame(ctx context.Context, request *entit
 	}
 
 	for playerID, value := range rates {
-		err = s.rwdbOperations.CreateTournamentRating(logger, ctx, int64(playerID), int64(value), request.TournamentID, &s.config.RWDB)
+		err = s.rwdbOperations.CreateTournamentRating(logger, ctx, int64(playerID), int64(value), request.TournamentID, nil)
 		if err != nil {
 			return 0, err
 		}
@@ -1305,7 +1305,7 @@ func (s *Service) UpdatePlayedTournamentGame(ctx context.Context, request *entit
 
 	request.StageID = stage.ID
 
-	tournament, err := s.rdbOperations.GetTournamentById(logger, ctx, stage.TournamentID, &s.config.RDB)
+	tournament, err := s.rdbOperations.GetTournamentById(logger, ctx, stage.TournamentID)
 	if err != nil {
 		return err
 	}
@@ -1353,27 +1353,10 @@ func (s *Service) UpdatePlayedTournamentGame(ctx context.Context, request *entit
 		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
-	if tournament.TypeID == constant.RegularTournamentTypeID {
-		err = checkUpdateRegularTournamentGame(logger, request.Team1ID, request.Team2ID, &game)
-		if err != nil {
-			return err
-		}
-	} else if tournament.TypeID == constant.RegularOneVsOneTournamentTypeID {
-		err = checkUpdateRegularTournamentGame(logger, request.Team1ID, request.Team2ID, &game)
-		if err != nil {
-			return err
-		}
-
-		for _, m := range request.Matches {
-			if m.Player2Team1Id != nil || m.Player2Team2Id != nil {
-				err = errors.New("в турнире типа Regular.OneVsOne у команды не может быть второго игрока")
-				logger.Error().Err(err).Msg("two players in OneVsOne")
-				return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
-			}
-		}
-	} else {
-		// todo другие типы турниров
-		return errors.New("not implemented")
+	// проверяем что не пришли посторонние команды
+	err = checkTournamentGamePairs(logger, request.Team1ID, request.Team2ID, &game)
+	if err != nil {
+		return err
 	}
 
 	newRates := make(map[int]int)
@@ -1525,9 +1508,15 @@ func (s *Service) UpdatePlayedTournamentGame(ctx context.Context, request *entit
 		}
 	}
 
-	// удаление всех матчей игры кроме входящих
-	err = s.rwdbOperations.DeleteOldGameMatches(logger, ctx, request.GameID, matchIds, &s.config.RWDB)
+	tx, err := s.rwdbOperations.BeginTx(ctx, logger)
 	if err != nil {
+		return err
+	}
+
+	// удаление всех матчей игры кроме входящих
+	err = s.rwdbOperations.DeleteOldGameMatches(logger, ctx, request.GameID, matchIds, tx)
+	if err != nil {
+		tx.Rollback(ctx)
 		return err
 	}
 
@@ -1541,13 +1530,15 @@ func (s *Service) UpdatePlayedTournamentGame(ctx context.Context, request *entit
 		}
 
 		if match.ID == nil {
-			err = s.rwdbOperations.CreateNewMatch(logger, ctx, request.GameID, &match, &s.config.RWDB)
+			err = s.rwdbOperations.CreateNewMatch(logger, ctx, request.GameID, &match, tx)
 			if err != nil {
+				tx.Rollback(ctx)
 				return err
 			}
 		} else {
-			err = s.rwdbOperations.UpdateOldMatch(logger, ctx, request.GameID, &match, &s.config.RWDB)
+			err = s.rwdbOperations.UpdateOldMatch(logger, ctx, request.GameID, &match, tx)
 			if err != nil {
+				tx.Rollback(ctx)
 				return err
 			}
 		}
@@ -1555,15 +1546,22 @@ func (s *Service) UpdatePlayedTournamentGame(ctx context.Context, request *entit
 
 	// обновление рейтингов
 	for playerID, value := range newRates {
-		err = s.rwdbOperations.CreateTournamentRating(logger, ctx, int64(playerID), int64(value), tournament.ID, &s.config.RWDB)
+		err = s.rwdbOperations.CreateTournamentRating(logger, ctx, int64(playerID), int64(value), tournament.ID, tx)
 		if err != nil {
+			tx.Rollback(ctx)
 			return err
 		}
 	}
 
 	// обновление игры
-	err = s.rwdbOperations.UpdatePlayedTournamentGame(logger, ctx, request, &s.config.RWDB)
+	err = s.rwdbOperations.UpdatePlayedTournamentGame(logger, ctx, request, tx)
 	if err != nil {
+		tx.Rollback(ctx)
+		return err
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		tx.Rollback(ctx)
 		return err
 	}
 
@@ -1583,7 +1581,7 @@ func (s *Service) DeletePlayedTournamentGame(ctx context.Context, request *entit
 		return err
 	}
 
-	tournament, err := s.rdbOperations.GetTournamentById(logger, ctx, stage.TournamentID, &s.config.RDB)
+	tournament, err := s.rdbOperations.GetTournamentById(logger, ctx, stage.TournamentID)
 	if err != nil {
 		return err
 	}
@@ -1683,7 +1681,7 @@ func (s *Service) DeletePlayedTournamentGame(ctx context.Context, request *entit
 
 		updValue := rateValue - int64(value)
 
-		err = s.rwdbOperations.CreateTournamentRating(logger, ctx, int64(playerID), updValue, tournament.ID, &s.config.RWDB)
+		err = s.rwdbOperations.CreateTournamentRating(logger, ctx, int64(playerID), updValue, tournament.ID, nil)
 		if err != nil {
 			return err
 		}
@@ -1845,7 +1843,7 @@ func (s *Service) validateCaptain(ctx context.Context, logger zerolog.Logger, ca
 }
 
 func (s *Service) validateTournamentMaster(ctx context.Context, logger zerolog.Logger, tournament *entities.Tournament, masterId int64) error {
-	master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, masterId, &s.config.RDB)
+	master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, masterId)
 	if err != nil {
 		return err
 	}
@@ -1857,6 +1855,24 @@ func (s *Service) validateTournamentMaster(ctx context.Context, logger zerolog.L
 	}
 
 	return nil
+}
+
+func (s *Service) getPlayerRating(ctx context.Context, logger zerolog.Logger, playerID int, leagueID int64, rates map[int]int) (int, error) {
+	if value, ok := rates[playerID]; ok {
+		return value, nil
+	}
+	resp, err := s.rdbOperations.GetRatingByPlayerIDAndByLeagueID(logger, ctx, int64(playerID), leagueID)
+	if err != nil {
+		if outputError, ok := (err).(*error_templates.OutputError); ok {
+			code, _ := outputError.GetHTTP()
+			if code == http.StatusNotFound {
+				return 1000, nil
+			}
+			return 0, err
+		}
+		return 0, err
+	}
+	return int(resp), nil
 }
 
 /*local functions*/
@@ -1931,11 +1947,11 @@ func buildNewRequest(request *entities.UpdateFutureTournamentGameRequest, game *
 	return nr
 }
 
-// checkUpdateRegularTournamentGame проверяет условия при которых обновления для игры турнира Regular невозможны
-func checkUpdateRegularTournamentGame(logger zerolog.Logger, team1ID, team2ID int64, game *entities.TournamentGame) error {
+// checkTournamentGamePairs
+func checkTournamentGamePairs(logger zerolog.Logger, team1ID, team2ID int64, game *entities.TournamentGame) error {
 	if (team1ID != game.Team1ID && team1ID != game.Team2ID) || (team2ID != game.Team1ID && team2ID != game.Team2ID) {
-		err := errors.New("в игре турнира типа Regular нельзя менять состав команд")
-		logger.Error().Err(err).Msg("change game teams pair in update Regular")
+		err := errors.New("в игре турнира нельзя менять состав команд")
+		logger.Error().Err(err).Msg("change game teams pair in update")
 		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
@@ -1964,22 +1980,4 @@ func checkCreateRegularTournamentGame(logger zerolog.Logger, isTiebreak bool) er
 	}
 
 	return nil
-}
-
-func (s *Service) getPlayerRating(ctx context.Context, logger zerolog.Logger, playerID int, leagueID int64, rates map[int]int) (int, error) {
-	if value, ok := rates[playerID]; ok {
-		return value, nil
-	}
-	resp, err := s.rdbOperations.GetRatingByPlayerIDAndByLeagueID(logger, ctx, int64(playerID), leagueID)
-	if err != nil {
-		if outputError, ok := (err).(*error_templates.OutputError); ok {
-			code, _ := outputError.GetHTTP()
-			if code == http.StatusNotFound {
-				return 1000, nil
-			}
-			return 0, err
-		}
-		return 0, err
-	}
-	return int(resp), nil
 }

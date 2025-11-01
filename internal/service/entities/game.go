@@ -315,3 +315,9 @@ type GameLeagueTournament struct {
 	IsTiebreak      bool       `json:"isTiebreak"`
 	StageID         *int64     `json:"stageId,omitempty"`
 }
+
+type GameStat struct {
+	Game     TournamentGame
+	Matches  []ShortMatch
+	WinnerId int64
+}

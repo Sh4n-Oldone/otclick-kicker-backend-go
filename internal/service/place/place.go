@@ -39,7 +39,7 @@ func (s *Service) Create(ctx context.Context, request entities.CreatePlaceReques
 	logger := s.logger.With().Str("service", "Create").Logger()
 
 	if request.Creator.Role.Name == constant.TournamentMaster {
-		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, request.Creator.ID, &s.config.RDB)
+		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, request.Creator.ID)
 		if err != nil {
 			return nil, err
 		}
@@ -67,7 +67,7 @@ func (s *Service) Update(ctx context.Context, request entities.UpdatePlaceReques
 	logger := s.logger.With().Str("service", "Update").Logger()
 
 	if request.Executor.Role.Name == constant.TournamentMaster {
-		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, request.Executor.ID, &s.config.RDB)
+		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, request.Executor.ID)
 		if err != nil {
 			return err
 		}
@@ -95,7 +95,7 @@ func (s *Service) Delete(ctx context.Context, id int64, executor entities.User) 
 	logger := s.logger.With().Str("service", "Delete").Logger()
 
 	if executor.Role.Name == constant.TournamentMaster {
-		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, executor.ID, &s.config.RDB)
+		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, executor.ID)
 		if err != nil {
 			return err
 		}

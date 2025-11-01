@@ -19,6 +19,7 @@ type IService interface {
 	FinishStage(ctx context.Context, request *entities.FinishStageRequest) error
 	GetTournamentStageList(ctx context.Context, id int64) ([]entities.TournamentStageItem, error)
 	GetTournamentList(ctx context.Context, request *entities.GetTournamentListRequest) ([]entities.TournamentShort, int64, error)
+	StartNextStage(ctx context.Context, request *entities.StartNextStageRequest) (int64, error)
 
 	Recalc(ctx context.Context, tournamentId int64) error
 

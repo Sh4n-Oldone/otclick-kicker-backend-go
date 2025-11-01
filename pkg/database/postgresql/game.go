@@ -1186,8 +1186,8 @@ func (db *RWDBOperation) CreatePlayedTournamentGame(logger zerolog.Logger, ctx c
 	return id, nil
 }
 
-func (db *RWDBOperation) UpdatePlayedTournamentGame(logger zerolog.Logger, ctx context.Context, req *entities.UpdatePlayedTournamentGameRequest, cfg *config.DBConfig) error {
-	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+func (db *RWDBOperation) UpdatePlayedTournamentGame(logger zerolog.Logger, ctx context.Context, req *entities.UpdatePlayedTournamentGameRequest, tx tx.ITx) error {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 
 	const query string = `UPDATE public.games
@@ -1201,7 +1201,7 @@ func (db *RWDBOperation) UpdatePlayedTournamentGame(logger zerolog.Logger, ctx c
 			updated_at = NOW()
 		WHERE id = $1;`
 
-	tag, err := db.db.Exec(timeout, query, req.GameID, req.Date, req.PlaceID, req.StageID, req.Team1ID, req.Team2ID, req.TechLooseTeamID)
+	tag, err := poolOrTx(db.db, tx).Exec(timeout, query, req.GameID, req.Date, req.PlaceID, req.StageID, req.Team1ID, req.Team2ID, req.TechLooseTeamID)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed UpdatePlayedTournamentGame")
 		return DecodeDatabaseError(err)

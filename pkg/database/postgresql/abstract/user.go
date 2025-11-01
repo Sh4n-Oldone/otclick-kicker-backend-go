@@ -11,7 +11,7 @@ import (
 
 type IUserR interface {
 	GetUser(logger zerolog.Logger, ctx context.Context, id *int64, email *string, cfg *config.DBConfig) (*entities.User, error)
-	GetTournamentMasterByUserId(logger zerolog.Logger, ctx context.Context, userId int64, cfg *config.DBConfig) (entities.TournamentMaster, error)
+	GetTournamentMasterByUserId(logger zerolog.Logger, ctx context.Context, userId int64) (entities.TournamentMaster, error)
 	GetTournamentMasterListByCityId(logger zerolog.Logger, ctx context.Context, cityID int64, cfg *config.DBConfig) ([]entities.TournamentMaster, error)
 	GetTournamentMasterList(logger zerolog.Logger, ctx context.Context, cfg *config.DBConfig) ([]entities.TournamentMaster, error)
 	GetCaptainByTeamId(logger zerolog.Logger, ctx context.Context, teamID int64) (entities.User, error)

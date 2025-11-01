@@ -31,7 +31,7 @@ func (s *Service) Create(ctx context.Context, request *entities.CreateLeagueRequ
 	logger := s.logger.With().Str("service", "Create").Logger()
 
 	if request.Creator.Role.Name == constant.TournamentMaster {
-		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, request.Creator.ID, &s.config.RDB)
+		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, request.Creator.ID)
 		if err != nil {
 			return nil, err
 		}
@@ -347,7 +347,7 @@ func (s *Service) checkMasterAndLeagueCities(ctx context.Context, leagueId int64
 	if role == constant.TournamentMaster {
 		userId := ctx.Value(constant.UserIDContextKey).(int64)
 
-		masterInfo, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, userId, &s.config.RDB)
+		masterInfo, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, userId)
 		if err != nil {
 			return err
 		}

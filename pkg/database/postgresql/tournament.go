@@ -53,8 +53,8 @@ func (db *RDBOperation) GetTournamentTypeList(logger zerolog.Logger, ctx context
 	return types, nil
 }
 
-func (db *RDBOperation) GetTournamentById(logger zerolog.Logger, ctx context.Context, tournamentId int64, cfg *config.DBConfig) (entities.Tournament, error) {
-	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+func (db *RDBOperation) GetTournamentById(logger zerolog.Logger, ctx context.Context, tournamentId int64) (entities.Tournament, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 
 	var t entities.Tournament
@@ -312,8 +312,8 @@ func (db *RWDBOperation) CreateTournamentStage(logger zerolog.Logger, ctx contex
 	return id, nil
 }
 
-func (db *RDBOperation) GetTournamentStageGames(logger zerolog.Logger, ctx context.Context, stageId int64, cfg *config.DBConfig) ([]entities.TournamentGame, error) {
-	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+func (db *RDBOperation) GetTournamentStageGames(logger zerolog.Logger, ctx context.Context, stageId int64) ([]entities.TournamentGame, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 
 	const query string = `
@@ -327,7 +327,8 @@ func (db *RDBOperation) GetTournamentStageGames(logger zerolog.Logger, ctx conte
 			tech_loose_team_id,
 			is_tiebreak,
 			stage_id
-		FROM games WHERE stage_id = $1;`
+		FROM games WHERE stage_id = $1
+		ORDER BY id;`
 
 	var games []entities.TournamentGame
 
@@ -428,7 +429,7 @@ func (db *RDBOperation) GetTournamentStageList(logger zerolog.Logger, ctx contex
 	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 
-	const query string = `SELECT id, tournament_id, is_finished FROM tournament_stages WHERE tournament_id = $1;`
+	const query string = `SELECT id, tournament_id, is_finished, number FROM tournament_stages WHERE tournament_id = $1;`
 
 	var stages []entities.TournamentStage
 
@@ -441,7 +442,7 @@ func (db *RDBOperation) GetTournamentStageList(logger zerolog.Logger, ctx contex
 
 	for rows.Next() {
 		var s entities.TournamentStage
-		err = rows.Scan(&s.ID, &s.TournamentID, &s.IsFinished)
+		err = rows.Scan(&s.ID, &s.TournamentID, &s.IsFinished, &s.Number)
 		if err != nil {
 			logger.Error().Err(err).Msg("Failed rows.Scan")
 			return nil, DecodeDatabaseError(err)

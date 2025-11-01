@@ -2,10 +2,16 @@ package helpers
 
 import (
 	"errors"
+	"net/http"
 	"sort"
 	"strconv"
 	"strings"
 	"unicode"
+
+	"google.golang.org/grpc/codes"
+
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
 )
 
 func GeneratePairs[T int64 | int | int32 | int16](teamIDs []T, bestOf int) (team1IDs, team2IDs []T) {
@@ -140,4 +146,62 @@ func SortKeysValues[K int64 | int, T any](m map[K]T) ([]K, []T, error) {
 	}
 
 	return keys, vals, nil
+}
+
+func CheckQtyWinners(startTeamsQty int, lastStageWinnersQty int, nextStageNumber int, stageQty int) error {
+	teamsCount := startTeamsQty
+
+	for i := 1; i <= stageQty; i++ {
+
+		if nextStageNumber == i {
+			if lastStageWinnersQty != teamsCount {
+				err := errors.New("ошибочное кол-во победителей")
+				return error_templates.New(err.Error(), err, codes.FailedPrecondition, http.StatusConflict)
+			}
+			return nil
+		}
+		teamsCount = teamsCount / 2
+	}
+
+	err := errors.New("непредвиденная ошибка")
+	return error_templates.New(err.Error(), err, codes.Internal, http.StatusInternalServerError)
+}
+
+func ExtractWinners(games []entities.GameStat) []int64 {
+	pairGames := make(map[[2]int64][]entities.GameStat)
+
+	for _, game := range games {
+		var key [2]int64
+		if game.Game.Team1ID < game.Game.Team2ID {
+			key = [2]int64{game.Game.Team1ID, game.Game.Team2ID}
+		} else {
+			key = [2]int64{game.Game.Team2ID, game.Game.Team1ID}
+		}
+
+		pairGames[key] = append(pairGames[key], game)
+	}
+
+	winners := make([]int64, 0, len(pairGames))
+
+	for k, gameList := range pairGames {
+
+		winners1 := make([]int64, 0, len(gameList))
+		winners2 := make([]int64, 0, len(gameList))
+
+		for _, game := range gameList {
+			if game.WinnerId == k[0] {
+				winners1 = append(winners1, k[0])
+			} else if game.WinnerId == k[1] {
+				winners2 = append(winners2, k[1])
+			}
+		}
+
+		if len(winners1) > len(winners2) {
+			winners = append(winners, winners1[0])
+		} else if len(winners2) > len(winners1) {
+			winners = append(winners, winners2[0])
+		}
+	}
+
+	return winners
 }

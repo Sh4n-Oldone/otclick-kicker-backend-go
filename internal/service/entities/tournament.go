@@ -55,9 +55,10 @@ type TournamentShort struct {
 }
 
 type TournamentStage struct {
-	ID           int64 `json:"id"`
-	TournamentID int64 `json:"tournamentId"`
-	IsFinished   bool  `json:"isFinished"`
+	ID           int64  `json:"id"`
+	TournamentID int64  `json:"tournamentId"`
+	IsFinished   bool   `json:"isFinished"`
+	Number       string `json:"number"`
 }
 
 type TournamentType struct {
@@ -98,6 +99,7 @@ type NullableStage struct {
 	ID           int64
 	TournamentID *int64
 	IsFinished   *bool
+	Number       *string
 }
 
 type TournamentStageItem struct {
@@ -129,4 +131,10 @@ type TournamentItem struct {
 
 type RecalcTournamentRequest struct {
 	Id int64 `validate:"required,gt=0"`
+}
+
+type StartNextStageRequest struct {
+	TournamentID int64   `validate:"required,gt=0"`
+	TeamsIds     []int64 `json:"teamsIds" validate:"omitempty,min=2"`
+	Executor     User
 }

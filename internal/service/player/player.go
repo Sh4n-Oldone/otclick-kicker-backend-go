@@ -29,7 +29,7 @@ func (s *Service) Create(ctx context.Context, request *entities.CreatePlayerRequ
 			return 0, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 		}
 
-		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, request.Creator.ID, &s.config.RDB)
+		master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, request.Creator.ID)
 		if err != nil {
 			return 0, err
 		}
