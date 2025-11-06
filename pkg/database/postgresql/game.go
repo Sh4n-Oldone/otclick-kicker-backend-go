@@ -1165,8 +1165,8 @@ func (db *RDBOperation) GetTournamentGame(logger zerolog.Logger, ctx context.Con
 	return g, nil
 }
 
-func (db *RWDBOperation) CreatePlayedTournamentGame(logger zerolog.Logger, ctx context.Context, req *entities.CreatePlayedTournamentGameRequest, cfg *config.DBConfig) (int64, error) {
-	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+func (db *RWDBOperation) CreatePlayedTournamentGame(logger zerolog.Logger, ctx context.Context, req *entities.CreatePlayedTournamentGameRequest, tx tx.ITx) (int64, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 
 	const query string = `
@@ -1175,7 +1175,7 @@ func (db *RWDBOperation) CreatePlayedTournamentGame(logger zerolog.Logger, ctx c
 
 	var id int64
 
-	err := db.db.QueryRow(
+	err := poolOrTx(db.db, tx).QueryRow(
 		timeout, query, req.CityID, req.PlaceID, req.Date, req.Team1ID, req.Team2ID, req.TechLooseTeamID, req.IsTiebreak, req.StageID,
 	).Scan(&id)
 	if err != nil {

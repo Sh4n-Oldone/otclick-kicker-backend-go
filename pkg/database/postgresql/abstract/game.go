@@ -44,7 +44,7 @@ type IGameRW interface {
 	CreateFutureTournamentStageGames(logger zerolog.Logger, ctx context.Context, stageID, cityID int64, team1IDs, team2IDs []int64, tx tx.ITx) error
 	CreateFutureTournamentGame(logger zerolog.Logger, ctx context.Context, request *entities.CreateFutureTournamentGameRequest, cfg *config.DBConfig) (int64, error)
 	UpdateFutureTournamentGame(logger zerolog.Logger, ctx context.Context, request *entities.UpdateFutureTournamentGameRequest, cfg *config.DBConfig) error
-	CreatePlayedTournamentGame(logger zerolog.Logger, ctx context.Context, request *entities.CreatePlayedTournamentGameRequest, cfg *config.DBConfig) (int64, error)
+	CreatePlayedTournamentGame(logger zerolog.Logger, ctx context.Context, request *entities.CreatePlayedTournamentGameRequest, tx tx.ITx) (int64, error)
 	UpdatePlayedTournamentGame(logger zerolog.Logger, ctx context.Context, req *entities.UpdatePlayedTournamentGameRequest, tx tx.ITx) error
 	DeleteTournamentGames(logger zerolog.Logger, ctx context.Context, tournamentId int64, tx tx.ITx) error
 }

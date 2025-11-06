@@ -20,7 +20,7 @@ type IMatchR interface {
 
 type IMatchRW interface {
 	CreateMatch(logger zerolog.Logger, ctx context.Context, match entities.Match) (id int64, err error)
-	CreateGameMatch(logger zerolog.Logger, ctx context.Context, match entities.GamesMatch, gameId int64, cfg *config.DBConfig) (id int64, err error)
+	CreateGameMatch(logger zerolog.Logger, ctx context.Context, match entities.GamesMatch, gameId int64, tx tx.ITx) (id int64, err error)
 	UpdateMatch(logger zerolog.Logger, ctx context.Context, match entities.Match) error
 	DeleteMatch(logger zerolog.Logger, ctx context.Context, id int64) (bool, error)
 	DeleteOldGameMatches(logger zerolog.Logger, ctx context.Context, gameId int64, newMatchesIds []int, tx tx.ITx) error

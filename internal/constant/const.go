@@ -33,4 +33,6 @@ const (
 	RegularPlayoffTournamentTypeID           int64 = 3
 	RegularPlayoffWithLooserTournamentTypeID int64 = 4
 	RegularOneVsOneTournamentTypeID          int64 = 5
+
+	SeparatorStageNumber string = "/"
 )

@@ -34,8 +34,8 @@ func (db *RWDBOperation) CreateMatch(logger zerolog.Logger, ctx context.Context,
 	return id, nil
 }
 
-func (db *RWDBOperation) CreateGameMatch(logger zerolog.Logger, ctx context.Context, match entities.GamesMatch, gameId int64, cfg *config.DBConfig) (int64, error) {
-	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+func (db *RWDBOperation) CreateGameMatch(logger zerolog.Logger, ctx context.Context, match entities.GamesMatch, gameId int64, tx tx.ITx) (int64, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 
 	const query string = `
@@ -64,7 +64,7 @@ func (db *RWDBOperation) CreateGameMatch(logger zerolog.Logger, ctx context.Cont
 
 	var id int64
 
-	err := db.db.QueryRow(
+	err := poolOrTx(db.db, tx).QueryRow(
 		timeout,
 		query,
 		match.Date,

@@ -138,3 +138,11 @@ type StartNextStageRequest struct {
 	TeamsIds     []int64 `json:"teamsIds" validate:"omitempty,min=2"`
 	Executor     User
 }
+
+type StageStat struct {
+	Stage     TournamentStage
+	Number    int64
+	GameStats []GameStat
+	Winners   []int64
+	BestOf    int64
+}

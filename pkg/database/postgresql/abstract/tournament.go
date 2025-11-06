@@ -27,7 +27,7 @@ type ITournamentRW interface {
 type ITournamentR interface {
 	GetTournamentTypeList(logger zerolog.Logger, ctx context.Context, withDeleted bool, cfg *config.DBConfig) ([]entities.TournamentType, error)
 	GetTournamentById(logger zerolog.Logger, ctx context.Context, tournamentId int64) (entities.Tournament, error)
-	GetTournamentStage(logger zerolog.Logger, ctx context.Context, stageId int64, cfg *config.DBConfig) (entities.TournamentStage, error)
+	GetTournamentStage(logger zerolog.Logger, ctx context.Context, stageId int64) (entities.TournamentStage, error)
 	GetTournamentStageList(logger zerolog.Logger, ctx context.Context, tournamentId int64) ([]entities.TournamentStage, error)
 	GetTournamentList(logger zerolog.Logger, ctx context.Context, req entities.GetTournamentListRequest) ([]entities.TournamentShort, int64, error)
 	GetTournamentListByPlayerID(logger zerolog.Logger, ctx context.Context, playerId int64) ([]entities.PlayersTournament, error)
