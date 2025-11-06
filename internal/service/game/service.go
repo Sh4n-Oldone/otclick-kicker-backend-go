@@ -30,8 +30,8 @@ type IService interface {
 	UpdateFutureTournamentGame(ctx context.Context, request *entities.UpdateFutureTournamentGameRequest) error
 	DeleteFutureTournamentGame(ctx context.Context, request *entities.DeleteFutureTournamentGameRequest) error
 	DeletePlayedTournamentGame(ctx context.Context, request *entities.DeletePlayedTournamentGameRequest) error
-	CreatePlayedTournamentGame(ctx context.Context, request *entities.CreatePlayedTournamentGameRequest) (int64, error)
-	UpdatePlayedTournamentGame(ctx context.Context, request *entities.UpdatePlayedTournamentGameRequest) error
+	CreatePlayedTournamentGame(ctx context.Context, request *entities.CreatePlayedTournamentGameRequest) (entities.CreatePlayedTournamentGameResponse, error)
+	UpdatePlayedTournamentGame(ctx context.Context, request *entities.UpdatePlayedTournamentGameRequest) (entities.UpdatePlayedTournamentGameResponse, error)
 	GetTournamentGameList(ctx context.Context, tournamentId int64) ([]entities.FullTournamentGame, error)
 	GetFutureTournamentGameList(ctx context.Context, request *entities.GetTournamentGameList) ([]entities.TournamentGame, error)
 	GetPlayedTournamentGameList(ctx context.Context, request *entities.GetTournamentGameList) ([]entities.FullTournamentGame, error)

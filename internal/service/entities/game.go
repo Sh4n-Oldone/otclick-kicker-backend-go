@@ -274,6 +274,12 @@ type CreatePlayedTournamentGameRequest struct {
 	Creator         User
 }
 
+type CreatePlayedTournamentGameResponse struct {
+	GameId     int64  `json:"gameId"`
+	StageId    int64  `json:"stageId"`
+	StageState string `json:"stageState"`
+}
+
 type UpdatePlayedTournamentGameRequest struct {
 	GameID          int64      `validate:"required,gt=0"`
 	Date            time.Time  `json:"date" validate:"required,valid-date"`
@@ -284,6 +290,12 @@ type UpdatePlayedTournamentGameRequest struct {
 	Matches         []NewMatch `json:"matches" validate:"omitempty,dive"`
 	StageID         int64
 	Executor        User
+}
+
+type UpdatePlayedTournamentGameResponse struct {
+	GameID     int64  `json:"updatedGameId"`
+	StageID    int64  `json:"stageId"`
+	StageState string `json:"stageState"`
 }
 
 type DeletePlayedTournamentGameRequest struct {

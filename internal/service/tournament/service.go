@@ -2,6 +2,7 @@ package tournament
 
 import (
 	"context"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/game"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/rs/zerolog"
@@ -33,6 +34,7 @@ type Service struct {
 	validator      *validator.Validate
 	rdbOperations  postgresql.RDBOperationer
 	rwdbOperations postgresql.RWDBOperationer
+	gameSvc        game.IService
 }
 
 func (s *Service) GetLogger() *zerolog.Logger {
@@ -49,6 +51,7 @@ func NewService(
 	validator *validator.Validate,
 	rwdbOperationer postgresql.RWDBOperationer,
 	rdbOperationer postgresql.RDBOperationer,
+	gameSvc game.IService,
 ) IService {
 	return &Service{
 		logger:         logger,
@@ -56,5 +59,6 @@ func NewService(
 		validator:      validator,
 		rwdbOperations: rwdbOperationer,
 		rdbOperations:  rdbOperationer,
+		gameSvc:        gameSvc,
 	}
 }

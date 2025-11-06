@@ -483,17 +483,13 @@ func makeCreatePlayedTournamentGame(s game.IService) endpoint.Endpoint {
 				error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest), reqID)
 		}
 
-		id, err := s.CreatePlayedTournamentGame(ctx, req)
+		resp, err := s.CreatePlayedTournamentGame(ctx, req)
 		if err != nil {
 			serviceLogger.Error().Err(err).Msg("Failed CreatePlayedTournamentGame")
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
-		return struct {
-			Id int64 `json:"id"`
-		}{
-			Id: id,
-		}, nil
+		return resp, nil
 	}
 }
 
@@ -516,17 +512,13 @@ func makeUpdatePlayedTournamentGame(s game.IService) endpoint.Endpoint {
 				error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest), reqID)
 		}
 
-		err = s.UpdatePlayedTournamentGame(ctx, req)
+		resp, err := s.UpdatePlayedTournamentGame(ctx, req)
 		if err != nil {
 			serviceLogger.Error().Err(err).Msg("Failed UpdatePlayedTournamentGame")
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
-		return struct {
-			Message int64 `json:"updatedGameId"`
-		}{
-			Message: req.GameID,
-		}, nil
+		return resp, nil
 	}
 }
 

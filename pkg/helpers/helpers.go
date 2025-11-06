@@ -148,7 +148,7 @@ func SortKeysValues[K int64 | int, T any](m map[K]T) ([]K, []T, error) {
 	return keys, vals, nil
 }
 
-func CheckQtyWinners(startTeamsQty int, lastStageWinnersQty int, nextStageNumber int, stageQty int) error {
+func CheckQtyWinnersInPreviousPlayoffStage(startTeamsQty int, lastStageWinnersQty int, nextStageNumber int, stageQty int) error {
 	teamsCount := startTeamsQty
 
 	for i := 1; i <= stageQty; i++ {
@@ -156,6 +156,25 @@ func CheckQtyWinners(startTeamsQty int, lastStageWinnersQty int, nextStageNumber
 		if nextStageNumber == i {
 			if lastStageWinnersQty != teamsCount {
 				err := errors.New("ошибочное кол-во победителей")
+				return error_templates.New(err.Error(), err, codes.FailedPrecondition, http.StatusConflict)
+			}
+			return nil
+		}
+		teamsCount = teamsCount / 2
+	}
+
+	err := errors.New("непредвиденная ошибка")
+	return error_templates.New(err.Error(), err, codes.Internal, http.StatusInternalServerError)
+}
+
+func CheckQtyWinnersInCurrentPlayoffStage(startTeamsQty int, currentStageWinnersQty int, currentStageNumber int, stageQty int) error {
+	teamsCount := startTeamsQty
+
+	for i := 1; i <= stageQty; i++ {
+
+		if currentStageNumber == i {
+			if currentStageWinnersQty != (teamsCount / 2) {
+				err := errors.New("не удалось выявить победителя")
 				return error_templates.New(err.Error(), err, codes.FailedPrecondition, http.StatusConflict)
 			}
 			return nil
@@ -204,4 +223,33 @@ func ExtractWinners(games []entities.GameStat) []int64 {
 	}
 
 	return winners
+}
+
+func ParseTournamentStageNumber(number, separator string) (int64, int64, error) {
+	orderNumberList := strings.Split(number, separator)
+	if len(orderNumberList) != 2 {
+		return 0, 0, errors.New("номер этапа не соответствует шаблону")
+	}
+
+	orderNumber, err := strconv.ParseInt(orderNumberList[0], 10, 64)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	if orderNumber <= 0 {
+		err = errors.New("порядковый номер этапа должен быть больше 0")
+		return 0, 0, err
+	}
+
+	stageQty, err := strconv.ParseInt(orderNumberList[1], 10, 64)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	if stageQty < orderNumber {
+		err = errors.New("порядковый номер этапа не может превышать число этапов")
+		return 0, 0, err
+	}
+
+	return orderNumber, stageQty, nil
 }

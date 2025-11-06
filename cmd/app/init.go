@@ -281,7 +281,7 @@ func initEndpoints(
 	barSrv := srvBar.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
 	placeSrv := srvPlace.NewService(appConfig, &apiLogger, validator, rwdbOperationer, rdbOperationer)
 	seasonSrv := srvSeason.NewService(appConfig, &apiLogger, rwdbOperationer, rdbOperationer)
-	tournamentSrv := srvTournament.NewService(appConfig, &apiLogger, validator, rwdbOperationer, rdbOperationer)
+	tournamentSrv := srvTournament.NewService(appConfig, &apiLogger, validator, rwdbOperationer, rdbOperationer, gameSrv)
 
 	return endpoint.ServicesEndpoints{
 		CityEP:       epCity.MakeEndpoints(citySrv),

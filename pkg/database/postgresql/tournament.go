@@ -60,7 +60,7 @@ func (db *RDBOperation) GetTournamentById(logger zerolog.Logger, ctx context.Con
 	var t entities.Tournament
 
 	const query1 string = `SELECT id, type_id, name, rules, city_id, season_id FROM tournaments	WHERE id = $1;`
-	const query2 string = `SELECT id, tournament_id, is_finished FROM tournament_stages WHERE tournament_id = $1;`
+	const query2 string = `SELECT id, tournament_id, is_finished, number FROM tournament_stages WHERE tournament_id = $1;`
 	const query3 string = `SELECT team_id FROM tournaments_teams_link WHERE tournament_id = $1;`
 
 	var rulesBytes []byte
@@ -89,7 +89,7 @@ func (db *RDBOperation) GetTournamentById(logger zerolog.Logger, ctx context.Con
 
 	for rows.Next() {
 		var ts entities.TournamentStage
-		err = rows.Scan(&ts.ID, &ts.TournamentID, &ts.IsFinished)
+		err = rows.Scan(&ts.ID, &ts.TournamentID, &ts.IsFinished, &ts.Number)
 		if err != nil {
 			logger.Error().Err(err).Msg("Failed rows.Scan postgresql.GetTournamentById")
 		}
@@ -121,15 +121,15 @@ func (db *RDBOperation) GetTournamentById(logger zerolog.Logger, ctx context.Con
 	return t, nil
 }
 
-func (db *RDBOperation) GetTournamentStage(logger zerolog.Logger, ctx context.Context, stageId int64, cfg *config.DBConfig) (entities.TournamentStage, error) {
-	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+func (db *RDBOperation) GetTournamentStage(logger zerolog.Logger, ctx context.Context, stageId int64) (entities.TournamentStage, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 
 	var s entities.TournamentStage
 
-	const query string = `SELECT id, tournament_id, is_finished FROM tournament_stages WHERE id = $1;`
+	const query string = `SELECT id, tournament_id, is_finished, number FROM tournament_stages WHERE id = $1;`
 
-	err := db.db.QueryRow(timeout, query, stageId).Scan(&s.ID, &s.TournamentID, &s.IsFinished)
+	err := db.db.QueryRow(timeout, query, stageId).Scan(&s.ID, &s.TournamentID, &s.IsFinished, &s.Number)
 	if err != nil {
 		logger.Error().Err(err).Msg("Failed QueryRow postgresql.GetTournamentStage")
 		return entities.TournamentStage{}, DecodeDatabaseError(err)
@@ -360,10 +360,11 @@ func (db *RWDBOperation) UpdateTournamentStage(logger zerolog.Logger, ctx contex
 	const query string = `UPDATE tournament_stages
 		SET
 			tournament_id = COALESCE($2, tournament_id),
-			is_finished = COALESCE($3, is_finished)
+			is_finished = COALESCE($3, is_finished),
+			number = COALESCE($4, number)
 		WHERE id = $1;`
 
-	tag, err := db.db.Exec(timeout, query, stage.ID, stage.TournamentID, stage.IsFinished)
+	tag, err := db.db.Exec(timeout, query, stage.ID, stage.TournamentID, stage.IsFinished, stage.Number)
 	if err != nil {
 		logger.Error().Err(err).Msg("Failed tx.Exec postgresql.UpdateTournamentStage")
 		return DecodeDatabaseError(err)
