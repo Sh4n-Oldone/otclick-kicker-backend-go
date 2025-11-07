@@ -21,19 +21,17 @@ import (
 
 func (s *Service) Create(ctx context.Context, request entities.CreateGameRequest) (entities.CreateGameResponse, error) {
 	logger := s.logger.With().Str("service", "game.Create").Logger()
-	timeout, cancel := context.WithTimeout(ctx, s.config.RWDB.MaxIdleConnectionTimeout)
-	defer cancel()
 
 	league, err := s.rdbOperations.GetLeagueById(logger, ctx, int64(request.LeagueID), nil)
 	if err != nil {
 		return entities.CreateGameResponse{}, err
 	}
 
-	team1resp, err := s.rdbOperations.GetTeam(logger, ctx, int64(request.Team1ID), &s.config.RDB)
+	team1resp, err := s.rdbOperations.GetTeam(logger, ctx, int64(request.Team1ID))
 	if err != nil {
 		return entities.CreateGameResponse{}, err
 	}
-	team2resp, err := s.rdbOperations.GetTeam(logger, ctx, int64(request.Team2ID), &s.config.RDB)
+	team2resp, err := s.rdbOperations.GetTeam(logger, ctx, int64(request.Team2ID))
 	if err != nil {
 		return entities.CreateGameResponse{}, err
 	}
@@ -172,14 +170,53 @@ func (s *Service) Create(ctx context.Context, request entities.CreateGameRequest
 		request.Matches = matches
 	}
 
-	operator := "insertIgnore"
-
-	resp, err := s.rwdbOperations.CreateGameWithRating(logger, timeout, request, rates, &operator, leagueID)
+	tx, err := s.rwdbOperations.BeginTx(ctx, logger)
 	if err != nil {
 		return entities.CreateGameResponse{}, err
 	}
 
-	return resp, nil
+	gameId, err := s.rwdbOperations.CreateGame(logger, ctx, request, tx)
+	if err != nil {
+		tx.Rollback(ctx)
+		return entities.CreateGameResponse{}, err
+	}
+
+	matchIds := make([]int64, 0, len(matches))
+
+	for _, match := range request.Matches {
+		id, err := s.rwdbOperations.CreateGameMatch(logger, ctx, match, gameId, tx)
+		if err != nil {
+			tx.Rollback(ctx)
+			return entities.CreateGameResponse{}, err
+		}
+		matchIds = append(matchIds, id)
+	}
+
+	for playerID, value := range rates {
+		if playerID == 0 {
+			continue
+		}
+
+		err = s.rwdbOperations.CreateRatingUpdateOnConflict(logger, ctx, entities.Rating{
+			PlayerID: int64(playerID),
+			LeagueID: leagueID,
+			Value:    int64(value),
+		}, tx)
+		if err != nil {
+			tx.Rollback(ctx)
+			return entities.CreateGameResponse{}, err
+		}
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		tx.Rollback(ctx)
+		return entities.CreateGameResponse{}, err
+	}
+
+	return entities.CreateGameResponse{
+		GameID:   gameId,
+		MatchIDs: matchIds,
+	}, nil
 }
 
 func (s *Service) Delete(ctx context.Context, req *entities.DeleteGameRequest) error {
@@ -199,11 +236,11 @@ func (s *Service) Delete(ctx context.Context, req *entities.DeleteGameRequest) e
 	}
 
 	// Getting league for teams and validate it
-	team1resp, err := s.rdbOperations.GetTeam(logger, ctx, int64(game.Team1ID), &s.config.RDB)
+	team1resp, err := s.rdbOperations.GetTeam(logger, ctx, int64(game.Team1ID))
 	if err != nil {
 		return err
 	}
-	team2resp, err := s.rdbOperations.GetTeam(logger, ctx, int64(game.Team2ID), &s.config.RDB)
+	team2resp, err := s.rdbOperations.GetTeam(logger, ctx, int64(game.Team2ID))
 	if err != nil {
 		return err
 	}
@@ -249,7 +286,7 @@ func (s *Service) Delete(ctx context.Context, req *entities.DeleteGameRequest) e
 	if recalc {
 		// Decreasing rating for each player of game matches
 		plGmRtInc := make(map[int]int, 0) // playerGameRatingIncrease
-		_matches, err := s.rdbOperations.GetMatchListByGameID(ctx, logger, int64(game.ID), &s.config.RDB)
+		_matches, err := s.rdbOperations.GetMatchListByGameID(ctx, logger, int64(game.ID))
 		if err != nil {
 			return err
 		}
@@ -302,8 +339,8 @@ func (s *Service) Delete(ctx context.Context, req *entities.DeleteGameRequest) e
 				LeagueID: int64(*gameLeagueId),
 				Value:    rateValue - int64(value),
 			}
-			operator := "insertIgnore"
-			err = s.rwdbOperations.CreateRating(logger, ctx, *rate, &operator)
+
+			err = s.rwdbOperations.CreateRatingUpdateOnConflict(logger, ctx, *rate, nil)
 			if err != nil {
 				return err
 			}
@@ -331,20 +368,24 @@ func (s *Service) Get(ctx context.Context, gameID int) (entities.GetGameResponse
 }
 
 func (s *Service) Update(ctx context.Context, request entities.UpdateGameRequest) error {
-	logger := s.logger.With().Interface("service", "game.Update").Logger()
-	timeout, cancel := context.WithTimeout(ctx, s.config.RWDB.MaxIdleConnectionTimeout)
-	defer cancel()
+	logger := s.logger.With().Str("service", "game.Update").Logger()
 
 	league, err := s.rdbOperations.GetLeagueById(logger, ctx, int64(request.LeagueID), nil)
 	if err != nil {
 		return err
 	}
 
-	team1resp, err := s.rdbOperations.GetTeam(logger, ctx, int64(request.Team1ID), &s.config.RDB)
+	if league.ID != int64(request.LeagueID) {
+		err = errors.New("лига игры и лига в запросе не совпадают")
+		logger.Error().Msg("LeagueID mismatch")
+		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	team1resp, err := s.rdbOperations.GetTeam(logger, ctx, int64(request.Team1ID))
 	if err != nil {
 		return err
 	}
-	team2resp, err := s.rdbOperations.GetTeam(logger, ctx, int64(request.Team2ID), &s.config.RDB)
+	team2resp, err := s.rdbOperations.GetTeam(logger, ctx, int64(request.Team2ID))
 	if err != nil {
 		return err
 	}
@@ -355,6 +396,13 @@ func (s *Service) Update(ctx context.Context, request entities.UpdateGameRequest
 		logger.Error().Stack().Err(err).Msg("failed to Update (Played Game) : leagueID is missing from one or both arrays")
 		err = errors.New(pkgerr.FailedGameByTeamsLeagueMismatch)
 		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	for _, m := range request.Matches {
+		if m.Team1ID != request.Team1ID || m.Team2ID != request.Team2ID {
+			logger.Error().Err(err).Msg("match team not equal request team")
+			return error_templates.New(pkgerr.ErrDifferentTeams, errors.New(pkgerr.ErrDifferentTeams), codes.InvalidArgument, http.StatusBadRequest)
+		}
 	}
 
 	// проверяем относится ли капитан к какой-либо из команд
@@ -389,7 +437,7 @@ func (s *Service) Update(ctx context.Context, request entities.UpdateGameRequest
 
 	// Decreasing rating for each player of game matches
 	plGmRtInc := make(map[int]int, 0) // playerGameRatingIncrease
-	_matches, err := s.rdbOperations.GetMatchListByGameID(ctx, logger, int64(request.ID), &s.config.RDB)
+	_matches, err := s.rdbOperations.GetMatchListByGameID(ctx, logger, int64(request.ID))
 	if err != nil {
 		return err
 	}
@@ -534,8 +582,68 @@ func (s *Service) Update(ctx context.Context, request entities.UpdateGameRequest
 		newRates = append(newRates, *rate)
 	}
 
-	err = s.rwdbOperations.UpdateGame(logger, timeout, request, newRates)
+	// список id-шников матчей НЕ подлежащих удалению
+	var matchIds = make([]int, 0)
+	for _, match := range request.Matches {
+		if match.ID != nil {
+			matchIds = append(matchIds, *match.ID)
+		}
+	}
+
+	tx, err := s.rwdbOperations.BeginTx(ctx, logger)
 	if err != nil {
+		return err
+	}
+
+	// удаление всех матчей игры кроме входящих
+	err = s.rwdbOperations.DeleteOldGameMatches(logger, ctx, int64(request.ID), matchIds, tx)
+	if err != nil {
+		tx.Rollback(ctx)
+		return err
+	}
+
+	// обновление существующих матчей и создание новых
+	for _, match := range request.Matches {
+		if match.Player2Team1Id != nil && *match.Player2Team1Id == 0 {
+			match.Player2Team1Id = nil
+		}
+		if match.Player2Team2Id != nil && *match.Player2Team2Id == 0 {
+			match.Player2Team2Id = nil
+		}
+
+		if match.ID == nil {
+			err = s.rwdbOperations.CreateNewMatch(logger, ctx, int64(request.ID), &match, tx)
+			if err != nil {
+				tx.Rollback(ctx)
+				return err
+			}
+		} else {
+			err = s.rwdbOperations.UpdateOldMatch(logger, ctx, int64(request.ID), &match, tx)
+			if err != nil {
+				tx.Rollback(ctx)
+				return err
+			}
+		}
+	}
+
+	// обновление рейтингов
+	for _, rating := range newRates {
+		err = s.rwdbOperations.CreateRatingUpdateOnConflict(logger, ctx, rating, tx)
+		if err != nil {
+			tx.Rollback(ctx)
+			return err
+		}
+	}
+
+	// обновление игры
+	err = s.rwdbOperations.UpdateGame(logger, ctx, request, tx)
+	if err != nil {
+		tx.Rollback(ctx)
+		return err
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		tx.Rollback(ctx)
 		return err
 	}
 
@@ -1034,7 +1142,7 @@ func (s *Service) DeleteFutureTournamentGame(ctx context.Context, request *entit
 		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
-	matches, err := s.rdbOperations.GetMatchListByGameID(ctx, logger, request.GameID, &s.config.RDB)
+	matches, err := s.rdbOperations.GetMatchListByGameID(ctx, logger, request.GameID)
 	if err != nil {
 		return err
 	}
@@ -1434,7 +1542,7 @@ func (s *Service) UpdatePlayedTournamentGame(ctx context.Context, request *entit
 	oldRates := make(map[int]int)
 
 	// прошедшие матчи
-	matchesV2, err := s.rdbOperations.GetMatchListByGameID(ctx, logger, request.GameID, &s.config.RDB)
+	matchesV2, err := s.rdbOperations.GetMatchListByGameID(ctx, logger, request.GameID)
 	if err != nil {
 		return entities.UpdatePlayedTournamentGameResponse{}, err
 	}
@@ -1700,7 +1808,7 @@ func (s *Service) DeletePlayedTournamentGame(ctx context.Context, request *entit
 		return errors.New("not implemented")
 	}
 
-	matches, err := s.rdbOperations.GetMatchListByGameID(ctx, logger, request.GameID, &s.config.RDB)
+	matches, err := s.rdbOperations.GetMatchListByGameID(ctx, logger, request.GameID)
 	if err != nil {
 		return err
 	}

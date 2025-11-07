@@ -151,8 +151,8 @@ type CreateGameRequest struct {
 }
 
 type CreateGameResponse struct {
-	GameID   int   `json:"gameId"`
-	MatchIDs []int `json:"matchIds"`
+	GameID   int64   `json:"gameId"`
+	MatchIDs []int64 `json:"matchIds"`
 }
 
 type DeleteGameRequest struct {

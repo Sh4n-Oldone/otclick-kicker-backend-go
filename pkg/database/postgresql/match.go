@@ -6,7 +6,6 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql/tx"
 )
@@ -189,10 +188,13 @@ func (db *RDBOperation) GetPastMatchesByPlayerID(logger zerolog.Logger, ctx cont
 	return matches, nil
 }
 
-func (db *RDBOperation) GetMatchListByGameID(ctx context.Context, logger zerolog.Logger, gameID int64, cfg *config.DBConfig) ([]entities.MatchV2, error) {
+func (db *RDBOperation) GetMatchListByGameID(ctx context.Context, logger zerolog.Logger, gameID int64) ([]entities.MatchV2, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
 	matches := make([]entities.MatchV2, 0)
 
-	rows, err := db.db.Query(ctx, queryGetMatchListByGameID, gameID)
+	rows, err := db.db.Query(timeout, queryGetMatchListByGameID, gameID)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to postgresql.GetPastMatchesByPlayerID")
 		return nil, DecodeDatabaseError(err)
@@ -599,21 +601,6 @@ func (db *RWDBOperation) UpdateOldMatch(logger zerolog.Logger, ctx context.Conte
 	if tag.RowsAffected() == 0 {
 		err = errors.New("no rows affected")
 		logger.Error().Err(err).Msg("failed to update match in postgresql.UpdateGame")
-		return DecodeDatabaseError(err)
-	}
-
-	return nil
-}
-
-func (db *RWDBOperation) DeleteGameMatches(logger zerolog.Logger, ctx context.Context, gameId int64, cfg *config.DBConfig) error {
-	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
-	defer cancel()
-
-	const query string = "DELETE FROM matches WHERE game_id = $1"
-
-	_, err := db.db.Exec(timeout, query, gameId)
-	if err != nil {
-		logger.Error().Err(err).Msg("failed to delete match in postgresql.DeleteMatches")
 		return DecodeDatabaseError(err)
 	}
 

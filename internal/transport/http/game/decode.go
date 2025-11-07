@@ -4,17 +4,18 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
+	"net/http"
+	"strconv"
+	"time"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/valyala/bytebufferpool"
 	"google.golang.org/grpc/codes"
-	"io"
-	"net/http"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/constant"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
 	pkgerr "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
-	"strconv"
-	"time"
 )
 
 func decodeCreateRequest(_ context.Context, r *http.Request) (interface{}, error) {
@@ -135,6 +136,25 @@ func decodeUpdateRequest(_ context.Context, r *http.Request) (interface{}, error
 	request := entities.UpdateGameRequest{Executor: entities.User{Role: &entities.Role{}, Team: &entities.Team{}}}
 	buf := bytebufferpool.Get()
 	defer bytebufferpool.Put(buf)
+
+	reqCtx := r.Context()
+
+	userId, ok := reqCtx.Value(constant.UserIDContextKey).(int64)
+	if !ok || userId == 0 {
+		err := errors.New(pkgerr.ErrUserIdToken)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	request.Executor.ID = userId
+
+	role, ok := reqCtx.Value(constant.RoleNameContextKey).(string)
+	if !ok || role == "" {
+		err := errors.New(pkgerr.ErrRoleToken)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	request.Executor.Role.Name = role
+
+	teamId, ok := reqCtx.Value(constant.TeamIDContextKey).(int64)
+	request.Executor.Team.ID = teamId
 
 	_, err := io.Copy(buf, r.Body)
 	if err != nil {
