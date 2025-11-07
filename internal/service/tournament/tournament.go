@@ -1531,7 +1531,7 @@ func (s *Service) checkTournamentMasterCredentials(ctx context.Context, logger z
 			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 		}
 
-		matches, err := s.rdbOperations.GetMatchListByGameID(ctx, logger, game.ID, &s.config.RDB)
+		matches, err := s.rdbOperations.GetMatchListByGameID(ctx, logger, game.ID)
 		if err != nil {
 			logger.Error().Err(err).Msg("Failed tournament.Update by tournament master")
 			return err
@@ -1598,7 +1598,7 @@ func (s *Service) checkTournamentMasterCredentialsOnDelete(ctx context.Context, 
 			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 		}
 
-		matches, err := s.rdbOperations.GetMatchListByGameID(ctx, logger, game.ID, &s.config.RDB)
+		matches, err := s.rdbOperations.GetMatchListByGameID(ctx, logger, game.ID)
 		if err != nil {
 			logger.Error().Err(err).Msg("Failed GetMatchListByGameID")
 			return err

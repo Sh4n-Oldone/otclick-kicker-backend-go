@@ -2,6 +2,7 @@ package postgresql
 
 import (
 	"context"
+
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql/tx"
 
 	"github.com/jackc/pgx/v5"
@@ -73,12 +74,11 @@ func (db *RDBOperation) GetRatingByPlayerIDAndByLeagueID(logger zerolog.Logger, 
 	return rate, nil
 }
 
-func (db *RWDBOperation) CreateRating(logger zerolog.Logger, ctx context.Context, rating entities.Rating, operator *string) error {
-	query := queryCreateRating
-	if operator != nil && *operator == "insertIgnore" {
-		query = queryCreateRatingInsertIgnore
-	}
-	_, err := db.db.Exec(ctx, query, rating.PlayerID, rating.LeagueID, rating.Value)
+func (db *RWDBOperation) CreateRatingUpdateOnConflict(logger zerolog.Logger, ctx context.Context, rating entities.Rating, tx tx.ITx) error {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	_, err := poolOrTx(db.db, tx).Exec(timeout, queryCreateRatingInsertIgnore, rating.PlayerID, rating.LeagueID, rating.Value)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.CreateRating")
 		return DecodeDatabaseError(err)

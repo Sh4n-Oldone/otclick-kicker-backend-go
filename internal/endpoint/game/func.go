@@ -118,14 +118,6 @@ func makeUpdate(s game.IService) endpoint.Endpoint {
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
-		for _, m := range req.Matches {
-			if m.Team1ID != req.Team1ID || m.Team2ID != req.Team2ID {
-				serviceLogger.Error().Err(err).Msg("Failed to makeUpdate")
-				err = error_templates.New(pkgerr.ErrDifferentTeams, errors.New(pkgerr.ErrDifferentTeams), codes.InvalidArgument, http.StatusBadRequest)
-				return nil, error_templates.WrapErrorEndpoint(err, reqID)
-			}
-		}
-
 		err = s.GetValidator().Struct(req)
 		if err != nil {
 			serviceLogger.Error().Err(err).Msg("Failed validation")

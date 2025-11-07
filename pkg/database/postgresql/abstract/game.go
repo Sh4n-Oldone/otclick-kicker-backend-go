@@ -36,10 +36,10 @@ type IGameR interface {
 
 type IGameRW interface {
 	DeleteGame(logger zerolog.Logger, ctx context.Context, gameID int64, cfg *config.DBConfig) error
-	UpdateGame(logger zerolog.Logger, ctx context.Context, request entities.UpdateGameRequest, rates []entities.Rating) error
+	UpdateGame(logger zerolog.Logger, ctx context.Context, request entities.UpdateGameRequest, tx tx.ITx) error
 	UpdateFutureGame(logger zerolog.Logger, ctx context.Context, request entities.UpdateFutureGameRequest, tx tx.ITx) error
 	CreateFutureGame(logger zerolog.Logger, ctx context.Context, request entities.CreateFutureGameRequest, tx tx.ITx) (int, error)
-	CreateGameWithRating(logger zerolog.Logger, ctx context.Context, request entities.CreateGameRequest, rates map[int]int, operator *string, leagueID int64) (entities.CreateGameResponse, error)
+	CreateGame(logger zerolog.Logger, ctx context.Context, req entities.CreateGameRequest, tx tx.ITx) (int64, error)
 	DeleteFutureGame(logger zerolog.Logger, ctx context.Context, req entities.DeleteFutureGameRequest, tx tx.ITx) error
 	CreateFutureTournamentStageGames(logger zerolog.Logger, ctx context.Context, stageID, cityID int64, team1IDs, team2IDs []int64, tx tx.ITx) error
 	CreateFutureTournamentGame(logger zerolog.Logger, ctx context.Context, request *entities.CreateFutureTournamentGameRequest, cfg *config.DBConfig) (int64, error)
