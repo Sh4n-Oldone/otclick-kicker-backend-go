@@ -15,6 +15,7 @@ import (
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/league"
 )
 
+// makeGetList deprecated
 func makeGetList(s league.IService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		// reqID, ctx := middleware.GetRequestID(ctx)
@@ -32,6 +33,7 @@ func makeGetList(s league.IService) endpoint.Endpoint {
 	}
 }
 
+// makeCreate deprecated
 func makeCreate(s league.IService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		reqID, ctx := middleware.GetRequestID(ctx)
@@ -58,6 +60,7 @@ func makeCreate(s league.IService) endpoint.Endpoint {
 	}
 }
 
+// makeUpdate deprecated
 func makeUpdate(s league.IService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		// reqID, ctx := middleware.GetRequestID(ctx)
@@ -83,6 +86,7 @@ func makeUpdate(s league.IService) endpoint.Endpoint {
 	}
 }
 
+// makeDelete deprecated
 func makeDelete(s league.IService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		// reqID, ctx := middleware.GetRequestID(ctx)
@@ -97,6 +101,7 @@ func makeDelete(s league.IService) endpoint.Endpoint {
 	}
 }
 
+// makeRecalc deprecated
 func makeRecalc(s league.IService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		// reqID, ctx := middleware.GetRequestID(ctx)
@@ -114,6 +119,7 @@ func makeRecalc(s league.IService) endpoint.Endpoint {
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+// makeCreateExtraPoints deprecated
 func makeCreateExtraPoints(s league.IService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		reqID, ctx := middleware.GetRequestID(ctx)
@@ -144,6 +150,7 @@ func makeCreateExtraPoints(s league.IService) endpoint.Endpoint {
 	}
 }
 
+// makeUpdateExtraPoints deprecated
 func makeUpdateExtraPoints(s league.IService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		reqID, ctx := middleware.GetRequestID(ctx)
@@ -175,6 +182,7 @@ func makeUpdateExtraPoints(s league.IService) endpoint.Endpoint {
 	}
 }
 
+// makeDeleteExtraPoints deprecated
 func makeDeleteExtraPoints(s league.IService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		reqID, ctx := middleware.GetRequestID(ctx)
@@ -206,6 +214,7 @@ func makeDeleteExtraPoints(s league.IService) endpoint.Endpoint {
 	}
 }
 
+// makeGetExtraPointsListByTeamAndLeagueId deprecated
 func makeGetExtraPointsListByTeamAndLeagueId(s league.IService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		reqID, ctx := middleware.GetRequestID(ctx)
@@ -232,6 +241,7 @@ func makeGetExtraPointsListByTeamAndLeagueId(s league.IService) endpoint.Endpoin
 	}
 }
 
+// makeGetExtraPointsById deprecated
 func makeGetExtraPointsById(s league.IService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		reqID, ctx := middleware.GetRequestID(ctx)

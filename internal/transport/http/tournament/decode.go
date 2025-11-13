@@ -293,3 +293,167 @@ func decodeStartNextStageRequest(_ context.Context, r *http.Request) (interface{
 
 	return request, nil
 }
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+func decodeCreateExtraPointsTournamentRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	request := &entities.CreateExtraPointsTournamentRequest{}
+
+	buf := bytebufferpool.Get()
+	defer bytebufferpool.Put(buf)
+
+	_, err := io.Copy(buf, r.Body)
+	if err != nil {
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	err = json.Unmarshal(buf.Bytes(), &request)
+	if err != nil {
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	var role string
+	role, ok := r.Context().Value(constant.RoleNameContextKey).(string)
+	if !ok {
+		err := errors.New(pkgerr.ErrRoleToken)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	request.Role = role
+
+	var userId int64
+	userId, ok = r.Context().Value(constant.UserIDContextKey).(int64)
+	if !ok {
+		err := errors.New(pkgerr.ErrUserIdToken)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	request.UserId = userId
+
+	return request, nil
+}
+
+func decodeUpdateExtraPointsTournamentRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	request := &entities.UpdateExtraPointsTournamentRequest{}
+
+	buf := bytebufferpool.Get()
+	defer bytebufferpool.Put(buf)
+
+	_, err := io.Copy(buf, r.Body)
+	if err != nil {
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	err = json.Unmarshal(buf.Bytes(), &request)
+	if err != nil {
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	var role string
+	role, ok := r.Context().Value(constant.RoleNameContextKey).(string)
+	if !ok {
+		err := errors.New(pkgerr.ErrRoleToken)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	request.Role = role
+
+	var userId int64
+	userId, ok = r.Context().Value(constant.UserIDContextKey).(int64)
+	if !ok {
+		err := errors.New(pkgerr.ErrUserIdToken)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	request.UserId = userId
+
+	return request, nil
+}
+
+func decodeDeleteExtraPointsTournamentRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	request := &entities.DeleteExtraPointsRequest{}
+
+	idParam := chi.URLParam(r, "id")
+	if idParam == "" {
+		err := errors.New(pkgerr.EmptyParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	extraPointsId, err := strconv.ParseInt(idParam, 10, 64)
+	if err != nil {
+		err := errors.New(pkgerr.WrongParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	request.Id = extraPointsId
+
+	var role string
+	role, ok := r.Context().Value(constant.RoleNameContextKey).(string)
+	if !ok {
+		err := errors.New(pkgerr.ErrRoleToken)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	request.Role = role
+
+	var userId int64
+	userId, ok = r.Context().Value(constant.UserIDContextKey).(int64)
+	if !ok {
+		err := errors.New(pkgerr.ErrUserIdToken)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	request.UserId = userId
+
+	return request, nil
+}
+
+func decodeGetExtraPointsListByTeamAndTournamentIdRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	request := &entities.TeamTournamentIdRequest{}
+
+	teamIdParam := chi.URLParam(r, "team_id")
+	if teamIdParam == "" {
+		err := errors.New(pkgerr.EmptyParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	teamId, err := strconv.ParseInt(teamIdParam, 10, 64)
+	if err != nil {
+		err := errors.New(pkgerr.WrongParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	tournamentIdParam := chi.URLParam(r, "id")
+	if tournamentIdParam == "" {
+		err := errors.New(pkgerr.EmptyParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	tournamentId, err := strconv.ParseInt(tournamentIdParam, 10, 64)
+	if err != nil {
+		err := errors.New(pkgerr.WrongParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	request.TeamId = teamId
+	request.TournamentId = tournamentId
+
+	return request, nil
+}
+
+func decodeGetExtraPointsByIdRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	request := &entities.IdRequest{}
+
+	idParam := chi.URLParam(r, "id")
+	if idParam == "" {
+		err := errors.New(pkgerr.EmptyParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	extraPointsId, err := strconv.ParseInt(idParam, 10, 64)
+	if err != nil {
+		err := errors.New(pkgerr.WrongParameterError)
+		return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	request.Id = extraPointsId
+	return request, nil
+}

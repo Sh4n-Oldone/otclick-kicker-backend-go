@@ -758,23 +758,161 @@ func (s *Service) StartNextStage(ctx context.Context, req *entities.StartNextSta
 	return 0, errors.New("not implemented")
 }
 
-/*local methods*/
+func (s *Service) CreateExtraPoints(ctx context.Context, req *entities.CreateExtraPointsTournamentRequest) (int64, error) {
+	logger := s.logger.With().Str("service", "CreateExtraPointsTournament").Logger()
 
-func (s *Service) createRegular(ctx context.Context, request entities.CreateTournamentRequest, logger zerolog.Logger) (int64, error) {
-	id, err := s.rwdbOperations.CreateTournament(logger, ctx, request, nil)
+	err := s.checkMasterAndTournamentCities(ctx, req.TournamentId, req.UserId, req.Role)
 	if err != nil {
 		return 0, err
 	}
 
-	stageId, err := s.rwdbOperations.CreateTournamentStage(logger, ctx, id, oneStage, nil)
+	tournament, err := s.rdbOperations.GetTournamentById(logger, ctx, req.TournamentId)
 	if err != nil {
+		return 0, err
+	}
+
+	if tournament.Rules.PlayOff != nil {
+		err := error_templates.BadRequestError(errors.New("для playoff турнира нельзя создать доп.очки"))
+
+		logger.Error().Err(err).Msg(err.Error())
+		return 0, err
+	}
+
+	tx, err := s.rwdbOperations.BeginTx(ctx, logger)
+	if err != nil {
+		return 0, err
+	}
+
+	id, err := s.rwdbOperations.CreateExtraPointsTournament(ctx, logger, req, tx)
+	if err != nil {
+		tx.Rollback(ctx)
+		return 0, err
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		tx.Rollback(ctx)
+		return 0, err
+	}
+
+	return id, nil
+}
+
+func (s *Service) UpdateExtraPoints(ctx context.Context, req *entities.UpdateExtraPointsTournamentRequest) (bool, error) {
+	logger := s.logger.With().Str("service", "UpdateExtraPointsTournament").Logger()
+
+	extraPointsInfo, err := s.GetExtraPointsById(ctx, req.Id)
+	if err != nil {
+		return false, err
+	}
+
+	err = s.checkMasterAndTournamentCities(ctx, extraPointsInfo.TournamentId, req.UserId, req.Role)
+	if err != nil {
+		return false, err
+	}
+
+	tx, err := s.rwdbOperations.BeginTx(ctx, logger)
+	if err != nil {
+		return false, err
+	}
+
+	res, err := s.rwdbOperations.UpdateExtraPointsTournament(ctx, logger, req, tx)
+	if err != nil {
+		tx.Rollback(ctx)
+		return false, err
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		tx.Rollback(ctx)
+		return false, err
+	}
+
+	return res, nil
+}
+
+func (s *Service) DeleteExtraPoints(ctx context.Context, req *entities.DeleteExtraPointsRequest) (bool, error) {
+	logger := s.logger.With().Str("service", "DeleteExtraPointsTournament").Logger()
+
+	extraPointsInfo, err := s.GetExtraPointsById(ctx, req.Id)
+	if err != nil {
+		return false, err
+	}
+
+	err = s.checkMasterAndTournamentCities(ctx, extraPointsInfo.TournamentId, req.UserId, req.Role)
+	if err != nil {
+		return false, err
+	}
+
+	tx, err := s.rwdbOperations.BeginTx(ctx, logger)
+	if err != nil {
+		return false, err
+	}
+
+	res, err := s.rwdbOperations.DeleteExtraPointsTournament(ctx, logger, req.Id, tx)
+	if err != nil {
+		tx.Rollback(ctx)
+		return false, err
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		tx.Rollback(ctx)
+		return false, err
+	}
+
+	return res, nil
+}
+
+func (s *Service) GetExtraPointsById(ctx context.Context, extraPointsId int64) (entities.ExtraPointsTournament, error) {
+	logger := s.logger.With().Str("service", "GetExtraPointsById").Logger()
+
+	res, err := s.rdbOperations.GetExtraPointsTournamentById(ctx, logger, extraPointsId)
+	if err != nil {
+		return entities.ExtraPointsTournament{}, err
+	}
+
+	return res, nil
+}
+
+func (s *Service) GetExtraPointsListByTeamAndTournamentId(ctx context.Context, teamId, tournamentId int64) ([]entities.ExtraPointsTournament, error) {
+	logger := s.logger.With().Str("service", "GetExtraPointsListByTeamAndTournamentId").Logger()
+
+	res, err := s.rdbOperations.GetExtraPointsListByTeamAndTournamentId(ctx, logger, teamId, tournamentId)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
+/*local methods*/
+
+func (s *Service) createRegular(ctx context.Context, request entities.CreateTournamentRequest, logger zerolog.Logger) (int64, error) {
+	tx, err := s.rwdbOperations.BeginTx(ctx, logger)
+	if err != nil {
+		return 0, err
+	}
+
+	id, err := s.rwdbOperations.CreateTournament(logger, ctx, request, tx)
+	if err != nil {
+		tx.Rollback(ctx)
+		return 0, err
+	}
+
+	stageId, err := s.rwdbOperations.CreateTournamentStage(logger, ctx, id, oneStage, tx)
+	if err != nil {
+		tx.Rollback(ctx)
 		return 0, err
 	}
 
 	team1IDs, team2IDs := helpers.GeneratePairs(request.TeamsIDs, int(request.Rules.Regular.BestOf))
 
-	err = s.rwdbOperations.CreateFutureTournamentStageGames(logger, ctx, stageId, *request.CityID, team1IDs, team2IDs, nil)
+	err = s.rwdbOperations.CreateFutureTournamentStageGames(logger, ctx, stageId, *request.CityID, team1IDs, team2IDs, tx)
 	if err != nil {
+		tx.Rollback(ctx)
+		return 0, err
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		tx.Rollback(ctx)
 		return 0, err
 	}
 
@@ -1021,27 +1159,43 @@ func (s *Service) updateRegular(ctx context.Context, logger zerolog.Logger, req 
 	}
 
 	err := validateRulesTypesIds(*newReq.Rules, newReq.TournamentTypeID, newReq.TeamsIDs, nil)
-
-	//todo: рефакторинг транзакций делать тут в первую оередь
-	err = s.rwdbOperations.UpdateTournament(logger, ctx, newReq, nil)
 	if err != nil {
 		return err
 	}
 
-	err = s.rwdbOperations.DeleteTournamentGamesTeamLinks(logger, ctx, newReq.ID, nil)
+	tx, err := s.rwdbOperations.BeginTx(ctx, logger)
 	if err != nil {
+		return err
+	}
+
+	err = s.rwdbOperations.DeleteTournamentGamesTeamLinks(logger, ctx, newReq.ID, tx)
+	if err != nil {
+		tx.Rollback(ctx)
+		return err
+	}
+
+	err = s.rwdbOperations.UpdateTournament(logger, ctx, newReq, tx)
+	if err != nil {
+		tx.Rollback(ctx)
 		return err
 	}
 
 	team1IDs, team2IDs := helpers.GeneratePairs(newReq.TeamsIDs, int(newReq.Rules.Regular.BestOf))
 
-	err = s.rwdbOperations.CreateFutureTournamentStageGames(logger, ctx, tournament.Stages[indexZero].ID, *newReq.CityID, team1IDs, team2IDs, nil)
+	err = s.rwdbOperations.CreateFutureTournamentStageGames(logger, ctx, tournament.Stages[indexZero].ID, *newReq.CityID, team1IDs, team2IDs, tx)
 	if err != nil {
+		tx.Rollback(ctx)
 		return err
 	}
 
-	err = s.rwdbOperations.UpdateTournamentTeamsLinks(logger, ctx, newReq.TeamsIDs, newReq.ID, nil)
+	err = s.rwdbOperations.UpdateTournamentTeamsLinks(logger, ctx, newReq.TeamsIDs, newReq.ID, tx)
 	if err != nil {
+		tx.Rollback(ctx)
+		return err
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		tx.Rollback(ctx)
 		return err
 	}
 
@@ -1680,6 +1834,30 @@ func (s *Service) checkPlayersCityIds(ctx context.Context, logger zerolog.Logger
 
 		if int64(pointer.GetValue(player.CityID)) != pointer.GetValue(newCityId) {
 			err = fmt.Errorf("id города игрока %s(%d) не совпадает с id города турнира(%d)", pointer.GetValue(player.Name), pointer.GetValue(player.CityID), pointer.GetValue(newCityId))
+			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+	}
+
+	return nil
+}
+
+func (s *Service) checkMasterAndTournamentCities(ctx context.Context, tournamentId, userId int64, role string) error {
+	logger := s.logger.With().Str("service", "checkMasterAndTournamentCities").Logger()
+
+	if role == constant.TournamentMaster {
+		masterInfo, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, userId)
+		if err != nil {
+			return err
+		}
+
+		tournamentInfo, err := s.rdbOperations.GetTournamentById(logger, ctx, tournamentId)
+		if err != nil {
+			return err
+		}
+
+		if masterInfo.City.ID != tournamentInfo.CityID {
+			err = errors.New(pkgerr.ErrCityTournamentAndMasterMismatch)
+			logger.Error().Err(err).Msg("master city not equal tournament city")
 			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 		}
 	}

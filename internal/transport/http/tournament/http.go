@@ -44,5 +44,14 @@ func NewServer(endpoints tournament.Endpoints, options []kithttp.ServerOption, c
 
 	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdminTournamentMaster()).
 		Post("/tournaments/{id}/recalc", kithttp.NewServer(endpoints.Recalc, decodeRecalcRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+
+	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdminTournamentMaster()).
+		Post("/tournaments/extra-points", kithttp.NewServer(endpoints.CreateExtraPoints, decodeCreateExtraPointsTournamentRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdminTournamentMaster()).
+		Patch("/tournaments/extra-points", kithttp.NewServer(endpoints.UpdateExtraPoints, decodeUpdateExtraPointsTournamentRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdminTournamentMaster()).
+		Delete("/tournaments/extra-points/{id}", kithttp.NewServer(endpoints.DeleteExtraPoints, decodeDeleteExtraPointsTournamentRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.Get("/tournaments/{id}/teams/{team_id}/extra-points", kithttp.NewServer(endpoints.GetExtraPointsListByTeamAndTournamentId, decodeGetExtraPointsListByTeamAndTournamentIdRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.Get("/tournaments/extra-points/{id}", kithttp.NewServer(endpoints.GetExtraPointsById, decodeGetExtraPointsByIdRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 	return r
 }

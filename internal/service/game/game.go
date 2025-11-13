@@ -1204,10 +1204,12 @@ func (s *Service) CreatePlayedTournamentGame(ctx context.Context, request *entit
 	if err != nil {
 		return entities.CreatePlayedTournamentGameResponse{}, err
 	}
+
 	place.Bar.City, err = s.rdbOperations.GetCityByBarId(logger, ctx, place.Bar.ID, &s.config.RDB)
 	if err != nil {
 		return entities.CreatePlayedTournamentGameResponse{}, err
 	}
+	
 	if place.Bar.City.ID != tournament.CityID {
 		err = errors.New("город турнира и города столоместа не совпадают")
 		logger.Error().Err(err).Msg("place city not equal tournament city")
