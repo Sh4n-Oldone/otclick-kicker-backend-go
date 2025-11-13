@@ -1053,7 +1053,6 @@ func (db *RWDBOperation) CreateGame(logger zerolog.Logger, ctx context.Context, 
 	err := poolOrTx(db.db, tx).QueryRow(
 		timeout, queryInsertGame, req.CityID, req.PlaceID, req.LeagueID, req.Date, req.Team1ID, req.Team2ID, req.TechLooseTeamID, req.IsTiebreak,
 	).Scan(&gameId)
-
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to postgresql.CreateGame")
 		return 0, err

@@ -10,6 +10,7 @@ import (
 	pkgerr "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 )
 
+// GetLeagueList deprecated
 func (db *RDBOperation) GetLeagueList(logger zerolog.Logger, ctx context.Context, cityID int64) ([]entities.League, error) {
 	query := queryGetLeagueList
 
@@ -38,6 +39,7 @@ func (db *RDBOperation) GetLeagueList(logger zerolog.Logger, ctx context.Context
 	return leagues, nil
 }
 
+// CreateLeague deprecated
 func (db *RWDBOperation) CreateLeague(logger zerolog.Logger, ctx context.Context, request *entities.CreateLeagueRequest) (int64, error) {
 	var id int64
 
@@ -73,6 +75,7 @@ func (db *RWDBOperation) CreateLeague(logger zerolog.Logger, ctx context.Context
 	return id, nil
 }
 
+// UpdateLeague deprecated
 func (db *RWDBOperation) UpdateLeague(logger zerolog.Logger, ctx context.Context, league entities.League, teams []int64) error {
 	tx, err := db.db.Begin(ctx)
 	if err != nil {
@@ -114,6 +117,7 @@ func (db *RWDBOperation) UpdateLeague(logger zerolog.Logger, ctx context.Context
 	return nil
 }
 
+// DeleteLeague deprecated
 func (db *RWDBOperation) DeleteLeague(logger zerolog.Logger, ctx context.Context, id int64) error {
 	tx, err := db.db.Begin(ctx)
 	if err != nil {
@@ -159,6 +163,7 @@ func (db *RWDBOperation) DeleteLeague(logger zerolog.Logger, ctx context.Context
 	return nil
 }
 
+// GetLeaguesByPlayerID deprecated
 func (db *RDBOperation) GetLeaguesByPlayerID(logger zerolog.Logger, ctx context.Context, playerID int) ([]entities.PlayersLeague, error) {
 	const query string = `
   		SELECT l.id, l.name, l.city_id, r.value
@@ -193,6 +198,7 @@ func (db *RDBOperation) GetLeaguesByPlayerID(logger zerolog.Logger, ctx context.
 	return leagues, nil
 }
 
+// GetLeagueById deprecated
 func (db *RDBOperation) GetLeagueById(logger zerolog.Logger, ctx context.Context, leagueId int64, tx tx.ITx) (entities.League, error) {
 	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()

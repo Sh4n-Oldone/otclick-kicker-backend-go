@@ -22,6 +22,12 @@ type IService interface {
 	GetTournamentList(ctx context.Context, request *entities.GetTournamentListRequest) ([]entities.TournamentShort, int64, error)
 	StartNextStage(ctx context.Context, request *entities.StartNextStageRequest) (int64, error)
 
+	CreateExtraPoints(ctx context.Context, req *entities.CreateExtraPointsTournamentRequest) (int64, error)
+	UpdateExtraPoints(ctx context.Context, req *entities.UpdateExtraPointsTournamentRequest) (bool, error)
+	DeleteExtraPoints(ctx context.Context, req *entities.DeleteExtraPointsRequest) (bool, error)
+	GetExtraPointsById(ctx context.Context, extraPointsId int64) (entities.ExtraPointsTournament, error)
+	GetExtraPointsListByTeamAndTournamentId(ctx context.Context, teamId, tournamentId int64) ([]entities.ExtraPointsTournament, error)
+
 	Recalc(ctx context.Context, tournamentId int64) error
 
 	GetLogger() *zerolog.Logger

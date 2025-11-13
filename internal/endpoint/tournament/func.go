@@ -300,3 +300,148 @@ func makeStartNextStage(s tournament.IService) endpoint.Endpoint {
 		}, nil
 	}
 }
+
+func makeCreateExtraPoints(s tournament.IService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "makeCreateExtraPointsTournament").Logger()
+
+		req, err := helpers.CastRequest[*entities.CreateExtraPointsTournamentRequest](request)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed to cast request")
+			return false, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		err = s.GetValidator().Struct(req)
+		if err != nil {
+			serviceLogger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).Msg(pkgerr.FailedValidateRequest)
+			return false, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		id, err := s.CreateExtraPoints(ctx, req)
+		if err != nil {
+			return false, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		response := &struct {
+			Id int64 `json:"id"`
+		}{}
+		response.Id = id
+
+		return response, nil
+	}
+}
+
+func makeUpdateExtraPoints(s tournament.IService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "makeUpdateExtraPointsTournament").Logger()
+
+		req, err := helpers.CastRequest[*entities.UpdateExtraPointsTournamentRequest](request)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed to cast request")
+			return false, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		err = s.GetValidator().Struct(req)
+		if err != nil {
+			serviceLogger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).Msg(pkgerr.FailedValidateRequest)
+			return false, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		success, err := s.UpdateExtraPoints(ctx, req)
+		if err != nil {
+			return false, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		response := &struct {
+			Success bool `json:"success"`
+		}{}
+		response.Success = success
+
+		return response, nil
+	}
+}
+
+func makeDeleteExtraPoints(s tournament.IService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "makeDeleteExtraPointsTournament").Logger()
+
+		req, err := helpers.CastRequest[*entities.DeleteExtraPointsRequest](request)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed to cast request")
+			return false, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		err = s.GetValidator().Struct(req)
+		if err != nil {
+			serviceLogger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).Msg(pkgerr.FailedValidateRequest)
+			return false, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		success, err := s.DeleteExtraPoints(ctx, req)
+		if err != nil {
+			return false, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		response := &struct {
+			Success bool `json:"success"`
+		}{}
+		response.Success = success
+
+		return response, nil
+	}
+}
+
+func makeGetExtraPointsById(s tournament.IService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "makeGetExtraPointsById").Logger()
+
+		req, err := helpers.CastRequest[*entities.IdRequest](request)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed to cast request")
+			return false, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		err = s.GetValidator().Struct(req)
+		if err != nil {
+			serviceLogger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).Msg(pkgerr.FailedValidateRequest)
+			return false, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		res, err := s.GetExtraPointsById(ctx, req.Id)
+		if err != nil {
+			return false, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		return res, nil
+	}
+}
+
+func makeGetExtraPointsListByTeamAndTournamentId(s tournament.IService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "makeGetExtraPointsListByTeamAndTournamentId").Logger()
+
+		req, err := helpers.CastRequest[*entities.TeamTournamentIdRequest](request)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed to cast request")
+			return false, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		err = s.GetValidator().Struct(req)
+		if err != nil {
+			serviceLogger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).Msg(pkgerr.FailedValidateRequest)
+			return false, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		res, err := s.GetExtraPointsListByTeamAndTournamentId(ctx, req.TeamId, req.TournamentId)
+		if err != nil {
+			return false, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		return res, nil
+	}
+}

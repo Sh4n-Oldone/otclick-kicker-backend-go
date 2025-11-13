@@ -227,6 +227,7 @@ func ValidateUpdateLeagueRequest(request *entities.UpdateLeagueRequest) error {
 	return nil
 }
 
+// ValidateCreateExtraPointsRequest deprecated
 func ValidateCreateExtraPointsRequest(request *entities.CreateExtraPointsRequest) error {
 	if request.TeamId <= 0 {
 		err := fmt.Errorf("wrong value of parameter %T", request.TeamId)
@@ -244,6 +245,7 @@ func ValidateCreateExtraPointsRequest(request *entities.CreateExtraPointsRequest
 	return nil
 }
 
+// ValidateUpdateExtraPointsRequest deprecated
 func ValidateUpdateExtraPointsRequest(request *entities.UpdateExtraPointsRequest) error {
 	if request.Id <= 0 {
 		err := fmt.Errorf("wrong value of parameter %T", request.Id)
@@ -253,6 +255,7 @@ func ValidateUpdateExtraPointsRequest(request *entities.UpdateExtraPointsRequest
 	return nil
 }
 
+// ValidateTeamLeagueIdRequest deprecated
 func ValidateTeamLeagueIdRequest(request *entities.TeamLeagueIdRequest) error {
 	if request.TeamId <= 0 {
 		err := fmt.Errorf("wrong value of parameter %T", request.TeamId)

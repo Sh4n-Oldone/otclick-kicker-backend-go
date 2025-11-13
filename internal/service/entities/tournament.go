@@ -146,3 +146,41 @@ type StageStat struct {
 	Winners   []int64
 	BestOf    int64
 }
+
+type TeamTournamentIdRequest struct {
+	TeamId       int64 `json:"teamId"`
+	TournamentId int64 `json:"tournamentId"`
+}
+
+type ExtraPointsTournament struct {
+	Id           int64  `json:"id"`
+	TeamId       int64  `json:"teamId"`
+	TournamentId int64  `json:"tournamentId"`
+	Reason       string `json:"reason"`
+	Points       int64  `json:"points"`
+}
+
+type CreateExtraPointsTournamentRequest struct {
+	TeamId       int64  `json:"teamId" validate:"required,gt=0"`
+	TournamentId int64  `json:"tournamentId" validate:"required,gt=0"`
+	Reason       string `json:"reason" validate:"required"`
+	Points       int64  `json:"points"`
+	Role         string
+	UserId       int64
+}
+
+type UpdateExtraPointsTournamentRequest struct {
+	Id           int64   `json:"id" validate:"required,gt=0"`
+	TeamId       *int64  `json:"teamId" validate:"omitempty,gt=0"`
+	TournamentId *int64  `json:"tournamentId" validate:"omitempty,gt=0"`
+	Reason       *string `json:"reason"`
+	Points       *int64  `json:"points"`
+	Role         string
+	UserId       int64
+}
+
+type DeleteExtraPointsRequest struct {
+	Id     int64 `json:"id" validate:"required,gt=0"`
+	UserId int64
+	Role   string
+}

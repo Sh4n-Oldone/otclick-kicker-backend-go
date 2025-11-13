@@ -16,6 +16,7 @@ import (
 	pkgerr "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 )
 
+// GetList deprecated
 func (s *Service) GetList(ctx context.Context, cityID int64) ([]entities.League, error) {
 	logger := s.logger.With().Interface("service", "GetList").Logger()
 
@@ -27,6 +28,7 @@ func (s *Service) GetList(ctx context.Context, cityID int64) ([]entities.League,
 	return leagues, nil
 }
 
+// Create deprecated
 func (s *Service) Create(ctx context.Context, request *entities.CreateLeagueRequest) (*int64, error) {
 	logger := s.logger.With().Str("service", "Create").Logger()
 
@@ -50,6 +52,7 @@ func (s *Service) Create(ctx context.Context, request *entities.CreateLeagueRequ
 	return &id, nil
 }
 
+// Update deprecated
 func (s *Service) Update(ctx context.Context, league entities.League, teams []int64) error {
 	logger := s.logger.With().Interface("service", "Update").Logger()
 
@@ -92,6 +95,7 @@ func (s *Service) Update(ctx context.Context, league entities.League, teams []in
 	return nil
 }
 
+// Delete deprecated
 func (s *Service) Delete(ctx context.Context, id int64) error {
 	logger := s.logger.With().Interface("service", "Delete").Logger()
 
@@ -108,6 +112,7 @@ func (s *Service) Delete(ctx context.Context, id int64) error {
 	return nil
 }
 
+// Recalc deprecated
 func (s *Service) Recalc(ctx context.Context, id int64) error {
 	logger := s.logger.With().Interface("service", "Recalc").Logger()
 
@@ -122,7 +127,7 @@ func (s *Service) Recalc(ctx context.Context, id int64) error {
 		return err
 	}
 
-	// Reset ratings for all palyers from league
+	// Reset ratings for all players from league
 	ratings := make(map[int64]entities.Rating, len(playerIDs))
 	for _, playerID := range playerIDs {
 		rating := &entities.Rating{
@@ -262,6 +267,7 @@ func (s *Service) Recalc(ctx context.Context, id int64) error {
 
 ///////////////////////////////////////////////////////////////////////////////////
 
+// CreateExtraPoints deprecated
 func (s *Service) CreateExtraPoints(ctx context.Context, req *entities.CreateExtraPointsRequest) (int64, error) {
 	logger := s.logger.With().Str("service", "CreateExtraPoints").Logger()
 
@@ -278,6 +284,7 @@ func (s *Service) CreateExtraPoints(ctx context.Context, req *entities.CreateExt
 	return id, nil
 }
 
+// UpdateExtraPoints deprecated
 func (s *Service) UpdateExtraPoints(ctx context.Context, req *entities.UpdateExtraPointsRequest) (bool, error) {
 	logger := s.logger.With().Str("service", "UpdateExtraPoints").Logger()
 	extraPointsInfo, err := s.GetExtraPointsById(ctx, req.Id)
@@ -292,12 +299,13 @@ func (s *Service) UpdateExtraPoints(ctx context.Context, req *entities.UpdateExt
 
 	res, err := s.rwdbOperations.UpdateExtraPoints(logger, ctx, req)
 	if err != nil {
-		return res, err
+		return false, err
 	}
 
 	return res, err
 }
 
+// DeleteExtraPoints deprecated
 func (s *Service) DeleteExtraPoints(ctx context.Context, extraPointsId int64) (bool, error) {
 	logger := s.logger.With().Str("service", "DeleteExtraPoints").Logger()
 	extraPointsInfo, err := s.GetExtraPointsById(ctx, extraPointsId)
@@ -318,6 +326,7 @@ func (s *Service) DeleteExtraPoints(ctx context.Context, extraPointsId int64) (b
 	return res, err
 }
 
+// GetExtraPointsListByTeamAndLeagueId deprecated
 func (s *Service) GetExtraPointsListByTeamAndLeagueId(ctx context.Context, teamId, leagueId int64) ([]entities.ExtraPoints, error) {
 	logger := s.logger.With().Str("service", "GetExtraPointsListByTeamAndLeagueId").Logger()
 
@@ -329,6 +338,7 @@ func (s *Service) GetExtraPointsListByTeamAndLeagueId(ctx context.Context, teamI
 	return res, nil
 }
 
+// GetExtraPointsById deprecated
 func (s *Service) GetExtraPointsById(ctx context.Context, extraPointsId int64) (entities.ExtraPoints, error) {
 	logger := s.logger.With().Str("service", "GetExtraPointsById").Logger()
 
@@ -340,6 +350,7 @@ func (s *Service) GetExtraPointsById(ctx context.Context, extraPointsId int64) (
 	return res, nil
 }
 
+// checkMasterAndLeagueCities deprecated
 func (s *Service) checkMasterAndLeagueCities(ctx context.Context, leagueId int64) error {
 	logger := s.logger.With().Str("service", "checkMasterAndLeagueCities").Logger()
 
