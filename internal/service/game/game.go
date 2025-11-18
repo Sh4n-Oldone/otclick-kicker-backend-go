@@ -1013,8 +1013,19 @@ func (s *Service) CreateFutureTournamentGame(ctx context.Context, request *entit
 		return 0, errors.New("not implemented")
 	}
 
-	id, err := s.rwdbOperations.CreateFutureTournamentGame(logger, ctx, request, &s.config.RWDB)
+	tx, err := s.rwdbOperations.BeginTx(ctx, logger)
 	if err != nil {
+		return 0, err
+	}
+
+	id, err := s.rwdbOperations.CreateFutureTournamentGame(ctx, logger, request, tx)
+	if err != nil {
+		tx.Rollback(ctx)
+		return 0, err
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		tx.Rollback(ctx)
 		return 0, err
 	}
 
@@ -1209,7 +1220,7 @@ func (s *Service) CreatePlayedTournamentGame(ctx context.Context, request *entit
 	if err != nil {
 		return entities.CreatePlayedTournamentGameResponse{}, err
 	}
-	
+
 	if place.Bar.City.ID != tournament.CityID {
 		err = errors.New("город турнира и города столоместа не совпадают")
 		logger.Error().Err(err).Msg("place city not equal tournament city")
@@ -1391,7 +1402,7 @@ func (s *Service) CreatePlayedTournamentGame(ctx context.Context, request *entit
 		return entities.CreatePlayedTournamentGameResponse{}, err
 	}
 
-	id, err := s.rwdbOperations.CreatePlayedTournamentGame(logger, ctx, request, tx)
+	id, err := s.rwdbOperations.CreatePlayedTournamentGame(ctx, logger, request, tx)
 	if err != nil {
 		tx.Rollback(ctx)
 		return entities.CreatePlayedTournamentGameResponse{}, err

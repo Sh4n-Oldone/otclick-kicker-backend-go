@@ -30,6 +30,9 @@ type IService interface {
 
 	Recalc(ctx context.Context, tournamentId int64) error
 
+	MigrateLeaguesToTournamentsUp(ctx context.Context) error
+	MigrateLeaguesToTournamentsDown(ctx context.Context) error
+
 	GetLogger() *zerolog.Logger
 	GetValidator() *validator.Validate
 }

@@ -426,6 +426,42 @@ func (db *RWDBOperation) DeleteTournamentStages(logger zerolog.Logger, ctx conte
 	return nil
 }
 
+func (db *RWDBOperation) MarkLeagueAsMigrated(ctx context.Context, logger zerolog.Logger, leagueId, tournamentId int64, tx tx.ITx) error {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	const query string = `
+		INSERT INTO public.migrate_tournaments_leagues(league_id, tournament_id)
+		VALUES ($1, $2);
+	`
+
+	_, err := poolOrTx(db.db, tx).Exec(timeout, query, leagueId, tournamentId)
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed Exec MarkLeagueAsMigrated")
+		return DecodeDatabaseError(err)
+	}
+
+	return nil
+}
+
+func (db *RWDBOperation) UnmarkMigratedLeague(ctx context.Context, logger zerolog.Logger, tournamentId int64, tx tx.ITx) error {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	const query string = `
+		DELETE FROM public.migrate_tournaments_leagues
+		WHERE tournament_id = $1;
+	`
+
+	_, err := poolOrTx(db.db, tx).Exec(timeout, query, tournamentId)
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed Exec UnmarkMigratedLeague")
+		return DecodeDatabaseError(err)
+	}
+
+	return nil
+}
+
 func (db *RDBOperation) GetTournamentStageList(logger zerolog.Logger, ctx context.Context, tournamentId int64) ([]entities.TournamentStage, error) {
 	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
@@ -589,4 +625,111 @@ func (db *RDBOperation) GetTournamentListByPlayerID(logger zerolog.Logger, ctx c
 	}
 
 	return tournaments, nil
+}
+
+func (db *RDBOperation) GetMigratedLeagueIds(ctx context.Context, logger zerolog.Logger) ([]int64, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	const query string = `
+		SELECT 
+		    league_id 
+		FROM public.migrate_tournaments_leagues AS mtl;
+	`
+
+	rows, err := db.db.Query(timeout, query)
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed GetMigratedLeagueIds")
+		return nil, DecodeDatabaseError(err)
+	}
+	defer rows.Close()
+
+	var leagueIds []int64
+
+	for rows.Next() {
+		var leagueId int64
+
+		err = rows.Scan(&leagueId)
+		if err != nil {
+			logger.Error().Err(err).Msg("Failed to scan leagueId")
+			return nil, DecodeDatabaseError(err)
+		}
+
+		leagueIds = append(leagueIds, leagueId)
+	}
+
+	return leagueIds, nil
+}
+
+func (db *RDBOperation) GetMigratedTournamentIds(ctx context.Context, logger zerolog.Logger) ([]int64, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	const query string = `
+		SELECT 
+		    tournament_id 
+		FROM public.migrate_tournaments_leagues AS mtl;
+	`
+
+	rows, err := db.db.Query(timeout, query)
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed GetMigratedTournamentIds")
+		return nil, DecodeDatabaseError(err)
+	}
+	defer rows.Close()
+
+	var tournamentIds []int64
+
+	for rows.Next() {
+		var tournamentId int64
+
+		err = rows.Scan(&tournamentId)
+		if err != nil {
+			logger.Error().Err(err).Msg("Failed to scan tournamentId")
+			return nil, DecodeDatabaseError(err)
+		}
+
+		tournamentIds = append(tournamentIds, tournamentId)
+	}
+
+	return tournamentIds, nil
+}
+
+func (db *RWDBOperation) UpdateMigratedTournamentGame(ctx context.Context, logger zerolog.Logger, game entities.TournamentGame, tournamentId int64, tx tx.ITx) (int64, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	const query string = `
+		UPDATE public.games g
+		SET
+		    city_id = COALESCE($1, g.city_id),
+		    place_id = COALESCE($2, g.place_id),
+			date = COALESCE($3, g.date),
+			updated_at = COALESCE($4, g.updated_at),
+			tech_loose_team_id = COALESCE($5, g.tech_loose_team_id)
+		WHERE g.stage_id = (SELECT ts.id FROM public.tournament_stages AS ts WHERE ts.tournament_id = $6)
+			AND g.team1_id = $7
+			AND g.team2_id = $8
+			AND g.is_tiebreak = FALSE
+		RETURNING g.id;
+	`
+
+	var gameId int64
+
+	err := poolOrTx(db.db, tx).QueryRow(timeout, query,
+		game.CityID,
+		game.PlaceID,
+		game.Date,
+		game.UpdatedAt,
+		game.TechLooseTeamID,
+		tournamentId,
+		game.Team1ID,
+		game.Team2ID,
+	).Scan(&gameId)
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed UpdateMigratedTournamentGame")
+		return 0, DecodeDatabaseError(err)
+	}
+
+	return gameId, nil
 }

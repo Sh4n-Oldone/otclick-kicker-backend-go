@@ -10,6 +10,7 @@ import (
 )
 
 type IRatingR interface {
+	GetRatingsByLeagueIdToMigrate(ctx context.Context, logger zerolog.Logger, leagueId int64) ([]entities.Rating, error)
 }
 
 type IRatingRW interface {

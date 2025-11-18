@@ -13,6 +13,11 @@ type ILeagueR interface {
 	GetLeagueListByTeamId(logger zerolog.Logger, ctx context.Context, teamID int64) ([]entities.LeagueShort, error)
 	GetLeaguesByPlayerID(logger zerolog.Logger, ctx context.Context, playerID int) ([]entities.PlayersLeague, error)
 	GetLeagueById(logger zerolog.Logger, ctx context.Context, leagueID int64, tx tx.ITx) (entities.League, error)
+
+	GetLeagueListToMigrate(ctx context.Context, logger zerolog.Logger) ([]entities.League, error)
+	GetLeagueGamesToMigrate(ctx context.Context, logger zerolog.Logger, leagueId int64) ([]entities.TournamentGame, error)
+	GetExtraPointsByLeagueIdToMigrate(ctx context.Context, logger zerolog.Logger, leagueId int64) ([]entities.ExtraPoints, error)
+	GetMigratedLeagueIds(ctx context.Context, logger zerolog.Logger) ([]int64, error)
 }
 
 type ILeagueRW interface {

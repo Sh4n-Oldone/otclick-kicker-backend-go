@@ -24,6 +24,15 @@ func (db *RWDBOperation) CreateMatch(logger zerolog.Logger, ctx context.Context,
 		match.Player2Team2ID,
 		match.ScoreTeam1,
 		match.ScoreTeam2,
+		match.Player1Team1RateBefore,
+		match.Player2Team1RateBefore,
+		match.Player1Team2RateBefore,
+		match.Player2Team2RateBefore,
+		match.Player1Team1RateAfter,
+		match.Player2Team1RateAfter,
+		match.Player1Team2RateAfter,
+		match.Player2Team2RateAfter,
+		match.Sort,
 	).Scan(&id)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to create Match record")
@@ -221,7 +230,10 @@ func (db *RDBOperation) GetMatchListByGameID(ctx context.Context, logger zerolog
 			&m.Player1Team1RateAfter,
 			&m.Player1Team2RateAfter,
 			&m.Player2Team1RateAfter,
-			&m.Player2Team2RateAfter)
+			&m.Player2Team2RateAfter,
+			&m.UpdatedAt,
+			&m.Sort,
+		)
 		if err != nil {
 			logger.Error().Err(err).Msg("failed to postgresql.GetMatchListByGameID")
 			return nil, DecodeDatabaseError(err)

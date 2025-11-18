@@ -915,18 +915,25 @@ func (db *RWDBOperation) DeleteExtraPoints(logger zerolog.Logger, ctx context.Co
 func (db *RWDBOperation) DeleteExtraPointsTournament(ctx context.Context, logger zerolog.Logger, extraPointsId int64, tx tx.ITx) (bool, error) {
 	const query = `DELETE FROM tournament_team_extra_points WHERE id = $1`
 
-	tag, err := db.db.Exec(ctx, query, extraPointsId)
+	_, err := poolOrTx(db.db, tx).Exec(ctx, query, extraPointsId)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to postgresql.DeleteExtraPointsTournament")
 		return false, DecodeDatabaseError(err)
 	}
-	if tag.RowsAffected() == 0 {
-		err = errors.New("no rows affected, failed to postgresql.DeleteExtraPointsTournament")
-		logger.Error().Msg(err.Error())
 
-		return false, DecodeDatabaseError(err)
-	}
 	return true, nil
+}
+
+func (db *RWDBOperation) DeleteExtraPointsByTournamentId(ctx context.Context, logger zerolog.Logger, tournamentId int64, tx tx.ITx) error {
+	const query = `DELETE FROM tournament_team_extra_points WHERE tournament_id = $1`
+
+	_, err := poolOrTx(db.db, tx).Exec(ctx, query, tournamentId)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to postgresql.DeleteExtraPointsByTournamentId")
+		return DecodeDatabaseError(err)
+	}
+
+	return nil
 }
 
 // GetExtraPointsListByTeamAndLeagueId deprecated

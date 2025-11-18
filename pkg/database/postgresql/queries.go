@@ -108,6 +108,15 @@ const (
 		player2_team2_id,
 		score_team1,
 		score_team2,
+	    player1_team1_rate_before,
+	    player2_team1_rate_before,
+	    player1_team2_rate_before,
+	    player2_team2_rate_before,
+	    player1_team1_rate_after,
+	    player2_team1_rate_after,
+	    player1_team2_rate_after,
+	    player2_team2_rate_after,
+	    sort,
 		updated_at
 	)
 	VALUES (
@@ -121,6 +130,15 @@ const (
 		$8,
 		$9,
 		$10,
+		$11,
+		$12,
+		$13,
+		$14,
+		$15,
+		$16,
+		$17,
+		$18,
+		$19,
 		NOW()
 		) RETURNING id`
 
@@ -208,7 +226,9 @@ const (
 			player1_team1_rate_after,
 			player1_team2_rate_after,
 			player2_team1_rate_after,
-			player2_team2_rate_after 
+			player2_team2_rate_after,
+		    updated_at,
+		    sort
 		FROM matches 
 		WHERE game_id = $1;`
 

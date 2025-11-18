@@ -53,5 +53,11 @@ func NewServer(endpoints tournament.Endpoints, options []kithttp.ServerOption, c
 		Delete("/tournaments/extra-points/{id}", kithttp.NewServer(endpoints.DeleteExtraPoints, decodeDeleteExtraPointsTournamentRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 	r.Get("/tournaments/{id}/teams/{team_id}/extra-points", kithttp.NewServer(endpoints.GetExtraPointsListByTeamAndTournamentId, decodeGetExtraPointsListByTeamAndTournamentIdRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 	r.Get("/tournaments/extra-points/{id}", kithttp.NewServer(endpoints.GetExtraPointsById, decodeGetExtraPointsByIdRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+
+	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
+		Post("/tournaments/migrate-leagues-up", kithttp.NewServer(endpoints.MigrateLeaguesToTournamentsUp, decodeEmptyRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
+		Post("/tournaments/migrate-leagues-down", kithttp.NewServer(endpoints.MigrateLeaguesToTournamentsDown, decodeEmptyRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+
 	return r
 }

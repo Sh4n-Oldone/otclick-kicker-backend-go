@@ -873,17 +873,17 @@ func (db *RWDBOperation) CreateFutureTournamentStageGames(logger zerolog.Logger,
 	return nil
 }
 
-func (db *RWDBOperation) CreateFutureTournamentGame(logger zerolog.Logger, ctx context.Context, request *entities.CreateFutureTournamentGameRequest, cfg *config.DBConfig) (int64, error) {
-	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+func (db *RWDBOperation) CreateFutureTournamentGame(ctx context.Context, logger zerolog.Logger, request *entities.CreateFutureTournamentGameRequest, tx tx.ITx) (int64, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 
 	const query string = `
-		INSERT INTO games(city_id, place_id, date, team1_id, team2_id, is_tiebreak, stage_id)
+		INSERT INTO public.games(city_id, place_id, date, team1_id, team2_id, is_tiebreak, stage_id)
 		VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id;`
 
 	var id int64
 
-	err := db.db.QueryRow(
+	err := poolOrTx(db.db, tx).QueryRow(
 		timeout,
 		query,
 		request.CityID,
@@ -895,7 +895,7 @@ func (db *RWDBOperation) CreateFutureTournamentGame(logger zerolog.Logger, ctx c
 		request.StageID,
 	).Scan(&id)
 	if err != nil {
-		logger.Error().Stack().Err(err).Msg("failed QueryRow postgresql.CreateTournamentGame")
+		logger.Error().Stack().Err(err).Msg("failed QueryRow postgresql.CreateFutureTournamentGame")
 		return 0, DecodeDatabaseError(err)
 	}
 
@@ -958,7 +958,7 @@ func (db *RDBOperation) GetTournamentGame(logger zerolog.Logger, ctx context.Con
 	return g, nil
 }
 
-func (db *RWDBOperation) CreatePlayedTournamentGame(logger zerolog.Logger, ctx context.Context, req *entities.CreatePlayedTournamentGameRequest, tx tx.ITx) (int64, error) {
+func (db *RWDBOperation) CreatePlayedTournamentGame(ctx context.Context, logger zerolog.Logger, req *entities.CreatePlayedTournamentGameRequest, tx tx.ITx) (int64, error) {
 	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 

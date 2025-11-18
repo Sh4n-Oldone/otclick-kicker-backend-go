@@ -457,3 +457,9 @@ func decodeGetExtraPointsByIdRequest(_ context.Context, r *http.Request) (interf
 	request.Id = extraPointsId
 	return request, nil
 }
+
+func decodeEmptyRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	request := &entities.EmptyRequest{}
+
+	return request, nil
+}
