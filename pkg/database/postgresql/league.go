@@ -216,3 +216,133 @@ func (db *RDBOperation) GetLeagueById(logger zerolog.Logger, ctx context.Context
 
 	return league, nil
 }
+
+func (db *RDBOperation) GetLeagueListToMigrate(ctx context.Context, logger zerolog.Logger) ([]entities.League, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	const query string = `
+		SELECT 
+    		id,
+    		name,
+    		city_id,
+    		season_id
+		FROM public.leagues AS l;`
+
+	rows, err := db.db.Query(timeout, query)
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed GetLeagueListToMigrate")
+		return nil, DecodeDatabaseError(err)
+	}
+	defer rows.Close()
+
+	var leagues []entities.League
+
+	for rows.Next() {
+		var league entities.League
+
+		err = rows.Scan(&league.ID, &league.Name, &league.CityID, &league.SeasonID)
+		if err != nil {
+			logger.Error().Err(err).Msg("Failed to scan league")
+			return nil, DecodeDatabaseError(err)
+		}
+
+		leagues = append(leagues, league)
+	}
+
+	return leagues, nil
+}
+
+func (db *RDBOperation) GetLeagueGamesToMigrate(ctx context.Context, logger zerolog.Logger, leagueId int64) ([]entities.TournamentGame, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	const query string = `
+		SELECT 
+		    g.id,
+			g.city_id,
+			g.place_id,
+			g.date,
+			g.team1_id,
+			g.team2_id,
+			g.updated_at,
+			g.tech_loose_team_id,
+			g.is_tiebreak
+		FROM public.games AS g
+		WHERE g.league_id = $1;
+	`
+
+	rows, err := db.db.Query(timeout, query, leagueId)
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed GetLeagueListToMigrate")
+		return nil, DecodeDatabaseError(err)
+	}
+	defer rows.Close()
+
+	var games []entities.TournamentGame
+
+	for rows.Next() {
+		var game entities.TournamentGame
+
+		err = rows.Scan(
+			&game.ID,
+			&game.CityID,
+			&game.PlaceID,
+			&game.Date,
+			&game.Team1ID,
+			&game.Team2ID,
+			&game.UpdatedAt,
+			&game.TechLooseTeamID,
+			&game.IsTiebreak,
+		)
+		if err != nil {
+			logger.Error().Err(err).Msg("Failed to scan league game")
+			return nil, DecodeDatabaseError(err)
+		}
+
+		games = append(games, game)
+	}
+
+	return games, nil
+}
+
+func (db *RDBOperation) GetExtraPointsByLeagueIdToMigrate(ctx context.Context, logger zerolog.Logger, leagueId int64) ([]entities.ExtraPoints, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	const query string = `
+		SELECT
+			tep.team_id,
+			tep.reason,
+			tep.points
+		FROM public.team_extra_points AS tep
+		WHERE tep.league_id = $1;
+	`
+
+	rows, err := db.db.Query(timeout, query, leagueId)
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed GetExtraPointsByLeagueIdToMigrate")
+		return nil, DecodeDatabaseError(err)
+	}
+	defer rows.Close()
+
+	var extraPoints []entities.ExtraPoints
+
+	for rows.Next() {
+		var extraPoint entities.ExtraPoints
+
+		err = rows.Scan(
+			&extraPoint.TeamId,
+			&extraPoint.Reason,
+			&extraPoint.Points,
+		)
+		if err != nil {
+			logger.Error().Err(err).Msg("Failed to scan league game")
+			return nil, DecodeDatabaseError(err)
+		}
+
+		extraPoints = append(extraPoints, extraPoint)
+	}
+
+	return extraPoints, nil
+}

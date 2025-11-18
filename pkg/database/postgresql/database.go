@@ -46,6 +46,7 @@ type RDBOperationer interface {
 	abstract.ITeamR
 	abstract.IPlayerR
 	abstract.ITournamentR
+	abstract.IRatingR
 
 	GetSuffix(logger zerolog.Logger, ctx context.Context, tx tx.ITx) (string, error)
 }

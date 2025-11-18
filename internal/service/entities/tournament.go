@@ -184,3 +184,5 @@ type DeleteExtraPointsRequest struct {
 	UserId int64
 	Role   string
 }
+
+type EmptyRequest struct{}

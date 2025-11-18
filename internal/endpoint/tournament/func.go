@@ -320,6 +320,7 @@ func makeCreateExtraPoints(s tournament.IService) endpoint.Endpoint {
 
 		id, err := s.CreateExtraPoints(ctx, req)
 		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed service.CreateExtraPoints")
 			return false, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
@@ -351,6 +352,7 @@ func makeUpdateExtraPoints(s tournament.IService) endpoint.Endpoint {
 
 		success, err := s.UpdateExtraPoints(ctx, req)
 		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed service.UpdateExtraPoints")
 			return false, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
@@ -382,6 +384,7 @@ func makeDeleteExtraPoints(s tournament.IService) endpoint.Endpoint {
 
 		success, err := s.DeleteExtraPoints(ctx, req)
 		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed service.DeleteExtraPoints")
 			return false, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
@@ -413,6 +416,7 @@ func makeGetExtraPointsById(s tournament.IService) endpoint.Endpoint {
 
 		res, err := s.GetExtraPointsById(ctx, req.Id)
 		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed service.GetExtraPointsById")
 			return false, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
@@ -439,9 +443,48 @@ func makeGetExtraPointsListByTeamAndTournamentId(s tournament.IService) endpoint
 
 		res, err := s.GetExtraPointsListByTeamAndTournamentId(ctx, req.TeamId, req.TournamentId)
 		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed service.GetExtraPointsListByTeamAndTournamentId")
 			return false, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
 		return res, nil
+	}
+}
+
+func makeMigrateLeaguesToTournamentsUp(s tournament.IService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		_, ctx = middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "makeMigrateLeaguesToTournamentsUp").Logger()
+
+		err := s.MigrateLeaguesToTournamentsUp(ctx)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed service.MigrateLeaguesToTournamentsUp")
+			return false, err
+		}
+
+		return &struct {
+			Success bool `json:"success"`
+		}{
+			Success: true,
+		}, nil
+	}
+}
+
+func makeMigrateLeaguesToTournamentsDown(s tournament.IService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		_, ctx = middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "makeMigrateLeaguesToTournamentsDown").Logger()
+
+		err := s.MigrateLeaguesToTournamentsDown(ctx)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("Failed service.MigrateLeaguesToTournamentsDown")
+			return false, err
+		}
+
+		return &struct {
+			Success bool `json:"success"`
+		}{
+			Success: true,
+		}, nil
 	}
 }

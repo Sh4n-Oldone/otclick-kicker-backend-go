@@ -232,6 +232,7 @@ type TournamentGame struct {
 	TechLooseTeamID *int64     `json:"techLooseTeamId,omitempty"`
 	IsTiebreak      bool       `json:"isTiebreak"`
 	StageID         int64      `json:"stageId"`
+	UpdatedAt       *time.Time `json:"updatedAt"`
 }
 
 type CreateFutureTournamentGameRequest struct {

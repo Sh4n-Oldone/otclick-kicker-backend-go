@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -260,6 +261,12 @@ func (s *Service) Delete(ctx context.Context, request *entities.DeleteTournament
 
 	// удаляем этапы
 	if err = s.rwdbOperations.DeleteTournamentStages(logger, ctx, tournament.ID, tx); err != nil {
+		tx.Rollback(ctx)
+		return err
+	}
+
+	// удаляем доп.очки
+	if err = s.rwdbOperations.DeleteExtraPointsByTournamentId(ctx, logger, tournament.ID, tx); err != nil {
 		tx.Rollback(ctx)
 		return err
 	}
@@ -881,6 +888,268 @@ func (s *Service) GetExtraPointsListByTeamAndTournamentId(ctx context.Context, t
 	}
 
 	return res, nil
+}
+
+func (s *Service) MigrateLeaguesToTournamentsUp(ctx context.Context) error {
+	logger := s.logger.With().Str("service", "MigrateLeaguesToTournamentsUp").Logger()
+
+	migratedLeagueIds, err := s.rdbOperations.GetMigratedLeagueIds(ctx, logger)
+	if err != nil {
+		return err
+	}
+
+	leagues, err := s.rdbOperations.GetLeagueListToMigrate(ctx, logger)
+	if err != nil {
+		return err
+	}
+
+	tx, err := s.rwdbOperations.BeginTx(ctx, logger)
+	if err != nil {
+		return err
+	}
+
+	for _, leagueToMigrate := range leagues {
+		if slices.Contains(migratedLeagueIds, leagueToMigrate.ID) {
+			logger.Info().Msgf("лига id=%d уже мигрировала, пропускаем", leagueToMigrate.ID)
+			continue
+		}
+
+		createTournamentReq := &entities.CreateTournamentRequest{}
+
+		leagueTeamList, err := s.rdbOperations.GetTeamsByLeague(logger, ctx, leagueToMigrate.ID)
+		if err != nil {
+			tx.Rollback(ctx)
+			return err
+		}
+
+		createTournamentReq.CityID = &leagueToMigrate.CityID
+		createTournamentReq.Name = leagueToMigrate.Name
+		createTournamentReq.Rules = entities.TournamentRule{Regular: &entities.Regular{BestOf: 2}}
+		createTournamentReq.TournamentTypeID = constant.RegularTournamentTypeID
+		createTournamentReq.Creator.Role = &entities.Role{Name: constant.SuperUserRole}
+
+		var teamIds []int64
+		for _, leagueTeam := range leagueTeamList {
+			teamIds = append(teamIds, leagueTeam.Id)
+		}
+
+		createTournamentReq.TeamsIDs = teamIds
+
+		if leagueToMigrate.SeasonID != nil {
+			createTournamentReq.SeasonID = *leagueToMigrate.SeasonID
+		}
+
+		createdTournamentId, err := s.Create(ctx, createTournamentReq)
+		if err != nil {
+			tx.Rollback(ctx)
+			return err
+		}
+
+		err = s.rwdbOperations.MarkLeagueAsMigrated(ctx, logger, leagueToMigrate.ID, createdTournamentId, tx)
+		if err != nil {
+			tx.Rollback(ctx)
+			return err
+		}
+
+		leagueGames, err := s.rdbOperations.GetLeagueGamesToMigrate(ctx, logger, leagueToMigrate.ID)
+		if err != nil {
+			tx.Rollback(ctx)
+			return err
+		}
+
+		for _, leagueGame := range leagueGames {
+			if leagueGame.IsTiebreak {
+				tournament, err := s.rdbOperations.GetTournamentById(logger, ctx, createdTournamentId)
+				if err != nil {
+					tx.Rollback(ctx)
+					return err
+				}
+
+				var gameDate time.Time
+				if leagueGame.Date != nil {
+					gameDate = *leagueGame.Date
+				}
+
+				var placeId int64
+				if leagueGame.PlaceID != nil {
+					placeId = *leagueGame.PlaceID
+				}
+
+				_, err = s.rwdbOperations.CreatePlayedTournamentGame(ctx, logger, &entities.CreatePlayedTournamentGameRequest{
+					TournamentID:    createdTournamentId,
+					StageID:         tournament.Stages[0].ID, // у турнира по лиге только 1 стейдж, поэтому индекс 0
+					PlaceID:         placeId,
+					Date:            gameDate,
+					Team1ID:         leagueGame.Team1ID,
+					Team2ID:         leagueGame.Team2ID,
+					IsTiebreak:      leagueGame.IsTiebreak,
+					TechLooseTeamID: leagueGame.TechLooseTeamID,
+					CityID:          leagueGame.CityID,
+					Creator:         entities.User{Role: &entities.Role{Name: constant.SuperUserRole}},
+				}, tx)
+				if err != nil {
+					tx.Rollback(ctx)
+					return err
+				}
+
+				continue
+			}
+
+			id, err := s.rwdbOperations.UpdateMigratedTournamentGame(ctx, logger, leagueGame, createdTournamentId, tx)
+			if err != nil {
+				tx.Rollback(ctx)
+				return err
+			}
+
+			gameMatches, err := s.rdbOperations.GetMatchListByGameID(ctx, logger, leagueGame.ID)
+			if err != nil {
+				tx.Rollback(ctx)
+				return err
+			}
+
+			for _, match := range gameMatches {
+				var player2Team1ID, player2Team2ID *int64
+				var player1Team1RateBefore, player2Team1RateBefore, player1Team2RateBefore, player2Team2RateBefore *int64
+				var player1Team1RateAfter, player2Team1RateAfter, player1Team2RateAfter, player2Team2RateAfter *int64
+
+				if match.Player2Team1ID != nil {
+					player2Team1ID = pointer.GetPointer(int64(*match.Player2Team1ID))
+				}
+				if match.Player2Team2ID != nil {
+					player2Team2ID = pointer.GetPointer(int64(*match.Player2Team2ID))
+				}
+				if match.Player1Team1RateBefore != nil {
+					player1Team1RateBefore = pointer.GetPointer(int64(*match.Player1Team1RateBefore))
+				}
+				if match.Player2Team1RateBefore != nil {
+					player2Team1RateBefore = pointer.GetPointer(int64(*match.Player2Team1RateBefore))
+				}
+				if match.Player1Team2RateBefore != nil {
+					player1Team2RateBefore = pointer.GetPointer(int64(*match.Player1Team2RateBefore))
+				}
+				if match.Player2Team2RateBefore != nil {
+					player2Team2RateBefore = pointer.GetPointer(int64(*match.Player2Team2RateBefore))
+				}
+				if match.Player1Team1RateAfter != nil {
+					player1Team1RateAfter = pointer.GetPointer(int64(*match.Player1Team1RateAfter))
+				}
+				if match.Player2Team1RateAfter != nil {
+					player2Team1RateAfter = pointer.GetPointer(int64(*match.Player2Team1RateAfter))
+				}
+				if match.Player1Team2RateAfter != nil {
+					player1Team2RateAfter = pointer.GetPointer(int64(*match.Player1Team2RateAfter))
+				}
+				if match.Player2Team2RateAfter != nil {
+					player2Team2RateAfter = pointer.GetPointer(int64(*match.Player2Team2RateAfter))
+				}
+
+				_, err = s.rwdbOperations.CreateMatch(logger, ctx, entities.Match{
+					Date:                   match.Date,
+					GameID:                 &id,
+					Team1ID:                pointer.GetPointer(int64(match.Team1ID)),
+					Team2ID:                pointer.GetPointer(int64(match.Team2ID)),
+					Player1Team1ID:         pointer.GetPointer(int64(match.Player1Team1ID)),
+					Player2Team1ID:         player2Team1ID,
+					Player1Team2ID:         pointer.GetPointer(int64(match.Player1Team2ID)),
+					Player2Team2ID:         player2Team2ID,
+					ScoreTeam1:             pointer.GetPointer(int64(match.ScoreTeam1)),
+					ScoreTeam2:             pointer.GetPointer(int64(match.ScoreTeam2)),
+					Player1Team1RateBefore: player1Team1RateBefore,
+					Player2Team1RateBefore: player2Team1RateBefore,
+					Player1Team2RateBefore: player1Team2RateBefore,
+					Player2Team2RateBefore: player2Team2RateBefore,
+					Player1Team1RateAfter:  player1Team1RateAfter,
+					Player2Team1RateAfter:  player2Team1RateAfter,
+					Player1Team2RateAfter:  player1Team2RateAfter,
+					Player2Team2RateAfter:  player2Team2RateAfter,
+					UpdatedAt:              match.UpdatedAt,
+					Sort:                   match.Sort,
+				})
+				if err != nil {
+					tx.Rollback(ctx)
+					return err
+				}
+			}
+		}
+
+		ratings, err := s.rdbOperations.GetRatingsByLeagueIdToMigrate(ctx, logger, leagueToMigrate.ID)
+		if err != nil {
+			tx.Rollback(ctx)
+			return err
+		}
+
+		for _, rating := range ratings {
+			err = s.rwdbOperations.CreateTournamentRating(logger, ctx, rating.PlayerID, rating.Value, createdTournamentId, tx)
+			if err != nil {
+				tx.Rollback(ctx)
+				return err
+			}
+		}
+
+		extraPoints, err := s.rdbOperations.GetExtraPointsByLeagueIdToMigrate(ctx, logger, leagueToMigrate.ID)
+		if err != nil {
+			tx.Rollback(ctx)
+			return err
+		}
+
+		for _, extraPoint := range extraPoints {
+			_, err = s.rwdbOperations.CreateExtraPointsTournament(ctx, logger, &entities.CreateExtraPointsTournamentRequest{
+				TeamId:       extraPoint.TeamId,
+				TournamentId: createdTournamentId,
+				Reason:       extraPoint.Reason,
+				Points:       extraPoint.Points,
+			}, tx)
+			if err != nil {
+				tx.Rollback(ctx)
+				return err
+			}
+		}
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		tx.Rollback(ctx)
+		return err
+	}
+
+	return nil
+}
+
+func (s *Service) MigrateLeaguesToTournamentsDown(ctx context.Context) error {
+	logger := s.logger.With().Str("service", "MigrateLeaguesToTournamentsDown").Logger()
+
+	migratedTournamentIds, err := s.rdbOperations.GetMigratedTournamentIds(ctx, logger)
+	if err != nil {
+		return err
+	}
+
+	tx, err := s.rwdbOperations.BeginTx(ctx, logger)
+	if err != nil {
+		return err
+	}
+
+	for _, tournamentId := range migratedTournamentIds {
+		err = s.rwdbOperations.UnmarkMigratedLeague(ctx, logger, tournamentId, tx)
+		if err != nil {
+			tx.Rollback(ctx)
+			return err
+		}
+
+		err = s.Delete(ctx, &entities.DeleteTournamentRequest{
+			ID:       tournamentId,
+			Executor: entities.User{Role: &entities.Role{Name: constant.SuperUserRole}},
+		})
+		if err != nil {
+			tx.Rollback(ctx)
+			return err
+		}
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		tx.Rollback(ctx)
+		return err
+	}
+
+	return nil
 }
 
 /*local methods*/

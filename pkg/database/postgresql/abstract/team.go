@@ -24,6 +24,7 @@ type ITeamRW interface {
 	CreateExtraPointsTournament(ctx context.Context, logger zerolog.Logger, req *entities.CreateExtraPointsTournamentRequest, tx tx.ITx) (int64, error)
 	UpdateExtraPointsTournament(ctx context.Context, logger zerolog.Logger, req *entities.UpdateExtraPointsTournamentRequest, tx tx.ITx) (bool, error)
 	DeleteExtraPointsTournament(ctx context.Context, logger zerolog.Logger, extraPointsId int64, tx tx.ITx) (bool, error)
+	DeleteExtraPointsByTournamentId(ctx context.Context, logger zerolog.Logger, tournamentId int64, tx tx.ITx) error
 }
 
 type ITeamR interface {

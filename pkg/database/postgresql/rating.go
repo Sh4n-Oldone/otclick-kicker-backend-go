@@ -151,3 +151,37 @@ func (db *RWDBOperation) DeleteTournamentRating(logger zerolog.Logger, ctx conte
 
 	return nil
 }
+
+func (db *RDBOperation) GetRatingsByLeagueIdToMigrate(ctx context.Context, logger zerolog.Logger, leagueId int64) ([]entities.Rating, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	const query string = `
+		SELECT r.player_id, r.value
+		FROM public.rating AS r
+		WHERE r.league_id = $1;
+	`
+
+	rows, err := db.db.Query(timeout, query, leagueId)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to postgresql.GetRatingsByLeagueIdToMigrate")
+		return nil, DecodeDatabaseError(err)
+	}
+	defer rows.Close()
+
+	var ratings []entities.Rating
+
+	for rows.Next() {
+		var rating entities.Rating
+
+		err = rows.Scan(&rating.PlayerID, &rating.Value)
+		if err != nil {
+			logger.Error().Err(err).Msg("failed to scan rating")
+			return nil, DecodeDatabaseError(err)
+		}
+
+		ratings = append(ratings, rating)
+	}
+
+	return ratings, nil
+}

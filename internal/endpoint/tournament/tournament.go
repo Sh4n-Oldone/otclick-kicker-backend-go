@@ -21,6 +21,8 @@ type Endpoints struct {
 	DeleteExtraPoints                       endpoint.Endpoint
 	GetExtraPointsById                      endpoint.Endpoint
 	GetExtraPointsListByTeamAndTournamentId endpoint.Endpoint
+	MigrateLeaguesToTournamentsUp           endpoint.Endpoint
+	MigrateLeaguesToTournamentsDown         endpoint.Endpoint
 }
 
 func MakeEndpoints(s tournament.IService) Endpoints {
@@ -39,5 +41,7 @@ func MakeEndpoints(s tournament.IService) Endpoints {
 		DeleteExtraPoints:                       makeDeleteExtraPoints(s),
 		GetExtraPointsById:                      makeGetExtraPointsById(s),
 		GetExtraPointsListByTeamAndTournamentId: makeGetExtraPointsListByTeamAndTournamentId(s),
+		MigrateLeaguesToTournamentsUp:           makeMigrateLeaguesToTournamentsUp(s),
+		MigrateLeaguesToTournamentsDown:         makeMigrateLeaguesToTournamentsDown(s),
 	}
 }
