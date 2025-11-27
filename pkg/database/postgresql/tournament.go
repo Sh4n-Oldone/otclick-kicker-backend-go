@@ -353,7 +353,7 @@ func (db *RDBOperation) GetTournamentStageGames(logger zerolog.Logger, ctx conte
 	return games, nil
 }
 
-func (db *RWDBOperation) UpdateTournamentStage(logger zerolog.Logger, ctx context.Context, stage entities.NullableStage) error {
+func (db *RWDBOperation) UpdateTournamentStage(ctx context.Context, logger zerolog.Logger, stage entities.NullableStage, tx tx.ITx) error {
 	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 
@@ -364,7 +364,7 @@ func (db *RWDBOperation) UpdateTournamentStage(logger zerolog.Logger, ctx contex
 			number = COALESCE($4, number)
 		WHERE id = $1;`
 
-	tag, err := db.db.Exec(timeout, query, stage.ID, stage.TournamentID, stage.IsFinished, stage.Number)
+	tag, err := poolOrTx(db.db, tx).Exec(timeout, query, stage.ID, stage.TournamentID, stage.IsFinished, stage.Number)
 	if err != nil {
 		logger.Error().Err(err).Msg("Failed tx.Exec postgresql.UpdateTournamentStage")
 		return DecodeDatabaseError(err)
@@ -462,7 +462,7 @@ func (db *RWDBOperation) UnmarkMigratedLeague(ctx context.Context, logger zerolo
 	return nil
 }
 
-func (db *RDBOperation) GetTournamentStageList(logger zerolog.Logger, ctx context.Context, tournamentId int64) ([]entities.TournamentStage, error) {
+func (db *RDBOperation) GetTournamentStageList(ctx context.Context, logger zerolog.Logger, tournamentId int64) ([]entities.TournamentStage, error) {
 	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 
@@ -525,7 +525,7 @@ func (db *RWDBOperation) CreateTournamentTx(logger zerolog.Logger, ctx context.C
 	return id, nil
 }
 
-func (db *RWDBOperation) AddTeamsToTournamentTx(logger zerolog.Logger, ctx context.Context, teams []int64, tournamentId int64, tx tx.ITx) error {
+func (db *RWDBOperation) AddTeamsToTournament(ctx context.Context, logger zerolog.Logger, teams []int64, tournamentId int64, tx tx.ITx) error {
 	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 
@@ -538,7 +538,7 @@ func (db *RWDBOperation) AddTeamsToTournamentTx(logger zerolog.Logger, ctx conte
 	for _, t := range teams {
 		_, err := exec.Exec(timeout, query2, t, tournamentId)
 		if err != nil {
-			logger.Error().Err(err).Msg("Failed tx.Exec postgresql.AddTeamsToTournamentTx")
+			logger.Error().Err(err).Msg("Failed tx.Exec postgresql.AddTeamsToTournament")
 			return DecodeDatabaseError(err)
 		}
 	}

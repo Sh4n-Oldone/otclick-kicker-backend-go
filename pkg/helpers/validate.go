@@ -360,6 +360,47 @@ func ValidatePlayoffTournamentRulesOnCreate(req *entities.CreateTournamentReques
 	return nil
 }
 
+func ValidateRegularPlayoffTournamentRulesOnCreate(req *entities.CreateTournamentRequest) error {
+	regularPlayoff := req.Rules.RegularPlayoff
+
+	if req.Rules.Regular != nil || req.Rules.PlayOff != nil {
+		err := errors.New("для турнира типа Regular+Playoff regular и playoff заполняются в regularPlayoff")
+		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	if len(req.TeamsIDs) == 0 || len(req.PlayersIDs) > 0 {
+		err := errors.New("для турнира типа Regular+Playoff команды обязательны, игроков быть не должно")
+		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	if regularPlayoff == nil {
+		err := errors.New("не заданы правила regular+playoff турнира в regularPlayoff")
+		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	if regularPlayoff.PlayoffTeamsCountOnStart == 0 {
+		err := errors.New("правила для playoff этапа турнира типа Regular+Playoff не заполнены в regularPlayoff")
+		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	} else {
+		if !IsPowTwo(regularPlayoff.PlayoffTeamsCountOnStart) {
+			err := errors.New("команд в первом playoff этапе должно быть степенью числа 2, но не равно 0")
+			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+
+		if regularPlayoff.PlayoffTeamsCountOnStart > int32(len(req.TeamsIDs)) {
+			err := errors.New("количество команд в первом playoff этапе regular+playoff турнира не может быть больше изначального кол-ва команд")
+			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+
+		if regularPlayoff.PlayoffTeamsCountOnStart != int32(math.Pow(2, float64(len(regularPlayoff.PlayOff.Stages)))) {
+			err := errors.New("неверное кол-во этапов, считается по формуле \"кол-во_команд_первого_этапа_playoff = 2 ^ кол-во_этапов\"")
+			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+	}
+
+	return nil
+}
+
 // ValidatePlayoffTournamentRulesOnUpdate при обновлении турнира Playoff будет вызывать два раза:
 // первый раз - при валидации входящего запроса, второй - при сборке всех данных турнира на основании старых из базы и новых из запроса
 // с приоритетом нового запроса.
@@ -372,7 +413,6 @@ func ValidatePlayoffTournamentRulesOnUpdate(req entities.UpdateTournamentRequest
 
 	// блок для валидации входящего запроса при первом вызове
 	if newReq == nil {
-
 		if req.Rules != nil {
 			regular := req.Rules.Regular
 			playOff := req.Rules.PlayOff
@@ -381,27 +421,22 @@ func ValidatePlayoffTournamentRulesOnUpdate(req entities.UpdateTournamentRequest
 				err := errors.New("для турнира \"Playoff\" поле \"regular\" должно быть null")
 				return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 			}
-
 			if playOff == nil {
-				err := errors.New("для турнира \"Playoff\" правила должны быть  заполнены")
+				err := errors.New("для турнира \"Playoff\" правила должны быть заполнены")
 				return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 			}
-
 			if len(req.TeamsIDs) > 0 {
 				if IsPowTwo(len(req.TeamsIDs)) == false {
 					err := errors.New("в турнире типа Playoff команд должно быть 2^N штук")
 					return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 				}
-
 				if len(req.TeamsIDs) != int(math.Pow(2, float64(len(playOff.Stages)))) {
 					err := errors.New("неверное кол-во этапов, считается по формуле \"кол-во_команд = 2 ^ кол-во_этапов\"")
 					return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 				}
 			}
 		}
-
 	} else {
-
 		if newReq.Rules == nil || newReq.Rules.PlayOff == nil {
 			err := errors.New("в существующем турнире \"Playoff\" правила должны быть заполнены")
 			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
@@ -414,19 +449,92 @@ func ValidatePlayoffTournamentRulesOnUpdate(req entities.UpdateTournamentRequest
 			err := errors.New("для турнира типа Playoff поле \"regular\" не должно быть заполнено")
 			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 		}
-
 		if len(newReq.TeamsIDs) == 0 || len(newReq.PlayersIDs) > 0 {
 			err := errors.New("для турнира типа Playoff команды обязательны а игроков быть не должно")
 			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 		}
-
 		if IsPowTwo(len(newReq.TeamsIDs)) == false {
 			err := errors.New("в турнире типа Playoff команд должно быть 2^N штук")
 			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 		}
-
 		if len(newReq.TeamsIDs) != int(math.Pow(2, float64(len(playOff.Stages)))) {
 			err := errors.New("неверное кол-во этапов, считается по формуле \"кол-во_команд = 2 ^ кол-во_этапов\"")
+			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+	}
+
+	return nil
+}
+
+func ValidateRegularPlayoffTournamentRulesOnUpdate(req entities.UpdateTournamentRequest, newReq *entities.UpdateTournamentRequest) error {
+	if len(req.PlayersIDs) > 0 {
+		err := errors.New("для турнира Regular+Playoff игроков быть не должно")
+		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	if newReq == nil {
+		if req.Rules != nil {
+			regular := req.Rules.Regular
+			playoff := req.Rules.PlayOff
+			regularPlayoff := req.Rules.RegularPlayoff
+
+			if regular != nil {
+				err := errors.New("для турнира Regular+Playoff поле regular должно быть заполнено только в regularPlayoff")
+				return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+			}
+			if playoff != nil {
+				err := errors.New("для турнира Regular+Playoff поле playoff должно быть заполнено только в regularPlayoff")
+				return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+			}
+			if regularPlayoff != nil {
+				if !IsPowTwo(regularPlayoff.PlayoffTeamsCountOnStart) {
+					err := errors.New("для турнира Regular+Playoff поле playoffTeamsCountOnStart должно быть степенью двойки и больше 0")
+					return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+				}
+				if regularPlayoff.PlayoffTeamsCountOnStart != int32(math.Pow(2, float64(len(regularPlayoff.PlayOff.Stages)))) {
+					err := errors.New("неверное кол-во этапов, считается по формуле \"кол-во_команд_первого_этапа_playoff = 2 ^ кол-во_этапов\"")
+					return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+				}
+				if len(req.TeamsIDs) > 0 && int(regularPlayoff.PlayoffTeamsCountOnStart) > len(req.TeamsIDs) {
+					err := errors.New("нельзя задать playoffTeamsCountOnStart, большее кол-ва команд")
+					return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+				}
+			}
+		}
+	} else {
+		if newReq.Rules == nil {
+			err := errors.New("для турнира Regular+Playoff не заданы правила")
+			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+
+		regular := newReq.Rules.Regular
+		playoff := newReq.Rules.PlayOff
+		regularPlayoff := newReq.Rules.RegularPlayoff
+
+		if regular != nil {
+			err := errors.New("для турнира Regular+Playoff поле regular должно быть заполнено только в regularPlayoff")
+			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+		if playoff != nil {
+			err := errors.New("для турнира Regular+Playoff поле playoff должно быть заполнено только в regularPlayoff")
+			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+		if regularPlayoff != nil {
+			if !IsPowTwo(regularPlayoff.PlayoffTeamsCountOnStart) {
+				err := errors.New("для турнира Regular+Playoff поле playoffTeamsCountOnStart должно быть степенью двойки и больше 0")
+				return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+			}
+			if regularPlayoff.PlayoffTeamsCountOnStart != int32(math.Pow(2, float64(len(regularPlayoff.PlayOff.Stages)))) {
+				err := errors.New("неверное кол-во этапов, считается по формуле \"кол-во_команд_первого_этапа_playoff = 2 ^ кол-во_этапов\"")
+				return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+			}
+			if len(req.TeamsIDs) > 0 && int(regularPlayoff.PlayoffTeamsCountOnStart) > len(req.TeamsIDs) {
+				err := errors.New("нельзя задать playoffTeamsCountOnStart, большее кол-ва команд")
+				return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+			}
+		}
+		if len(newReq.TeamsIDs) == 0 {
+			err := errors.New("для турнира типа Regular+Playoff команды обязательны")
 			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 		}
 	}

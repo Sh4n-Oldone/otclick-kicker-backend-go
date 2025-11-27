@@ -32,7 +32,7 @@ type ITeamR interface {
 	GetTeams(logger zerolog.Logger, ctx context.Context, cityId int64, onlyFree bool) ([]entities.TeamShort, error)
 	GetTeamsByCity(logger zerolog.Logger, ctx context.Context, onlyFree bool, cityID int64) ([]entities.TeamShort, error)
 	GetTeamsByLeague(logger zerolog.Logger, ctx context.Context, leagueID int64) ([]entities.TeamByLeague, error)
-	GetTournamentTeamList(logger zerolog.Logger, ctx context.Context, tournamentID int64, cfg *config.DBConfig) ([]entities.TournamentTeam, error)
+	GetTournamentTeamList(ctx context.Context, logger zerolog.Logger, tournamentID int64) ([]entities.TournamentTeam, error)
 	FetchTeams(logger zerolog.Logger, ctx context.Context, leagueID int64) ([]entities.Team, error)
 	TeamsHaveNoGames(logger zerolog.Logger, ctx context.Context, teams []entities.Team, seasonID int64) (bool, error)
 	GetTeamsByPlayerID(logger zerolog.Logger, ctx context.Context, playerID int, tx tx.ITx) ([]entities.TeamItem, error)
@@ -48,4 +48,7 @@ type ITeamR interface {
 	FetchTeamsByTournament(logger zerolog.Logger, ctx context.Context, tournamentId, tournamentType *int64) ([]entities.Team, error)
 	TeamsHaveNoGamesTournament(logger zerolog.Logger, ctx context.Context, teams []entities.Team, seasonId int64) (bool, error)
 	GetTournamentTeamExtraPointsCount(logger zerolog.Logger, ctx context.Context, teamId, tournamentId int64) (int64, error)
+	GetTournamentTeamExtraPointsCountV2(ctx context.Context, logger zerolog.Logger, teamId, tournamentId int64) (int64, error)
+
+	GetTeamsByTournamentAndStage(ctx context.Context, logger zerolog.Logger, tournamentId, stageId int64) ([]entities.TournamentTeam, error)
 }

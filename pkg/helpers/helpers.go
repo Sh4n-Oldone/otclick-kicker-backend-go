@@ -14,6 +14,10 @@ import (
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
 )
 
+const (
+	firstStage = 1
+)
+
 func GeneratePairs[T int64 | int | int32 | int16](teamIDs []T, bestOf int) (team1IDs, team2IDs []T) {
 	size := len(teamIDs)
 	if size < 2 || bestOf < 1 {
@@ -74,6 +78,60 @@ func GeneratePlayoffPairs[T int64 | int | int32 | int16](teamIDs []T, bestOf int
 	}
 
 	return team1IDs, team2IDs
+}
+
+// GeneratePairsRegularPlayoff генерирует пары для regular+playoff турнира
+// Генерирует по принципу: лучшая команда играет с худшей, предлучшая играет с предхудшей и т.д.
+func GeneratePairsRegularPlayoff[T int64 | int | int32 | int16](teamIDs []T, bestOf int) (team1IDs, team2IDs []T) {
+	pairCount := len(teamIDs) / 2
+
+	team1IDs = make([]T, 0, pairCount*bestOf)
+	team2IDs = make([]T, 0, pairCount*bestOf)
+
+	homeTeams := make([]T, 0, pairCount)
+	awayTeams := make([]T, 0, pairCount)
+
+	generatedTeamIDs := generateFirstPlayoffStageRegularPlayoff(teamIDs)
+
+	for i := 0; i < len(generatedTeamIDs)/2; i++ {
+		homeTeams = append(homeTeams, generatedTeamIDs[i])
+		awayTeams = append(awayTeams, generatedTeamIDs[len(generatedTeamIDs)-i-1])
+	}
+
+	// чередуем домашние и гостевые игры
+	for round := 0; round < bestOf; round++ {
+		if round%2 == 0 {
+			// четный раунд: домашние команды заполняются
+			team1IDs = append(team1IDs, homeTeams...)
+			team2IDs = append(team2IDs, awayTeams...)
+		} else {
+			// нечетный раунд: команды меняются местами
+			team1IDs = append(team1IDs, awayTeams...)
+			team2IDs = append(team2IDs, homeTeams...)
+		}
+	}
+
+	return team1IDs, team2IDs
+}
+
+// generateFirstPlayoffStageRegularPlayoff генерирует пары первого этапа playoff для турнира типа regular+playoff
+// Алгоритм разработан по KBACK-167: https://plane.otclick.ru/otclick/browse/KBACK-167/
+func generateFirstPlayoffStageRegularPlayoff[T int64 | int | int32 | int16](teamIDs []T) []T {
+	if len(teamIDs) == 2 {
+		return teamIDs
+	}
+
+	middle := len(teamIDs) / 2
+	leftHalf := generateFirstPlayoffStageRegularPlayoff[T](teamIDs[:middle])
+	rightHalf := generateFirstPlayoffStageRegularPlayoff[T](teamIDs[middle:])
+
+	result := make([]T, 0)
+	for i := 0; i < len(leftHalf); i++ {
+		result = append(result, leftHalf[i])
+		result = append(result, rightHalf[i])
+	}
+
+	return result
 }
 
 func IsPowTwo[T int64 | int | int32 | int16 | int8 | uint64 | uint | uint32 | uint16 | uint8](n T) bool {
@@ -152,7 +210,6 @@ func CheckQtyWinnersInPreviousPlayoffStage(startTeamsQty int, lastStageWinnersQt
 	teamsCount := startTeamsQty
 
 	for i := 1; i <= stageQty; i++ {
-
 		if nextStageNumber == i {
 			if lastStageWinnersQty != teamsCount {
 				err := errors.New("ошибочное кол-во победителей")
@@ -165,6 +222,38 @@ func CheckQtyWinnersInPreviousPlayoffStage(startTeamsQty int, lastStageWinnersQt
 
 	err := errors.New("непредвиденная ошибка")
 	return error_templates.New(err.Error(), err, codes.Internal, http.StatusInternalServerError)
+}
+
+// CheckQtyTeamsInRegularPlayoffStage Проверяет кол-во команд, которые пройдут в следующий этап playoff в regular+playoff турнире
+func CheckQtyTeamsInRegularPlayoffStage(neededTeamsForFirstPlayoffStageQty, currentStageTeamsQty, nextStageNumber, stageQty int) error {
+	teamsCountPerStage := neededTeamsForFirstPlayoffStageQty
+
+	for i := 1; i <= stageQty; i++ {
+		if i == nextStageNumber {
+			if teamsCountPerStage > currentStageTeamsQty {
+				err := errors.New("недостаточное мин. кол-во команд для перехода в следующий этап")
+				return error_templates.New(err.Error(), err, codes.FailedPrecondition, http.StatusConflict)
+			}
+			return nil
+		}
+
+		// если в первый этап playoff (это уже второй этап турнира!) требовалось 8 лучших команд, то в следующий потребуется 8 / 2 = 4 и т.д.
+		if i > firstStage {
+			teamsCountPerStage = teamsCountPerStage / 2
+		}
+	}
+
+	err := errors.New("непредвиденная ошибка")
+	return error_templates.New(err.Error(), err, codes.Internal, http.StatusInternalServerError)
+}
+
+func CheckQtyWinnersInPreviousRegularStage(neededTeamsCountToNextStage int32, currentTeamsCount int32) error {
+	if neededTeamsCountToNextStage > currentTeamsCount {
+		err := errors.New("ошибочное кол-во команд для следующего playoff этапа")
+		return error_templates.New(err.Error(), err, codes.FailedPrecondition, http.StatusConflict)
+	}
+
+	return nil
 }
 
 func CheckQtyWinnersInCurrentPlayoffStage(startTeamsQty int, currentStageWinnersQty int, currentStageNumber int, stageQty int) error {
@@ -223,6 +312,55 @@ func ExtractWinners(games []entities.GameStat) []int64 {
 	}
 
 	return winners
+}
+
+// ExtractWinnersRegularPlayoff используется для получения отсортированного слайса команд
+// по их результатам каждого этапа в турнире типа regular+playoff
+func ExtractWinnersRegularPlayoff(games []entities.GameStat, teamsExtraPoints map[int64]int64) ([]int64, error) {
+	pairGames := make(map[[2]int64][]entities.GameStat) // Пара команд в играх -> их игры
+	teamsRatings := make(map[int64]int64)               // Команда -> Её общий рейтинг
+
+	for _, game := range games {
+		var key [2]int64
+		if game.Game.Team1ID < game.Game.Team2ID {
+			key = [2]int64{game.Game.Team1ID, game.Game.Team2ID}
+		} else {
+			key = [2]int64{game.Game.Team2ID, game.Game.Team1ID}
+		}
+
+		pairGames[key] = append(pairGames[key], game)
+	}
+
+	for _, teamsGames := range pairGames {
+		for _, g := range teamsGames {
+			for _, m := range g.Matches {
+				teamsRatings[m.Team1ID] += m.ScoreTeam1
+				teamsRatings[m.Team2ID] += m.ScoreTeam2
+			}
+		}
+	}
+
+	eTeamRatingList := make([]entities.TeamRating, 0)
+
+	for teamId, rating := range teamsRatings {
+		if extraPoints, ok := teamsExtraPoints[teamId]; ok {
+			rating += extraPoints
+		}
+
+		eTeamRatingList = append(eTeamRatingList, entities.TeamRating{TeamID: teamId, Rating: rating})
+	}
+
+	// Получится отсортированный слайс, где команды будут расположены от наибольшего рейтинга (команда, сыгравшая лучше всех)
+	// к наименьшему (команда, сыгравшая хуже всех)
+	sort.Slice(eTeamRatingList, func(i, j int) bool { return eTeamRatingList[i].Rating > eTeamRatingList[j].Rating })
+
+	// Итоговый слайс команд по убыванию очков, чтобы отобрать в плейофф лучшие N команд
+	teams := make([]int64, 0, len(eTeamRatingList))
+	for _, res := range eTeamRatingList {
+		teams = append(teams, res.TeamID)
+	}
+
+	return teams, nil
 }
 
 func ParseTournamentStageNumber(number, separator string) (int64, int64, error) {
