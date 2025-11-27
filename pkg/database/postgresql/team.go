@@ -819,6 +819,62 @@ func (db *RDBOperation) GetTournamentTeamExtraPointsCount(logger zerolog.Logger,
 	return extraPoints, nil
 }
 
+// GetTournamentTeamExtraPointsCountV2 делает то же самое, что и GetTournamentTeamExtraPointsCount,
+// только разница в таблице, из которой забирают доп.очки. В данном методе обращение идёт к tournament_team_extra_points.
+func (db *RDBOperation) GetTournamentTeamExtraPointsCountV2(ctx context.Context, logger zerolog.Logger, teamId, tournamentId int64) (int64, error) {
+	const query = `
+		SELECT COALESCE(SUM(points), 0)
+		FROM tournament_team_extra_points tep
+		WHERE tep.team_id = $1 AND tep.tournament_id = $2;`
+
+	var extraPoints int64
+
+	err := db.db.QueryRow(ctx, query, teamId, tournamentId).Scan(&extraPoints)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to postgresql.GetTournamentTeamExtraPointsCountV2")
+		return 0, DecodeDatabaseError(err)
+	}
+
+	return extraPoints, nil
+}
+
+func (db *RDBOperation) GetTeamsByTournamentAndStage(ctx context.Context, logger zerolog.Logger, tournamentId, stageId int64) ([]entities.TournamentTeam, error) {
+	const query string = `
+		SELECT
+			t.id,
+			t.name,
+			t.short_name,
+			t.city_id
+		FROM public.teams AS t
+		JOIN public.tournaments_teams_link AS ttl ON ttl.team_id = t.id
+		JOIN public.tournament_stages AS ts ON ts.tournament_id = ttl.tournament_id
+		WHERE ttl.tournament_id = $1 AND ts.id = $2;
+	`
+
+	rows, err := db.db.Query(ctx, query, tournamentId, stageId)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to GetTeamsByTournamentStage")
+		return nil, DecodeDatabaseError(err)
+	}
+	defer rows.Close()
+
+	var teams []entities.TournamentTeam
+
+	for rows.Next() {
+		var team entities.TournamentTeam
+
+		err = rows.Scan(&team.ID, &team.Name, &team.ShortName, &team.CityID)
+		if err != nil {
+			logger.Error().Err(err).Msg("failed to scan team list")
+			return nil, DecodeDatabaseError(err)
+		}
+
+		teams = append(teams, team)
+	}
+
+	return teams, nil
+}
+
 // CreateExtraPoints deprecated
 func (db *RWDBOperation) CreateExtraPoints(logger zerolog.Logger, ctx context.Context, req *entities.CreateExtraPointsRequest) (int64, error) {
 	const query = "INSERT INTO team_extra_points(team_id, league_id, reason, points) VALUES($1, $2, $3, $4) RETURNING id"
@@ -1201,8 +1257,8 @@ func (db *RDBOperation) GetTeamGamesInLeague(logger zerolog.Logger, ctx context.
 	return games, nil
 }
 
-func (db *RDBOperation) GetTournamentTeamList(logger zerolog.Logger, ctx context.Context, tournamentID int64, cfg *config.DBConfig) ([]entities.TournamentTeam, error) {
-	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+func (db *RDBOperation) GetTournamentTeamList(ctx context.Context, logger zerolog.Logger, tournamentID int64) ([]entities.TournamentTeam, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 
 	const query string = `

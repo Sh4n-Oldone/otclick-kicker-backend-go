@@ -2,13 +2,13 @@ package tournament
 
 import (
 	"context"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/game"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/rs/zerolog"
 
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/game"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql"
 )
 

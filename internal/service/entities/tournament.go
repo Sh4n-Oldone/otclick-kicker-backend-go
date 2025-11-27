@@ -69,8 +69,9 @@ type TournamentType struct {
 }
 
 type TournamentRule struct {
-	Regular *Regular `json:"regular,omitempty"`
-	PlayOff *PlayOff `json:"playOff,omitempty"`
+	Regular        *Regular        `json:"regular,omitempty"`
+	PlayOff        *PlayOff        `json:"playOff,omitempty"`
+	RegularPlayoff *RegularPlayoff `json:"regularPlayoff,omitempty"`
 }
 
 type Regular struct {
@@ -78,8 +79,14 @@ type Regular struct {
 }
 
 type PlayOff struct {
-	Stages map[int64]BestOf `json:"stages" validate:"required=true"`
+	Stages map[int64]BestOf `json:"stages" validate:"required=true,min=1"`
 	Looser *Looser          `json:"looser,omitempty"`
+}
+
+type RegularPlayoff struct {
+	Regular                  Regular `json:"regular" validate:"required=true"`
+	PlayOff                  PlayOff `json:"playOff" validate:"required=true"`
+	PlayoffTeamsCountOnStart int32   `json:"playoffTeamsCountOnStart" validate:"required=true,gt=0"`
 }
 
 type Looser struct {

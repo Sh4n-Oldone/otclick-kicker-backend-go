@@ -334,3 +334,8 @@ type GameStat struct {
 	Matches  []ShortMatch
 	WinnerId int64
 }
+
+type TeamRating struct {
+	TeamID int64
+	Rating int64
+}

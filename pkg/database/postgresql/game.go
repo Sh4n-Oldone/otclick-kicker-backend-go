@@ -852,7 +852,7 @@ func (db *RDBOperation) GetTournamentGameList(logger zerolog.Logger, ctx context
 	return games, nil
 }
 
-func (db *RWDBOperation) CreateFutureTournamentStageGames(logger zerolog.Logger, ctx context.Context, stageID, cityID int64, team1IDs, team2IDs []int64, tx tx.ITx) error {
+func (db *RWDBOperation) CreateFutureTournamentStageGames(ctx context.Context, logger zerolog.Logger, stageID, cityID int64, team1IDs, team2IDs []int64, tx tx.ITx) error {
 	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 

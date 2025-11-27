@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"slices"
 	"strconv"
@@ -25,6 +26,8 @@ import (
 const (
 	indexZero int    = 0
 	oneStage  string = "1/1"
+
+	firstStage = 1
 )
 
 func (s *Service) GetTournamentTypeList(ctx context.Context, withDeleted bool) ([]entities.TournamentType, error) {
@@ -94,7 +97,7 @@ func (s *Service) Create(ctx context.Context, request *entities.CreateTournament
 
 	// создание турнира типа Regular каждый с каждым
 	if request.TournamentTypeID == constant.RegularTournamentTypeID {
-		tournamentID, err := s.createRegular(ctx, *request, logger)
+		tournamentID, err := s.createRegular(ctx, logger, *request)
 		if err != nil {
 			return 0, err
 		}
@@ -103,7 +106,7 @@ func (s *Service) Create(ctx context.Context, request *entities.CreateTournament
 
 		// создание турнира типа Regular.OneVsOne каждый с каждым по одному игроку в команде
 	} else if request.TournamentTypeID == constant.RegularOneVsOneTournamentTypeID {
-		tournamentID, err := s.createRegularOneVsOne(ctx, *request, logger)
+		tournamentID, err := s.createRegularOneVsOne(ctx, logger, *request)
 		if err != nil {
 			return 0, err
 		}
@@ -113,7 +116,15 @@ func (s *Service) Create(ctx context.Context, request *entities.CreateTournament
 		// создание турнира типа Playoff
 		// автоматом создаются все этапы турнира и все игры первого этапа турнира
 	} else if request.TournamentTypeID == constant.PlayoffTournamentTypeID {
-		tournamentID, err := s.createPlayoff(ctx, *request, logger)
+		tournamentID, err := s.createPlayoff(ctx, logger, *request)
+		if err != nil {
+			return 0, err
+		}
+
+		return tournamentID, nil
+
+	} else if request.TournamentTypeID == constant.RegularPlayoffTournamentTypeID {
+		tournamentID, err := s.createRegularPlayoff(ctx, logger, *request)
 		if err != nil {
 			return 0, err
 		}
@@ -160,8 +171,7 @@ func (s *Service) Update(ctx context.Context, request *entities.UpdateTournament
 			return err
 		}
 	} else {
-
-		// если это админы и турнир начат можно обновить минимальную инфу без перетасовки команд и изменения типа и сетки турнира
+		// если это админы и турнир начат, то можно обновить минимальную инфу (имя турнира, сезон) без перетасовки команд и изменения типа и сетки турнира
 		if haveFinishedStage(tournament.Stages) == true || haveStartedGames(games) == true || haveMatches == true {
 			if request.CityID != nil || request.Rules != nil || request.TeamsIDs != nil || request.PlayersIDs != nil {
 				err = fmt.Errorf("турнир с завершенными или начатыми играми не могут обновляться поля: cityId, rules, teamIds, playersIds")
@@ -185,19 +195,22 @@ func (s *Service) Update(ctx context.Context, request *entities.UpdateTournament
 		}
 
 		return nil
-	}
-
-	if request.TournamentTypeID == constant.RegularOneVsOneTournamentTypeID {
+	} else if request.TournamentTypeID == constant.RegularOneVsOneTournamentTypeID {
 		err = s.updateRegularOneVsOne(ctx, logger, *request, tournament)
 		if err != nil {
 			return err
 		}
 
 		return nil
-	}
-
-	if request.TournamentTypeID == constant.PlayoffTournamentTypeID {
+	} else if request.TournamentTypeID == constant.PlayoffTournamentTypeID {
 		err = s.updatePlayoff(ctx, logger, *request, tournament)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	} else if request.TournamentTypeID == constant.RegularPlayoffTournamentTypeID {
+		err = s.updateRegularPlayoff(ctx, logger, *request, tournament)
 		if err != nil {
 			return err
 		}
@@ -324,56 +337,49 @@ func (s *Service) FinishStage(ctx context.Context, request *entities.FinishStage
 	}
 
 	if tournament.TypeID == constant.RegularTournamentTypeID || tournament.TypeID == constant.RegularOneVsOneTournamentTypeID {
-
-		for _, g := range games {
-			// игра не должна быть позже времени финиша этапа
-			if g.Date.After(time.Now()) {
-				err = errors.New("дата игры позже текущей даты")
-				logger.Error().Err(err).Msg("game date after now")
-				return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
-			}
-
-			// сыгранная игра не может быть без матчей
-			matches, err := s.rdbOperations.FetchMatches(logger, ctx, g.ID)
-			if err != nil {
-				return err
-			}
-			if len(matches) == 0 {
-				err = errors.New("этап с игрой без матчей не может быть завершен")
-				logger.Error().Err(err).Msg("game without matches")
-				return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
-			}
-		}
-
-		// игр должно быть определенное кол-во, которое задается при создании турнира в зависимости от параметра bestOf
-		teams1ids, _ := helpers.GeneratePairs(tournament.TeamIDs, int(tournament.Rules.Regular.BestOf))
-		if len(games) < len(teams1ids) {
-			err = errors.New("в этапе турнирной сетки ожидается больше игр")
-			logger.Error().Err(err).Msg("not enough games")
-			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
-		}
-
-		err = s.rwdbOperations.UpdateTournamentStage(logger, ctx, entities.NullableStage{
-			ID:           request.ID,
-			TournamentID: nil,
-			IsFinished:   pointer.GetPointer(true),
-		})
+		err = s.finishStageRegular(ctx, logger, request, tournament, games)
 		if err != nil {
 			return err
 		}
 
-		return nil
+	} else if tournament.TypeID == constant.PlayoffTournamentTypeID {
+		err = s.finishStagePlayoff(ctx, logger, tournament, games, stage)
+		if err != nil {
+			return err
+		}
+
+	} else if tournament.TypeID == constant.RegularPlayoffTournamentTypeID {
+		err = s.finishStageRegularPlayoff(ctx, logger, tournament, games, stage)
+		if err != nil {
+			return err
+		}
+	} else {
+		return errors.New("tournament type 4 not implemented")
 	}
 
-	//todo добавить отмену плэйофф турнира
+	tx, err := s.rwdbOperations.BeginTx(ctx, logger)
+	if err != nil {
+		return err
+	}
 
-	return errors.New("tournament types 2, 3, 4 not implemented")
+	err = s.rwdbOperations.UpdateTournamentStage(ctx, logger, entities.NullableStage{ID: stage.ID, IsFinished: pointer.GetPointer(true)}, tx)
+	if err != nil {
+		tx.Rollback(ctx)
+		return err
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		tx.Rollback(ctx)
+		return err
+	}
+
+	return nil
 }
 
 func (s *Service) GetTournamentStageList(ctx context.Context, id int64) ([]entities.TournamentStageItem, error) {
 	logger := s.logger.With().Str("service", "GetTournamentStageList").Logger()
 
-	stages, err := s.rdbOperations.GetTournamentStageList(logger, ctx, id)
+	stages, err := s.rdbOperations.GetTournamentStageList(ctx, logger, id)
 	if err != nil {
 		return nil, err
 	}
@@ -599,167 +605,19 @@ func (s *Service) StartNextStage(ctx context.Context, req *entities.StartNextSta
 	}
 
 	if tournament.TypeID == constant.PlayoffTournamentTypeID {
-		// все этапы турнира,
-		stages, err := s.rdbOperations.GetTournamentStageList(logger, ctx, tournament.ID)
+		stageId, err := s.startNextStagePlayoff(ctx, logger, tournament)
 		if err != nil {
 			return 0, err
 		}
 
-		// слайс для сортировки этапов
-		orderedStages := make([]entities.StageStat, len(stages))
-
-		for _, stage := range stages {
-			var sSt entities.StageStat
-
-			// все игры этапа
-			games, err := s.rdbOperations.GetTournamentStageGames(logger, ctx, stage.ID)
-			if err != nil {
-				return 0, err
-			}
-
-			for _, g := range games {
-				var gs entities.GameStat
-				gs.Game = g
-
-				// если есть тех. поражение,то матчи не смотрим, проверяем кто проиграл и ставим отметки
-				if g.TechLooseTeamID != nil {
-
-					if *g.TechLooseTeamID == g.Team1ID {
-						gs.WinnerId = g.Team2ID
-					} else if *g.TechLooseTeamID == g.Team2ID {
-						gs.WinnerId = g.Team1ID
-					}
-
-					gs.Matches = nil
-
-				} else { // если тех. поражения нет, то проверяем матчи
-					matches, err := s.rdbOperations.FetchMatches(logger, ctx, g.ID)
-					if err != nil {
-						return 0, err
-					}
-
-					var totalScoreTeam1 int64
-					var totalScoreTeam2 int64
-
-					gs.Matches = matches
-
-					// суммируем все очки матчей для каждой команды
-					for _, m := range matches {
-						totalScoreTeam1 += m.ScoreTeam1
-						totalScoreTeam2 += m.ScoreTeam2
-					}
-
-					// если у кого-то есть преимущество по очкам - то он победитель, иначе - ничего не делаем
-					if totalScoreTeam1 > totalScoreTeam2 {
-						gs.WinnerId = g.Team1ID
-					} else if totalScoreTeam2 > totalScoreTeam1 {
-						gs.WinnerId = g.Team2ID
-					}
-				}
-
-				sSt.GameStats = append(sSt.GameStats, gs)
-			}
-
-			// пополняем список победителей этапа
-			sSt.Winners = helpers.ExtractWinners(sSt.GameStats)
-
-			// парсим порядковый номер этапа
-			orderNumberStr := strings.Split(stage.Number, constant.SeparatorStageNumber)
-			orderNumber, err := strconv.ParseInt(orderNumberStr[indexZero], 10, 64)
-			if err != nil || orderNumber <= 0 {
-				logger.Error().Err(err).Msg("failed to parse stage number")
-				return 0, error_templates.New(err.Error(), err, codes.Internal, http.StatusInternalServerError)
-			}
-
-			sSt.Number = orderNumber
-			sSt.Stage = stage
-
-			// bestOf у каждого этапа свой
-			sSt.BestOf = tournament.Rules.PlayOff.Stages[orderNumber].Bo
-
-			// выстраиваем этапы по порядку
-			orderedStages[orderNumber-1] = sSt
-		}
-
-		var nextStage entities.StageStat     // потенциальный следующий этап
-		var previousStage entities.StageStat // этап перед следующим(может быть не завершенным)
-		var foundNextStage bool = false      // отметка нашелся ли следующий этап
-
-		// следующим считается этап который первый попался без игр, и он гарантировано не первый в цикле
-		for i, stage := range orderedStages {
-			if len(stage.GameStats) == 0 && i == indexZero {
-				err = errors.New("первый этап не может быть без игр")
-				logger.Error().Err(err).Msg("first stage games not found")
-				return 0, error_templates.New(err.Error(), err, codes.Internal, http.StatusInternalServerError)
-			}
-
-			if len(stage.GameStats) == 0 && i > indexZero {
-				nextStage = stage
-				previousStage = orderedStages[i-1]
-				if len(previousStage.GameStats) == 0 {
-					err = errors.New("предыдущий этап не может быть без игр")
-					logger.Error().Err(err).Msg("last stage games not found")
-					return 0, error_templates.New(err.Error(), err, codes.Internal, http.StatusInternalServerError)
-				}
-
-				for _, g := range previousStage.GameStats {
-					if g.Game.Date == nil || time.Now().Before(*g.Game.Date) {
-						err = errors.New("предыдущий этап содержит игру с будущей датой")
-						logger.Error().Err(err).Msg("last stage games have future date")
-						return 0, error_templates.New(err.Error(), err, codes.FailedPrecondition, http.StatusConflict)
-					}
-
-					if g.Game.TechLooseTeamID == nil && len(g.Matches) == 0 {
-						err = errors.New("предыдущий этап содержит игру без матчей и без присуждения тех. поражения")
-						logger.Error().Err(err).Msg("matches and tech loose not found")
-						return 0, error_templates.New(err.Error(), err, codes.FailedPrecondition, http.StatusConflict)
-					}
-				}
-
-				foundNextStage = true
-				break
-			}
-		}
-
-		// если такой не нашелся - либо играется последний этап, либо непредвиденный косяк
-		if foundNextStage == false {
-			err = errors.New("не найден следующий этап")
-			logger.Error().Err(err).Msg("next stage not found")
-			return 0, error_templates.New(err.Error(), err, codes.FailedPrecondition, http.StatusConflict)
-		}
-
-		// если в предыдущем этапе посчиталось неправильное кол-во победителей,
-		// то это либо получилась ничья, либо непредвиденный косяк
-		err = helpers.CheckQtyWinnersInPreviousPlayoffStage(len(tournament.TeamIDs), len(previousStage.Winners), int(nextStage.Number), len(stages))
-		if err != nil {
-			logger.Error().Err(err).Msg("helpers.CheckQtyWinners")
-			return 0, err
-		}
-
-		// если предыдущий этап не завершён, не даем создать новый
-		if previousStage.Stage.IsFinished == false {
-			err = errors.New("предыдущий этап не завершён")
-			return 0, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
-		}
-
-		teams1Ids, teams2Ids := helpers.GeneratePlayoffPairs(previousStage.Winners, int(nextStage.BestOf))
-
-		tx, err := s.rwdbOperations.BeginTx(ctx, logger)
+		return stageId, nil
+	} else if tournament.TypeID == constant.RegularPlayoffTournamentTypeID {
+		stageId, err := s.startNextStageRegularPlayoff(ctx, logger, tournament)
 		if err != nil {
 			return 0, err
 		}
 
-		if err = s.rwdbOperations.CreateFutureTournamentStageGames(logger, ctx, nextStage.Stage.ID, tournament.CityID, teams1Ids, teams2Ids, tx); err != nil {
-			tx.Rollback(ctx)
-			return 0, err
-		}
-
-		if err = tx.Commit(ctx); err != nil {
-			tx.Rollback(ctx)
-			return 0, err
-		}
-
-		return nextStage.Stage.ID, nil
+		return stageId, nil
 	}
 
 	return 0, errors.New("not implemented")
@@ -1154,7 +1012,7 @@ func (s *Service) MigrateLeaguesToTournamentsDown(ctx context.Context) error {
 
 /*local methods*/
 
-func (s *Service) createRegular(ctx context.Context, request entities.CreateTournamentRequest, logger zerolog.Logger) (int64, error) {
+func (s *Service) createRegular(ctx context.Context, logger zerolog.Logger, request entities.CreateTournamentRequest) (int64, error) {
 	tx, err := s.rwdbOperations.BeginTx(ctx, logger)
 	if err != nil {
 		return 0, err
@@ -1174,7 +1032,7 @@ func (s *Service) createRegular(ctx context.Context, request entities.CreateTour
 
 	team1IDs, team2IDs := helpers.GeneratePairs(request.TeamsIDs, int(request.Rules.Regular.BestOf))
 
-	err = s.rwdbOperations.CreateFutureTournamentStageGames(logger, ctx, stageId, *request.CityID, team1IDs, team2IDs, tx)
+	err = s.rwdbOperations.CreateFutureTournamentStageGames(ctx, logger, stageId, *request.CityID, team1IDs, team2IDs, tx)
 	if err != nil {
 		tx.Rollback(ctx)
 		return 0, err
@@ -1188,7 +1046,7 @@ func (s *Service) createRegular(ctx context.Context, request entities.CreateTour
 	return id, nil
 }
 
-func (s *Service) createRegularOneVsOne(ctx context.Context, request entities.CreateTournamentRequest, logger zerolog.Logger) (int64, error) {
+func (s *Service) createRegularOneVsOne(ctx context.Context, logger zerolog.Logger, request entities.CreateTournamentRequest) (int64, error) {
 	if len(request.PlayersIDs) == 0 {
 		err := errors.New("игроки обязательны")
 		return 0, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
@@ -1295,7 +1153,7 @@ func (s *Service) createRegularOneVsOne(ctx context.Context, request entities.Cr
 
 	team1IDs, team2IDs := helpers.GeneratePairs(request.TeamsIDs, int(request.Rules.Regular.BestOf))
 
-	err = s.rwdbOperations.CreateFutureTournamentStageGames(logger, ctx, stageId, *request.CityID, team1IDs, team2IDs, tx)
+	err = s.rwdbOperations.CreateFutureTournamentStageGames(ctx, logger, stageId, *request.CityID, team1IDs, team2IDs, tx)
 	if err != nil {
 		tx.Rollback(ctx)
 		return 0, err
@@ -1309,7 +1167,7 @@ func (s *Service) createRegularOneVsOne(ctx context.Context, request entities.Cr
 	return id, nil
 }
 
-func (s *Service) createPlayoff(ctx context.Context, request entities.CreateTournamentRequest, logger zerolog.Logger) (int64, error) {
+func (s *Service) createPlayoff(ctx context.Context, logger zerolog.Logger, request entities.CreateTournamentRequest) (int64, error) {
 	err := helpers.ValidatePlayoffTournamentRulesOnCreate(&request)
 	if err != nil {
 		logger.Error().Err(err).Msg("helpers.ValidatePlayoffTournamentRulesOnCreate")
@@ -1318,7 +1176,7 @@ func (s *Service) createPlayoff(ctx context.Context, request entities.CreateTour
 
 	stageNums, stageBestOfList, err := helpers.SortKeysValues(request.Rules.PlayOff.Stages)
 	if err != nil {
-		logger.Error().Err(err).Msg("helpers.SortKeysValues")
+		logger.Error().Err(err).Msg("failed helpers.SortKeysValues")
 		err = errors.New("нарушена нумерация этапов")
 		return 0, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
@@ -1328,13 +1186,8 @@ func (s *Service) createPlayoff(ctx context.Context, request entities.CreateTour
 		return 0, err
 	}
 
-	tournamentId, err := s.rwdbOperations.CreateTournamentTx(logger, ctx, request, tx)
+	tournamentId, err := s.rwdbOperations.CreateTournament(logger, ctx, request, tx)
 	if err != nil {
-		tx.Rollback(ctx)
-		return 0, err
-	}
-
-	if err = s.rwdbOperations.AddTeamsToTournamentTx(logger, ctx, request.TeamsIDs, tournamentId, tx); err != nil {
 		tx.Rollback(ctx)
 		return 0, err
 	}
@@ -1354,7 +1207,7 @@ func (s *Service) createPlayoff(ctx context.Context, request entities.CreateTour
 			return 0, err
 		}
 
-		// сохраним id первого этапа,  чтобы потом туда положить готовые игры
+		// сохраним id первого этапа, чтобы потом туда положить готовые игры
 		if i == indexZero {
 			firstStageId = stageId
 		}
@@ -1364,9 +1217,74 @@ func (s *Service) createPlayoff(ctx context.Context, request entities.CreateTour
 	// BestOf берётся из первого элемента мапы реквеста - stages
 	teams1Ids, teams2Ids := helpers.GeneratePlayoffPairs(request.TeamsIDs, int(stageBestOfList[indexZero].Bo))
 	// создаем игры первого этапа
-	if err = s.rwdbOperations.CreateFutureTournamentStageGames(logger, ctx, firstStageId, *request.CityID, teams1Ids, teams2Ids, tx); err != nil {
+	if err = s.rwdbOperations.CreateFutureTournamentStageGames(ctx, logger, firstStageId, *request.CityID, teams1Ids, teams2Ids, tx); err != nil {
 		tx.Rollback(ctx)
 		return 0, err
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		tx.Rollback(ctx)
+		return 0, err
+	}
+
+	return tournamentId, nil
+}
+
+func (s *Service) createRegularPlayoff(ctx context.Context, logger zerolog.Logger, req entities.CreateTournamentRequest) (int64, error) {
+	tx, err := s.rwdbOperations.BeginTx(ctx, logger)
+	if err != nil {
+		return 0, err
+	}
+
+	err = helpers.ValidateRegularPlayoffTournamentRulesOnCreate(&req)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed helpers.ValidateRegularPlayoffTournamentRulesOnCreate")
+		return 0, err
+	}
+
+	// здесь важно просто создать этапы для будущих игр, но на данный момент мы не знаем, кто будет играть в них,
+	// т.к. ещё нет результатов regular-этапа
+	playoffStageNums, _, err := helpers.SortKeysValues(req.Rules.RegularPlayoff.PlayOff.Stages)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed helpers.SortKeysValues")
+		err = errors.New("нарушена нумерация этапов")
+		return 0, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	tournamentId, err := s.rwdbOperations.CreateTournament(logger, ctx, req, tx)
+	if err != nil {
+		tx.Rollback(ctx)
+		return 0, err
+	}
+
+	// создаем regular-этап 1/N
+	regularStage := strconv.FormatInt(firstStage, 10) + constant.SeparatorStageNumber + strconv.Itoa(firstStage+len(req.Rules.RegularPlayoff.PlayOff.Stages))
+
+	firstStageId, err := s.rwdbOperations.CreateTournamentStage(logger, ctx, tournamentId, regularStage, tx)
+	if err != nil {
+		tx.Rollback(ctx)
+		return 0, err
+	}
+
+	team1IDs, team2IDs := helpers.GeneratePairs(req.TeamsIDs, int(req.Rules.RegularPlayoff.Regular.BestOf))
+
+	// игры regular-этапа
+	err = s.rwdbOperations.CreateFutureTournamentStageGames(ctx, logger, firstStageId, *req.CityID, team1IDs, team2IDs, tx)
+	if err != nil {
+		tx.Rollback(ctx)
+		return 0, err
+	}
+
+	for i := 0; i < len(playoffStageNums); i++ {
+		// создаём строку вида <порядковый_номер_этапа>/<кол-во_этапов>, образец: 2/4, 3/4, 4/4 - финал.
+		// 1/N пропускаем, так как он уже создан в рамках regular
+		stageSlashNumberOfStages := strconv.FormatInt(int64(i+2), 10) + constant.SeparatorStageNumber + strconv.Itoa(firstStage+len(req.Rules.RegularPlayoff.PlayOff.Stages))
+
+		_, err = s.rwdbOperations.CreateTournamentStage(logger, ctx, tournamentId, stageSlashNumberOfStages, tx)
+		if err != nil {
+			tx.Rollback(ctx)
+			return 0, err
+		}
 	}
 
 	if err = tx.Commit(ctx); err != nil {
@@ -1451,7 +1369,7 @@ func (s *Service) updateRegular(ctx context.Context, logger zerolog.Logger, req 
 
 	team1IDs, team2IDs := helpers.GeneratePairs(newReq.TeamsIDs, int(newReq.Rules.Regular.BestOf))
 
-	err = s.rwdbOperations.CreateFutureTournamentStageGames(logger, ctx, tournament.Stages[indexZero].ID, *newReq.CityID, team1IDs, team2IDs, tx)
+	err = s.rwdbOperations.CreateFutureTournamentStageGames(ctx, logger, tournament.Stages[indexZero].ID, *newReq.CityID, team1IDs, team2IDs, tx)
 	if err != nil {
 		tx.Rollback(ctx)
 		return err
@@ -1628,7 +1546,7 @@ func (s *Service) updateRegularOneVsOne(ctx context.Context, logger zerolog.Logg
 		team1IDs, team2IDs := helpers.GeneratePairs(teamIds, int(newReq.Rules.Regular.BestOf))
 
 		// создаем новые игры
-		err = s.rwdbOperations.CreateFutureTournamentStageGames(logger, ctx, tournament.Stages[indexZero].ID, *newReq.CityID, team1IDs, team2IDs, tx)
+		err = s.rwdbOperations.CreateFutureTournamentStageGames(ctx, logger, tournament.Stages[indexZero].ID, *newReq.CityID, team1IDs, team2IDs, tx)
 		if err != nil {
 			tx.Rollback(ctx)
 			return err
@@ -1684,7 +1602,7 @@ func (s *Service) updateRegularOneVsOne(ctx context.Context, logger zerolog.Logg
 		team1IDs, team2IDs := helpers.GeneratePairs(teamIds, int(newReq.Rules.Regular.BestOf))
 
 		// создаем новые игры
-		err = s.rwdbOperations.CreateFutureTournamentStageGames(logger, ctx, tournament.Stages[indexZero].ID, *newReq.CityID, team1IDs, team2IDs, tx)
+		err = s.rwdbOperations.CreateFutureTournamentStageGames(ctx, logger, tournament.Stages[indexZero].ID, *newReq.CityID, team1IDs, team2IDs, tx)
 		if err != nil {
 			tx.Rollback(ctx)
 			return err
@@ -1717,7 +1635,7 @@ func (s *Service) updateRegularOneVsOne(ctx context.Context, logger zerolog.Logg
 		team1IDs, team2IDs := helpers.GeneratePairs(newReq.TeamsIDs, int(newReq.Rules.Regular.BestOf))
 
 		// создаем новые игры
-		if err = s.rwdbOperations.CreateFutureTournamentStageGames(logger, ctx, tournament.Stages[indexZero].ID, *newReq.CityID, team1IDs, team2IDs, tx); err != nil {
+		if err = s.rwdbOperations.CreateFutureTournamentStageGames(ctx, logger, tournament.Stages[indexZero].ID, *newReq.CityID, team1IDs, team2IDs, tx); err != nil {
 			tx.Rollback(ctx)
 			return err
 		}
@@ -1809,9 +1727,9 @@ func (s *Service) updatePlayoff(ctx context.Context, logger zerolog.Logger, req 
 		return err
 	}
 
-	// если пришли новые команды, или изменились правила или город - всё перезаписываем
+	// если пришли новые команды, изменились правила или город - всё перезаписываем
 	if len(req.TeamsIDs) > 0 || req.Rules != nil || req.CityID != nil {
-		// старые команды отвязать от турнира,
+		// старые команды отвязать от турнира
 		if err = s.rwdbOperations.UnlinkTeamsFromTournament(logger, ctx, tournament.ID, tx); err != nil {
 			tx.Rollback(ctx)
 			return err
@@ -1823,14 +1741,14 @@ func (s *Service) updatePlayoff(ctx context.Context, logger zerolog.Logger, req 
 			return err
 		}
 
-		// удалить этапы утрнира
+		// удалить этапы турнира
 		if err = s.rwdbOperations.DeleteTournamentStages(logger, ctx, tournament.ID, tx); err != nil {
 			tx.Rollback(ctx)
 			return err
 		}
 
 		// добавим новые команды в турнир
-		if err = s.rwdbOperations.AddTeamsToTournamentTx(logger, ctx, newReq.TeamsIDs, tournament.ID, tx); err != nil {
+		if err = s.rwdbOperations.AddTeamsToTournament(ctx, logger, newReq.TeamsIDs, tournament.ID, tx); err != nil {
 			tx.Rollback(ctx)
 			return err
 		}
@@ -1868,7 +1786,7 @@ func (s *Service) updatePlayoff(ctx context.Context, logger zerolog.Logger, req 
 		// BestOf берётся из первого элемента мапы реквеста - stages
 		teams1Ids, teams2Ids := helpers.GeneratePlayoffPairs(newReq.TeamsIDs, int(stageBestOfList[indexZero].Bo))
 		// создаем игры первого этапа
-		if err = s.rwdbOperations.CreateFutureTournamentStageGames(logger, ctx, firstStageId, *newReq.CityID, teams1Ids, teams2Ids, tx); err != nil {
+		if err = s.rwdbOperations.CreateFutureTournamentStageGames(ctx, logger, firstStageId, *newReq.CityID, teams1Ids, teams2Ids, tx); err != nil {
 			tx.Rollback(ctx)
 			return err
 		}
@@ -1883,10 +1801,166 @@ func (s *Service) updatePlayoff(ctx context.Context, logger zerolog.Logger, req 
 	return nil
 }
 
+func (s *Service) updateRegularPlayoff(ctx context.Context, logger zerolog.Logger, req entities.UpdateTournamentRequest, tournament entities.Tournament) error {
+	// вызываем первый раз для валидации только входящих данных, второй параметр поэтому равен nil
+	err := helpers.ValidateRegularPlayoffTournamentRulesOnUpdate(req, nil)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to helpers.ValidateRegularPlayoffTournamentRulesOnUpdate")
+		return err
+	}
+
+	// собираем запрос с учетом старых данных турнира
+	newReq := entities.UpdateTournamentRequest{
+		ID:               req.ID,
+		Executor:         req.Executor,
+		TournamentTypeID: req.TournamentTypeID,
+	}
+	if req.CityID != nil {
+		newReq.CityID = req.CityID
+	} else {
+		newReq.CityID = &tournament.CityID
+	}
+	if req.SeasonID != nil {
+		newReq.SeasonID = req.SeasonID
+	} else {
+		newReq.SeasonID = &tournament.SeasonID
+	}
+	if req.Name != nil {
+		newReq.Name = req.Name
+	} else {
+		newReq.Name = &tournament.Name
+	}
+	if req.Rules != nil {
+		newReq.Rules = req.Rules
+	} else {
+		newReq.Rules = &tournament.Rules
+	}
+
+	// если в запросе были новые команды, то заново их проверить на соответствие городу
+	if len(req.TeamsIDs) > 0 {
+		err := s.checkTeamsCityIds(ctx, logger, req.TeamsIDs, tournament, newReq.CityID)
+		if err != nil {
+			return err
+		}
+		newReq.TeamsIDs = req.TeamsIDs
+	} else {
+		newReq.TeamsIDs = tournament.TeamIDs
+	}
+
+	// вызываем второй раз для валидации собранных данных турнира
+	err = helpers.ValidateRegularPlayoffTournamentRulesOnUpdate(req, &newReq)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to helpers.ValidateRegularPlayoffTournamentRulesOnUpdate")
+		return err
+	}
+
+	tx, err := s.rwdbOperations.BeginTx(ctx, logger)
+	if err != nil {
+		return err
+	}
+
+	err = s.rwdbOperations.UpdateTournament(logger, ctx, newReq, tx)
+	if err != nil {
+		tx.Rollback(ctx)
+		return err
+	}
+
+	// если пришли новые команды, или если изменились правила или город - всё перезаписываем
+	if len(req.TeamsIDs) > 0 || req.Rules != nil || req.CityID != nil {
+		// старые команды отвязать от турнира
+		if err = s.rwdbOperations.UnlinkTeamsFromTournament(logger, ctx, tournament.ID, tx); err != nil {
+			tx.Rollback(ctx)
+			return err
+		}
+
+		// удалить игры старых команд
+		if err = s.rwdbOperations.DeleteTournamentGames(logger, ctx, tournament.ID, tx); err != nil {
+			tx.Rollback(ctx)
+			return err
+		}
+
+		// удалить этапы турнира
+		if err = s.rwdbOperations.DeleteTournamentStages(logger, ctx, tournament.ID, tx); err != nil {
+			tx.Rollback(ctx)
+			return err
+		}
+
+		// добавим новые команды в турнир
+		if err = s.rwdbOperations.AddTeamsToTournament(ctx, logger, newReq.TeamsIDs, tournament.ID, tx); err != nil {
+			tx.Rollback(ctx)
+			return err
+		}
+
+		playoffStageNums, _, err := helpers.SortKeysValues(newReq.Rules.RegularPlayoff.PlayOff.Stages)
+		if err != nil {
+			logger.Error().Err(err).Msg("failed helpers.SortKeysValues")
+			err = errors.New("нарушена нумерация этапов")
+			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+
+		// создаем regular-этап 1/N
+		regularStage := strconv.FormatInt(firstStage, 10) + constant.SeparatorStageNumber + strconv.Itoa(firstStage+len(newReq.Rules.RegularPlayoff.PlayOff.Stages))
+
+		regularStageId, err := s.rwdbOperations.CreateTournamentStage(logger, ctx, newReq.ID, regularStage, tx)
+		if err != nil {
+			tx.Rollback(ctx)
+			return err
+		}
+
+		team1IDs, team2IDs := helpers.GeneratePairs(newReq.TeamsIDs, int(newReq.Rules.RegularPlayoff.Regular.BestOf))
+
+		// игры regular-этапа
+		err = s.rwdbOperations.CreateFutureTournamentStageGames(ctx, logger, regularStageId, *newReq.CityID, team1IDs, team2IDs, tx)
+		if err != nil {
+			tx.Rollback(ctx)
+			return err
+		}
+
+		for i := 0; i < len(playoffStageNums); i++ {
+			// создаём строку вида <порядковый_номер_этапа>/<кол-во_этапов>, образец: 2/4, 3/4, 4/4 - финал.
+			// 1/N пропускаем, так как он уже создан в рамках regular
+			stageSlashNumberOfStages := strconv.FormatInt(int64(i+2), 10) + constant.SeparatorStageNumber + strconv.Itoa(firstStage+len(newReq.Rules.RegularPlayoff.PlayOff.Stages))
+
+			_, err = s.rwdbOperations.CreateTournamentStage(logger, ctx, newReq.ID, stageSlashNumberOfStages, tx)
+			if err != nil {
+				tx.Rollback(ctx)
+				return err
+			}
+		}
+
+		if err = tx.Commit(ctx); err != nil {
+			tx.Rollback(ctx)
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (s *Service) checkTournamentMasterCredentials(ctx context.Context, logger zerolog.Logger, req *entities.UpdateTournamentRequest, tournament entities.Tournament, games []entities.TournamentGame) error {
 	master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, req.Executor.ID)
 	if err != nil {
 		return err
+	}
+
+	if tournament.CityID != master.City.ID {
+		err = fmt.Errorf(
+			"город турнира(ID: %d) не совпадает с городом мастера по турнирам(ID: %d)",
+			tournament.CityID,
+			master.City.ID,
+		)
+		logger.Error().Err(err).Msg("Failed tournament.Update by tournament master")
+		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	if req.CityID != nil && *req.CityID != master.City.ID {
+		err = fmt.Errorf(
+			"город в запросе(ID: %d) не совпадает с городом мастера по турнирам(ID: %d)",
+			*req.CityID,
+			master.City.ID,
+		)
+		logger.Error().Err(err).Msg("Failed tournament.Update by tournament master")
+		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
 	if len(req.TeamsIDs) > 0 {
@@ -1915,26 +1989,6 @@ func (s *Service) checkTournamentMasterCredentials(ctx context.Context, logger z
 				return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 			}
 		}
-	}
-
-	if tournament.CityID != master.City.ID {
-		err = fmt.Errorf(
-			"город турнира(ID: %d) не совпадает с городом мастера по турнирам(ID: %d)",
-			tournament.CityID,
-			master.City.ID,
-		)
-		logger.Error().Err(err).Msg("Failed tournament.Update by tournament master")
-		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
-	}
-
-	if req.CityID != nil && *req.CityID != master.City.ID {
-		err = fmt.Errorf(
-			"город в запросе(ID: %d) не совпадает с городом мастера по турнирам(ID: %d)",
-			*req.CityID,
-			master.City.ID,
-		)
-		logger.Error().Err(err).Msg("Failed tournament.Update by tournament master")
-		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
 	if haveFinishedStage(tournament.Stages) == true {
@@ -2134,13 +2188,519 @@ func (s *Service) checkMasterAndTournamentCities(ctx context.Context, tournament
 	return nil
 }
 
+func (s *Service) startNextStagePlayoff(ctx context.Context, logger zerolog.Logger, tournament entities.Tournament) (int64, error) {
+	// все этапы турнира
+	stages, err := s.rdbOperations.GetTournamentStageList(ctx, logger, tournament.ID)
+	if err != nil {
+		return 0, err
+	}
+
+	orderedStages, err := s.getOrderedStagesWithWinners(ctx, logger, tournament, stages)
+	if err != nil {
+		return 0, err
+	}
+
+	nextStage, previousStage, foundNextStage, err := checkOrderedStages(orderedStages)
+	if err != nil {
+		return 0, err
+	}
+
+	// если такой не нашелся - либо играется последний этап, либо непредвиденный косяк
+	if *foundNextStage == false {
+		err = errors.New("не найден следующий этап")
+		logger.Error().Err(err).Msg("next stage not found")
+		return 0, error_templates.New(err.Error(), err, codes.FailedPrecondition, http.StatusConflict)
+	}
+
+	// если в предыдущем этапе посчиталось неправильное кол-во победителей,
+	// то это либо получилась ничья, либо непредвиденный косяк
+	err = helpers.CheckQtyWinnersInPreviousPlayoffStage(len(tournament.TeamIDs), len(previousStage.Winners), int(nextStage.Number), len(stages))
+	if err != nil {
+		logger.Error().Err(err).Msg("helpers.CheckQtyWinners")
+		return 0, err
+	}
+
+	// если предыдущий этап не завершён, не даем создать новый
+	if previousStage.Stage.IsFinished == false {
+		err = errors.New("предыдущий этап не завершён")
+		return 0, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	teams1Ids, teams2Ids := helpers.GeneratePlayoffPairs(previousStage.Winners, int(nextStage.BestOf))
+
+	tx, err := s.rwdbOperations.BeginTx(ctx, logger)
+	if err != nil {
+		return 0, err
+	}
+
+	if err = s.rwdbOperations.CreateFutureTournamentStageGames(ctx, logger, nextStage.Stage.ID, tournament.CityID, teams1Ids, teams2Ids, tx); err != nil {
+		tx.Rollback(ctx)
+		return 0, err
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		tx.Rollback(ctx)
+		return 0, err
+	}
+
+	return nextStage.Stage.ID, nil
+}
+
+func (s *Service) startNextStageRegularPlayoff(ctx context.Context, logger zerolog.Logger, tournament entities.Tournament) (int64, error) {
+	stages, err := s.rdbOperations.GetTournamentStageList(ctx, logger, tournament.ID)
+	if err != nil {
+		return 0, err
+	}
+
+	orderedStages, err := s.getOrderedStagesRegularPlayoff(ctx, logger, tournament, stages)
+	if err != nil {
+		return 0, err
+	}
+
+	nextStage, previousStage, foundNextStage, err := checkOrderedStages(orderedStages)
+	if err != nil {
+		return 0, err
+	}
+
+	// если такой не нашелся - либо играется последний этап, либо непредвиденный косяк
+	if *foundNextStage == false {
+		err = errors.New("не найден следующий этап")
+		logger.Error().Err(err).Msg("next stage not found")
+		return 0, error_templates.New(err.Error(), err, codes.FailedPrecondition, http.StatusConflict)
+	}
+
+	err = helpers.CheckQtyTeamsInRegularPlayoffStage(int(tournament.Rules.RegularPlayoff.PlayoffTeamsCountOnStart), len(previousStage.Winners), int(nextStage.Number), len(stages))
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to helpers.CheckQtyTeamsInRegularPlayoffStage")
+		return 0, err
+	}
+
+	// если предыдущий этап не завершён, не даем создать новый
+	if previousStage.Stage.IsFinished == false {
+		err = errors.New("предыдущий этап не завершён")
+		return 0, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	var countFinishedPlayoffStages int32
+	for _, stage := range orderedStages {
+		if stage.Stage.IsFinished && stage.Number != firstStage {
+			countFinishedPlayoffStages += 1
+		}
+	}
+
+	// Логика следующая (старый номер этапа -> новый номер этапа):
+	// Формула: КОЛ-ВО_КОМАНД_ДЛЯ_ПЕРЕХОДА_В_ПЛЕЙОФФ (задано при создании турнира) / (2 ^ КОЛ-ВО_ПРОЙДЕННЫХ_ЭТАПОВ)
+	// Пусть при создании турнира задано, что в playoff перейдут 4 лучшие команды
+	// При переходе из regular в playoff (1 -> 2): 4 / (2 ^ 0) = 4 (0 в степени двойки потому, что на данный момент пройден regular-этап => 0 пройденных playoff-этапов)
+	// При переходе из playoff-1 в playoff-2 (2 -> 3): 4 / (2 ^ 1) = 2; далее этапов нет, то есть в этом этапе определится победитель
+
+	neededTeamsCountForNextStage := tournament.Rules.RegularPlayoff.PlayoffTeamsCountOnStart / int32(math.Pow(2, float64(countFinishedPlayoffStages)))
+
+	var teams1Ids, teams2Ids []int64
+	if previousStage.Number == firstStage {
+		// Для первого этапа playoff (то есть второй этап турнира) команды генерируются по особому алгоритму,
+		// см. реализацию в GeneratePairsRegularPlayoff
+		teams1Ids, teams2Ids = helpers.GeneratePairsRegularPlayoff(previousStage.Winners[:neededTeamsCountForNextStage], int(nextStage.BestOf))
+	} else {
+		teams1Ids, teams2Ids = helpers.GeneratePlayoffPairs(previousStage.Winners[:neededTeamsCountForNextStage], int(nextStage.BestOf))
+	}
+
+	tx, err := s.rwdbOperations.BeginTx(ctx, logger)
+	if err != nil {
+		return 0, err
+	}
+
+	if err = s.rwdbOperations.CreateFutureTournamentStageGames(ctx, logger, nextStage.Stage.ID, tournament.CityID, teams1Ids, teams2Ids, tx); err != nil {
+		tx.Rollback(ctx)
+		return 0, err
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		tx.Rollback(ctx)
+		return 0, err
+	}
+
+	return nextStage.Stage.ID, nil
+}
+
+func (s *Service) finishStageRegular(ctx context.Context, logger zerolog.Logger, request *entities.FinishStageRequest, tournament entities.Tournament, games []entities.TournamentGame) error {
+	var err error
+
+	if err = s.validateGames(ctx, logger, games); err != nil {
+		return err
+	}
+
+	// игр должно быть определенное кол-во, которое задается при создании турнира в зависимости от параметра bestOf
+	teams1ids, _ := helpers.GeneratePairs(tournament.TeamIDs, int(tournament.Rules.Regular.BestOf))
+	if len(games) < len(teams1ids) {
+		err = errors.New("в этапе турнирной сетки ожидается больше игр")
+		logger.Error().Err(err).Msg("not enough games")
+
+		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	return nil
+}
+
+func (s *Service) finishStagePlayoff(ctx context.Context, logger zerolog.Logger, tournament entities.Tournament, games []entities.TournamentGame, curStage entities.TournamentStage) error {
+	stages, err := s.rdbOperations.GetTournamentStageList(ctx, logger, tournament.ID)
+	if err != nil {
+		return err
+	}
+
+	if err = s.checkStages(logger, stages, curStage); err != nil {
+		return err
+	}
+
+	if err = s.validateGames(ctx, logger, games); err != nil {
+		return err
+	}
+
+	orderedStages, err := s.getOrderedStagesWithWinners(ctx, logger, tournament, stages)
+	if err != nil {
+		return err
+	}
+
+	nextStage, previousStage, foundNextStage, err := checkOrderedStages(orderedStages)
+	if err != nil {
+		return err
+	}
+
+	if err = checkForLastStageFinish(nextStage, foundNextStage); err != nil {
+		logger.Error().Err(err).Msg(err.Error())
+		return err
+	}
+
+	if nextStage == nil && previousStage == nil {
+		// завершаем последний этап со всеми сыгранными играми
+		return nil
+	}
+
+	// если в предыдущем этапе посчиталось неправильное кол-во победителей,
+	// то это либо получилась ничья, либо непредвиденный косяк
+	err = helpers.CheckQtyWinnersInPreviousPlayoffStage(len(tournament.TeamIDs), len(previousStage.Winners), int(nextStage.Number), len(stages))
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to helpers.CheckQtyWinners")
+		return err
+	}
+
+	if err = checkPlayoffTeamsCountWithGeneratedTeams(previousStage.Winners, int(nextStage.BestOf), helpers.GeneratePlayoffPairs); err != nil {
+		logger.Error().Err(err).Msg(err.Error())
+
+		return err
+	}
+
+	return nil
+}
+
+func (s *Service) finishStageRegularPlayoff(ctx context.Context, logger zerolog.Logger, tournament entities.Tournament, stageGames []entities.TournamentGame, curStage entities.TournamentStage) error {
+	stages, err := s.rdbOperations.GetTournamentStageList(ctx, logger, tournament.ID)
+	if err != nil {
+		return err
+	}
+
+	if err = s.checkStages(logger, stages, curStage); err != nil {
+		return err
+	}
+
+	if err = s.validateGames(ctx, logger, stageGames); err != nil {
+		return err
+	}
+
+	orderedStages, err := s.getOrderedStagesRegularPlayoff(ctx, logger, tournament, stages)
+	if err != nil {
+		return err
+	}
+
+	nextStage, previousStage, foundNextStage, err := checkOrderedStages(orderedStages)
+	if err != nil {
+		return err
+	}
+
+	if err = checkForLastStageFinish(nextStage, foundNextStage); err != nil {
+		logger.Error().Err(err).Msg(err.Error())
+		return err
+	}
+
+	if nextStage == nil && previousStage == nil {
+		// завершаем последний этап со всеми сыгранными играми
+		return nil
+	}
+
+	err = helpers.CheckQtyTeamsInRegularPlayoffStage(int(tournament.Rules.RegularPlayoff.PlayoffTeamsCountOnStart), len(previousStage.Winners), int(nextStage.Number), len(stages))
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to helpers.CheckQtyTeamsInRegularPlayoffStage")
+		return err
+	}
+
+	return nil
+}
+
+// validateGames Проверяет, что все игры этапа начаты и у них есть хотя бы 1 матч.
+// Используется при старте нового этапа или завершении текущего в playoff или regular+playoff турнирах.
+func (s *Service) validateGames(ctx context.Context, logger zerolog.Logger, games []entities.TournamentGame) error {
+	var err error
+
+	for _, game := range games {
+		if game.Date == nil || game.Date.After(time.Now()) {
+			msg := fmt.Sprintf("дата игры с id=%d позже текущей даты", game.ID)
+			err = errors.New(msg)
+			logger.Error().Err(err).Msg(msg)
+
+			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+
+		matches, err := s.rdbOperations.FetchMatches(logger, ctx, game.ID)
+		if err != nil {
+			return err
+		}
+		if game.TechLooseTeamID == nil && len(matches) == 0 {
+			msg := fmt.Sprintf("обнаружена игра id=%d без матчей", game.ID)
+			err = errors.New(msg)
+			logger.Error().Err(err).Msg(msg)
+
+			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+	}
+
+	return nil
+}
+
+// getOrderedStagesWithWinners Проходит по всем играм всех этапов, определяет на каждом этапе победителей.
+func (s *Service) getOrderedStagesWithWinners(ctx context.Context, logger zerolog.Logger, tournament entities.Tournament, stages []entities.TournamentStage) ([]entities.StageStat, error) {
+	orderedStages := make([]entities.StageStat, len(stages))
+
+	teams, err := s.rdbOperations.GetTournamentTeamList(ctx, logger, tournament.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	teamsExtraPoints := make(map[int64]int64, len(teams))
+
+	for _, team := range teams {
+		extraPoints, err := s.rdbOperations.GetTournamentTeamExtraPointsCountV2(ctx, logger, team.ID, tournament.ID)
+		if err != nil {
+			return nil, err
+		}
+
+		teamsExtraPoints[team.ID] = extraPoints
+	}
+
+	slices.SortFunc(stages, func(a, b entities.TournamentStage) int {
+		return int(a.ID - b.ID)
+	})
+
+	for _, stage := range stages {
+		sSt, err := s.getGameStatsForStage(ctx, logger, stage.ID, teamsExtraPoints)
+		if err != nil {
+			return nil, err
+		}
+
+		sSt.Winners = helpers.ExtractWinners(sSt.GameStats)
+
+		// парсим порядковый номер этапа
+		orderNumberStr := strings.Split(stage.Number, constant.SeparatorStageNumber)
+		orderNumber, err := strconv.ParseInt(orderNumberStr[indexZero], 10, 64)
+		if err != nil {
+			logger.Error().Err(err).Msg(err.Error())
+
+			return nil, error_templates.New(err.Error(), err, codes.Internal, http.StatusInternalServerError)
+		}
+		if orderNumber <= 0 {
+			msg := "failed to parse stage number"
+			err := errors.New(msg)
+			logger.Error().Err(err).Msg(msg)
+
+			return nil, error_templates.New(err.Error(), err, codes.Internal, http.StatusInternalServerError)
+		}
+
+		sSt.Number = orderNumber
+		sSt.Stage = stage
+
+		// bestOf у каждого этапа свой
+		sSt.BestOf = tournament.Rules.PlayOff.Stages[orderNumber].Bo
+
+		// выстраиваем этапы по порядку
+		orderedStages[orderNumber-1] = *sSt
+	}
+
+	return orderedStages, nil
+}
+
+// getOrderedStagesRegularPlayoff делает то же, что и getOrderedStagesWithWinners, только разница в получении списка победителей.
+// Здесь извлекаются не победители, а отсортированные по убыванию рейтинга команды.
+func (s *Service) getOrderedStagesRegularPlayoff(ctx context.Context, logger zerolog.Logger, tournament entities.Tournament, stages []entities.TournamentStage) ([]entities.StageStat, error) {
+	orderedStages := make([]entities.StageStat, len(stages))
+
+	teams, err := s.rdbOperations.GetTournamentTeamList(ctx, logger, tournament.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	teamsExtraPoints := make(map[int64]int64, len(teams))
+
+	for _, team := range teams {
+		extraPoints, err := s.rdbOperations.GetTournamentTeamExtraPointsCountV2(ctx, logger, team.ID, tournament.ID)
+		if err != nil {
+			return nil, err
+		}
+
+		teamsExtraPoints[team.ID] = extraPoints
+	}
+
+	slices.SortFunc(stages, func(a, b entities.TournamentStage) int {
+		return int(a.ID - b.ID)
+	})
+
+	for _, stage := range stages {
+		sSt, err := s.getGameStatsForStage(ctx, logger, stage.ID, teamsExtraPoints)
+		if err != nil {
+			return nil, err
+		}
+
+		// парсим порядковый номер этапа
+		orderNumberStr := strings.Split(stage.Number, constant.SeparatorStageNumber)
+		orderNumber, err := strconv.ParseInt(orderNumberStr[indexZero], 10, 64)
+		if err != nil {
+			logger.Error().Err(err).Msg(err.Error())
+
+			return nil, error_templates.New(err.Error(), err, codes.Internal, http.StatusInternalServerError)
+		}
+		if orderNumber <= 0 {
+			msg := "failed to parse stage number"
+			err := errors.New(msg)
+			logger.Error().Err(err).Msg(msg)
+
+			return nil, error_templates.New(err.Error(), err, codes.Internal, http.StatusInternalServerError)
+		}
+
+		sSt.Number = orderNumber
+		sSt.Stage = stage
+
+		if sSt.Number == firstStage {
+			// для оконченного regular-этапа надо понять, какие топ N команд пройдут в первый playoff-этап (т.е. второй этап)
+			sSt.Winners, err = helpers.ExtractWinnersRegularPlayoff(sSt.GameStats, teamsExtraPoints)
+			if err != nil {
+				return nil, err
+			}
+
+			sSt.BestOf = tournament.Rules.RegularPlayoff.Regular.BestOf
+		} else {
+			// для всех остальных playoff этапов
+			sSt.Winners = helpers.ExtractWinners(sSt.GameStats)
+			sSt.BestOf = tournament.Rules.RegularPlayoff.PlayOff.Stages[orderNumber-1].Bo
+		}
+
+		// выстраиваем этапы по порядку
+		orderedStages[orderNumber-1] = *sSt
+	}
+
+	return orderedStages, nil
+}
+
+func (s *Service) getGameStatsForStage(ctx context.Context, logger zerolog.Logger, stageId int64, teamsExtraPoints map[int64]int64) (*entities.StageStat, error) {
+	var sSt entities.StageStat
+
+	stageGames, err := s.rdbOperations.GetTournamentStageGames(logger, ctx, stageId)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = s.validateGames(ctx, logger, stageGames); err != nil {
+		return nil, err
+	}
+
+	for _, g := range stageGames {
+		var gs entities.GameStat
+		gs.Game = g
+
+		// если есть тех.поражение, то матчи не смотрим, проверяем кто проиграл и ставим отметки
+		if g.TechLooseTeamID != nil {
+			if *g.TechLooseTeamID == g.Team1ID {
+				gs.WinnerId = g.Team2ID
+			} else if *g.TechLooseTeamID == g.Team2ID {
+				gs.WinnerId = g.Team1ID
+			}
+
+			gs.Matches = nil
+		} else { // если тех.поражения нет, то проверяем матчи
+			matches, err := s.rdbOperations.FetchMatches(logger, ctx, g.ID)
+			if err != nil {
+				return nil, err
+			}
+
+			var totalScoreTeam1 int64
+			var totalScoreTeam2 int64
+
+			gs.Matches = matches
+
+			// суммируем все очки матчей для каждой команды
+			for _, m := range matches {
+				totalScoreTeam1 += m.ScoreTeam1
+				totalScoreTeam2 += m.ScoreTeam2
+
+				// учитываем заработанные доп.очки команды
+				totalScoreTeam1 += teamsExtraPoints[m.Team1ID]
+				totalScoreTeam2 += teamsExtraPoints[m.Team2ID]
+			}
+
+			// если у кого-то есть преимущество по очкам - то он победитель, иначе - ничего не делаем
+			if totalScoreTeam1 > totalScoreTeam2 {
+				gs.WinnerId = g.Team1ID
+			} else if totalScoreTeam2 > totalScoreTeam1 {
+				gs.WinnerId = g.Team2ID
+			}
+		}
+
+		sSt.GameStats = append(sSt.GameStats, gs)
+	}
+
+	return &sSt, nil
+}
+
+// checkStages По номеру текущего этапа проверяет, что предыдущие завершены, а также смотрит, чтобы следующий от проверяемого этапа не был завершён.
+func (s *Service) checkStages(logger zerolog.Logger, stages []entities.TournamentStage, currentStage entities.TournamentStage) error {
+	currentStageNumberInt, _, err := helpers.ParseTournamentStageNumber(currentStage.Number, constant.SeparatorStageNumber)
+	if err != nil {
+		return err
+	}
+
+	for _, stage := range stages {
+		stageNumberInt, _, err := helpers.ParseTournamentStageNumber(stage.Number, constant.SeparatorStageNumber)
+		if err != nil {
+			return err
+		}
+
+		if stageNumberInt < currentStageNumberInt && !stage.IsFinished {
+			msg := fmt.Sprintf("предыдущий этап %s не завершён", stage.Number)
+			err := errors.New(msg)
+			logger.Error().Err(err).Msg(msg)
+
+			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		} else if stageNumberInt > currentStageNumberInt && stage.IsFinished {
+			msg := "следующий этап уже завершён"
+			err := errors.New(msg)
+			logger.Error().Err(err).Msg(msg)
+
+			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+
+		if stageNumberInt > currentStageNumberInt {
+			break
+		}
+	}
+
+	return nil
+}
+
 /*local functions*/
 
 func validateRulesTypesIds(rules entities.TournamentRule, typeId int64, teamsIds, playersIds []int64) error {
 	regular := rules.Regular
 	playOff := rules.PlayOff
+	regularPlayoff := rules.RegularPlayoff
 
-	if regular == nil && playOff == nil {
+	if regular == nil && playOff == nil && regularPlayoff == nil {
 		err := errors.New("правила не установлены")
 		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
@@ -2207,4 +2767,77 @@ func haveStartedGames(games []entities.TournamentGame) bool {
 		}
 	}
 	return false
+}
+
+func checkPlayoffTeamsCountWithGeneratedTeams(winners []int64, bestOf int, generatorPairsFunc func([]int64, int) ([]int64, []int64)) error {
+	teams1Ids, teams2Ids := generatorPairsFunc(winners, bestOf)
+
+	if len(winners)*bestOf != (len(teams1Ids) + len(teams2Ids)) {
+		msg := "не совпадает текущее количество команд в этапе с рассчитанным для этого же этапа"
+		err := errors.New(msg)
+
+		return error_templates.New(err.Error(), err, codes.FailedPrecondition, http.StatusConflict)
+	}
+
+	return nil
+}
+
+func checkForLastStageFinish(nextStage *entities.StageStat, foundNextStage *bool) error {
+	if *foundNextStage == false && nextStage != nil {
+		// если этап не найден, но есть заполненный следующий этап, то произошёл косяк
+
+		err := errors.New("не найден следующий этап")
+		return error_templates.New(err.Error(), err, codes.Internal, http.StatusInternalServerError)
+	}
+
+	// завершаем работу метода, т.к. все условия для завершения последнего этапа соблюдены
+	return nil
+}
+
+// checkOrderedStages проверяет orderedStages при старте нового этапа или завершении текущего в StartNextStage или FinishStage
+func checkOrderedStages(orderedStages []entities.StageStat) (*entities.StageStat, *entities.StageStat, *bool, error) {
+	var err error
+
+	var nextStage *entities.StageStat
+	var previousStage *entities.StageStat
+	var foundNextStage bool
+
+	for i, stage := range orderedStages {
+		if len(stage.GameStats) == 0 && i == indexZero {
+			err = errors.New("первый этап не может быть без игр")
+			return nil, nil, nil, error_templates.New(err.Error(), err, codes.Internal, http.StatusInternalServerError)
+		}
+
+		if len(stage.GameStats) == 0 && i > indexZero {
+			nextStage = &stage
+			previousStage = &orderedStages[i-1]
+
+			if len(previousStage.GameStats) == 0 {
+				err = errors.New("предыдущий этап не может быть без игр")
+				return nil, nil, nil, error_templates.New(err.Error(), err, codes.Internal, http.StatusInternalServerError)
+			}
+
+			for _, g := range previousStage.GameStats {
+				if g.Game.Date == nil || time.Now().Before(*g.Game.Date) {
+					err = errors.New("предыдущий этап содержит игру с будущей датой")
+					return nil, nil, nil, error_templates.New(err.Error(), err, codes.FailedPrecondition, http.StatusConflict)
+				}
+
+				if g.Game.TechLooseTeamID == nil && len(g.Matches) == 0 {
+					err = errors.New("предыдущий этап содержит игру без матчей и без присуждения тех. поражения")
+					return nil, nil, nil, error_templates.New(err.Error(), err, codes.FailedPrecondition, http.StatusConflict)
+				}
+
+				if g.Game.IsTiebreak && len(g.Matches) == 0 {
+					err = errors.New("есть несыгранные ничьи в предыдущем этапе")
+					return nil, nil, nil, error_templates.New(err.Error(), err, codes.FailedPrecondition, http.StatusConflict)
+				}
+			}
+
+			foundNextStage = true
+			break
+		}
+	}
+
+	return nextStage, previousStage, &foundNextStage, nil
 }

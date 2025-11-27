@@ -1490,7 +1490,7 @@ func (s *Service) UpdatePlayedTournamentGame(ctx context.Context, request *entit
 
 	// проверки специфичные для PlayOff турниров
 	if tournament.TypeID == constant.PlayoffTournamentTypeID {
-		stages, err := s.rdbOperations.GetTournamentStageList(logger, ctx, currentStage.TournamentID)
+		stages, err := s.rdbOperations.GetTournamentStageList(ctx, logger, currentStage.TournamentID)
 		if err != nil {
 			return entities.UpdatePlayedTournamentGameResponse{}, err
 		}
