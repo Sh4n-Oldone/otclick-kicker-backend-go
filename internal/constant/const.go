@@ -35,4 +35,6 @@ const (
 	RegularOneVsOneTournamentTypeID          int64 = 5
 
 	SeparatorStageNumber string = "/"
+
+	FirstStage = 1
 )

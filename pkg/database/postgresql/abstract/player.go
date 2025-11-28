@@ -12,7 +12,7 @@ import (
 
 type IPlayerR interface {
 	GetRatingByPlayerIDAndByLeagueID(logger zerolog.Logger, ctx context.Context, playerID, leagueID int64) (int64, error)
-	GetPlayerRatingByTournamentId(logger zerolog.Logger, ctx context.Context, playerID, tournamentID int64) (int64, error)
+	GetPlayerRatingByTournamentId(ctx context.Context, logger zerolog.Logger, playerID, tournamentID int64) (int64, error)
 	GetTournamentPlayers(ctx context.Context, logger zerolog.Logger, tournamentId int64, withDeleted bool, tx tx.ITx) ([]entities.TournamentPlayer, error)
 	GetPlayerIDsByLeagueID(logger zerolog.Logger, ctx context.Context, leagueID int64) ([]int64, error)
 	GetPlayerIdsByTournamentId(logger zerolog.Logger, ctx context.Context, tournamentId int64) ([]int64, error)

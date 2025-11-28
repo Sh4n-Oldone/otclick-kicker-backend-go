@@ -10,12 +10,9 @@ import (
 
 	"google.golang.org/grpc/codes"
 
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/constant"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
-)
-
-const (
-	firstStage = 1
 )
 
 func GeneratePairs[T int64 | int | int32 | int16](teamIDs []T, bestOf int) (team1IDs, team2IDs []T) {
@@ -238,7 +235,7 @@ func CheckQtyTeamsInRegularPlayoffStage(neededTeamsForFirstPlayoffStageQty, curr
 		}
 
 		// если в первый этап playoff (это уже второй этап турнира!) требовалось 8 лучших команд, то в следующий потребуется 8 / 2 = 4 и т.д.
-		if i > firstStage {
+		if i > constant.FirstStage {
 			teamsCountPerStage = teamsCountPerStage / 2
 		}
 	}

@@ -875,6 +875,43 @@ func (db *RDBOperation) GetTeamsByTournamentAndStage(ctx context.Context, logger
 	return teams, nil
 }
 
+func (db *RDBOperation) GetUniqueTeamIdsByStage(ctx context.Context, logger zerolog.Logger, stageId int64) ([]int64, error) {
+	const query string = `
+		SELECT g.team1_id
+		FROM public.games AS g
+		WHERE g.stage_id = $1
+		
+		UNION
+		
+		SELECT g.team2_id
+		FROM public.games AS g
+		WHERE g.stage_id = $1
+	`
+
+	rows, err := db.db.Query(ctx, query, stageId)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to GetUniqueTeamsByStage")
+		return nil, DecodeDatabaseError(err)
+	}
+	defer rows.Close()
+
+	var teamIds []int64
+
+	for rows.Next() {
+		var teamId int64
+
+		err = rows.Scan(&teamId)
+		if err != nil {
+			logger.Error().Err(err).Msg("failed to scan team")
+			return nil, DecodeDatabaseError(err)
+		}
+
+		teamIds = append(teamIds, teamId)
+	}
+
+	return teamIds, nil
+}
+
 // CreateExtraPoints deprecated
 func (db *RWDBOperation) CreateExtraPoints(logger zerolog.Logger, ctx context.Context, req *entities.CreateExtraPointsRequest) (int64, error) {
 	const query = "INSERT INTO team_extra_points(team_id, league_id, reason, points) VALUES($1, $2, $3, $4) RETURNING id"
