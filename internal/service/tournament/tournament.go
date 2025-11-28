@@ -26,8 +26,6 @@ import (
 const (
 	indexZero int    = 0
 	oneStage  string = "1/1"
-
-	firstStage = 1
 )
 
 func (s *Service) GetTournamentTypeList(ctx context.Context, withDeleted bool) ([]entities.TournamentType, error) {
@@ -139,7 +137,7 @@ func (s *Service) Create(ctx context.Context, request *entities.CreateTournament
 func (s *Service) Update(ctx context.Context, request *entities.UpdateTournamentRequest) error {
 	logger := s.logger.With().Str("service", "Update").Logger()
 
-	tournament, err := s.rdbOperations.GetTournamentById(logger, ctx, request.ID)
+	tournament, err := s.rdbOperations.GetTournamentById(ctx, logger, request.ID)
 	if err != nil {
 		return err
 	}
@@ -225,7 +223,7 @@ func (s *Service) Delete(ctx context.Context, request *entities.DeleteTournament
 	logger := s.logger.With().Str("service", "Delete").Logger()
 
 	var err error
-	tournament, err := s.rdbOperations.GetTournamentById(logger, ctx, request.ID)
+	tournament, err := s.rdbOperations.GetTournamentById(ctx, logger, request.ID)
 	if err != nil {
 		return err
 	}
@@ -301,7 +299,7 @@ func (s *Service) Delete(ctx context.Context, request *entities.DeleteTournament
 func (s *Service) FinishStage(ctx context.Context, request *entities.FinishStageRequest) error {
 	logger := s.logger.With().Str("service", "FinishStage").Logger()
 
-	stage, err := s.rdbOperations.GetTournamentStage(logger, ctx, request.ID)
+	stage, err := s.rdbOperations.GetTournamentStage(ctx, logger, request.ID)
 	if err != nil {
 		return err
 	}
@@ -312,12 +310,12 @@ func (s *Service) FinishStage(ctx context.Context, request *entities.FinishStage
 		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
-	tournament, err := s.rdbOperations.GetTournamentById(logger, ctx, stage.TournamentID)
+	tournament, err := s.rdbOperations.GetTournamentById(ctx, logger, stage.TournamentID)
 	if err != nil {
 		return err
 	}
 
-	games, err := s.rdbOperations.GetTournamentStageGames(logger, ctx, request.ID)
+	games, err := s.rdbOperations.GetTournamentStageGames(ctx, logger, request.ID)
 	if err != nil {
 		return err
 	}
@@ -387,7 +385,7 @@ func (s *Service) GetTournamentStageList(ctx context.Context, id int64) ([]entit
 	var stageItems []entities.TournamentStageItem
 
 	for _, stage := range stages {
-		games, err := s.rdbOperations.GetTournamentStageGames(logger, ctx, stage.ID)
+		games, err := s.rdbOperations.GetTournamentStageGames(ctx, logger, stage.ID)
 		if err != nil {
 			return nil, err
 		}
@@ -578,7 +576,7 @@ func (s *Service) Recalc(ctx context.Context, id int64) error {
 func (s *Service) StartNextStage(ctx context.Context, req *entities.StartNextStageRequest) (int64, error) {
 	logger := s.logger.With().Str("service", "StartNextStage").Logger()
 
-	tournament, err := s.rdbOperations.GetTournamentById(logger, ctx, req.TournamentID)
+	tournament, err := s.rdbOperations.GetTournamentById(ctx, logger, req.TournamentID)
 	if err != nil {
 		return 0, err
 	}
@@ -631,7 +629,7 @@ func (s *Service) CreateExtraPoints(ctx context.Context, req *entities.CreateExt
 		return 0, err
 	}
 
-	tournament, err := s.rdbOperations.GetTournamentById(logger, ctx, req.TournamentId)
+	tournament, err := s.rdbOperations.GetTournamentById(ctx, logger, req.TournamentId)
 	if err != nil {
 		return 0, err
 	}
@@ -817,7 +815,7 @@ func (s *Service) MigrateLeaguesToTournamentsUp(ctx context.Context) error {
 
 		for _, leagueGame := range leagueGames {
 			if leagueGame.IsTiebreak {
-				tournament, err := s.rdbOperations.GetTournamentById(logger, ctx, createdTournamentId)
+				tournament, err := s.rdbOperations.GetTournamentById(ctx, logger, createdTournamentId)
 				if err != nil {
 					tx.Rollback(ctx)
 					return err
@@ -937,7 +935,7 @@ func (s *Service) MigrateLeaguesToTournamentsUp(ctx context.Context) error {
 		}
 
 		for _, rating := range ratings {
-			err = s.rwdbOperations.CreateTournamentRating(logger, ctx, rating.PlayerID, rating.Value, createdTournamentId, tx)
+			err = s.rwdbOperations.CreateTournamentRating(ctx, logger, rating.PlayerID, rating.Value, createdTournamentId, tx)
 			if err != nil {
 				tx.Rollback(ctx)
 				return err
@@ -1258,7 +1256,7 @@ func (s *Service) createRegularPlayoff(ctx context.Context, logger zerolog.Logge
 	}
 
 	// создаем regular-этап 1/N
-	regularStage := strconv.FormatInt(firstStage, 10) + constant.SeparatorStageNumber + strconv.Itoa(firstStage+len(req.Rules.RegularPlayoff.PlayOff.Stages))
+	regularStage := strconv.FormatInt(constant.FirstStage, 10) + constant.SeparatorStageNumber + strconv.Itoa(constant.FirstStage+len(req.Rules.RegularPlayoff.PlayOff.Stages))
 
 	firstStageId, err := s.rwdbOperations.CreateTournamentStage(logger, ctx, tournamentId, regularStage, tx)
 	if err != nil {
@@ -1278,7 +1276,7 @@ func (s *Service) createRegularPlayoff(ctx context.Context, logger zerolog.Logge
 	for i := 0; i < len(playoffStageNums); i++ {
 		// создаём строку вида <порядковый_номер_этапа>/<кол-во_этапов>, образец: 2/4, 3/4, 4/4 - финал.
 		// 1/N пропускаем, так как он уже создан в рамках regular
-		stageSlashNumberOfStages := strconv.FormatInt(int64(i+2), 10) + constant.SeparatorStageNumber + strconv.Itoa(firstStage+len(req.Rules.RegularPlayoff.PlayOff.Stages))
+		stageSlashNumberOfStages := strconv.FormatInt(int64(i+2), 10) + constant.SeparatorStageNumber + strconv.Itoa(constant.FirstStage+len(req.Rules.RegularPlayoff.PlayOff.Stages))
 
 		_, err = s.rwdbOperations.CreateTournamentStage(logger, ctx, tournamentId, stageSlashNumberOfStages, tx)
 		if err != nil {
@@ -1899,7 +1897,7 @@ func (s *Service) updateRegularPlayoff(ctx context.Context, logger zerolog.Logge
 		}
 
 		// создаем regular-этап 1/N
-		regularStage := strconv.FormatInt(firstStage, 10) + constant.SeparatorStageNumber + strconv.Itoa(firstStage+len(newReq.Rules.RegularPlayoff.PlayOff.Stages))
+		regularStage := strconv.FormatInt(constant.FirstStage, 10) + constant.SeparatorStageNumber + strconv.Itoa(constant.FirstStage+len(newReq.Rules.RegularPlayoff.PlayOff.Stages))
 
 		regularStageId, err := s.rwdbOperations.CreateTournamentStage(logger, ctx, newReq.ID, regularStage, tx)
 		if err != nil {
@@ -1919,7 +1917,7 @@ func (s *Service) updateRegularPlayoff(ctx context.Context, logger zerolog.Logge
 		for i := 0; i < len(playoffStageNums); i++ {
 			// создаём строку вида <порядковый_номер_этапа>/<кол-во_этапов>, образец: 2/4, 3/4, 4/4 - финал.
 			// 1/N пропускаем, так как он уже создан в рамках regular
-			stageSlashNumberOfStages := strconv.FormatInt(int64(i+2), 10) + constant.SeparatorStageNumber + strconv.Itoa(firstStage+len(newReq.Rules.RegularPlayoff.PlayOff.Stages))
+			stageSlashNumberOfStages := strconv.FormatInt(int64(i+2), 10) + constant.SeparatorStageNumber + strconv.Itoa(constant.FirstStage+len(newReq.Rules.RegularPlayoff.PlayOff.Stages))
 
 			_, err = s.rwdbOperations.CreateTournamentStage(logger, ctx, newReq.ID, stageSlashNumberOfStages, tx)
 			if err != nil {
@@ -2173,7 +2171,7 @@ func (s *Service) checkMasterAndTournamentCities(ctx context.Context, tournament
 			return err
 		}
 
-		tournamentInfo, err := s.rdbOperations.GetTournamentById(logger, ctx, tournamentId)
+		tournamentInfo, err := s.rdbOperations.GetTournamentById(ctx, logger, tournamentId)
 		if err != nil {
 			return err
 		}
@@ -2283,7 +2281,7 @@ func (s *Service) startNextStageRegularPlayoff(ctx context.Context, logger zerol
 
 	var countFinishedPlayoffStages int32
 	for _, stage := range orderedStages {
-		if stage.Stage.IsFinished && stage.Number != firstStage {
+		if stage.Stage.IsFinished && stage.Number != constant.FirstStage {
 			countFinishedPlayoffStages += 1
 		}
 	}
@@ -2297,7 +2295,7 @@ func (s *Service) startNextStageRegularPlayoff(ctx context.Context, logger zerol
 	neededTeamsCountForNextStage := tournament.Rules.RegularPlayoff.PlayoffTeamsCountOnStart / int32(math.Pow(2, float64(countFinishedPlayoffStages)))
 
 	var teams1Ids, teams2Ids []int64
-	if previousStage.Number == firstStage {
+	if previousStage.Number == constant.FirstStage {
 		// Для первого этапа playoff (то есть второй этап турнира) команды генерируются по особому алгоритму,
 		// см. реализацию в GeneratePairsRegularPlayoff
 		teams1Ids, teams2Ids = helpers.GeneratePairsRegularPlayoff(previousStage.Winners[:neededTeamsCountForNextStage], int(nextStage.BestOf))
@@ -2577,7 +2575,7 @@ func (s *Service) getOrderedStagesRegularPlayoff(ctx context.Context, logger zer
 		sSt.Number = orderNumber
 		sSt.Stage = stage
 
-		if sSt.Number == firstStage {
+		if sSt.Number == constant.FirstStage {
 			// для оконченного regular-этапа надо понять, какие топ N команд пройдут в первый playoff-этап (т.е. второй этап)
 			sSt.Winners, err = helpers.ExtractWinnersRegularPlayoff(sSt.GameStats, teamsExtraPoints)
 			if err != nil {
@@ -2601,7 +2599,7 @@ func (s *Service) getOrderedStagesRegularPlayoff(ctx context.Context, logger zer
 func (s *Service) getGameStatsForStage(ctx context.Context, logger zerolog.Logger, stageId int64, teamsExtraPoints map[int64]int64) (*entities.StageStat, error) {
 	var sSt entities.StageStat
 
-	stageGames, err := s.rdbOperations.GetTournamentStageGames(logger, ctx, stageId)
+	stageGames, err := s.rdbOperations.GetTournamentStageGames(ctx, logger, stageId)
 	if err != nil {
 		return nil, err
 	}

@@ -51,4 +51,5 @@ type ITeamR interface {
 	GetTournamentTeamExtraPointsCountV2(ctx context.Context, logger zerolog.Logger, teamId, tournamentId int64) (int64, error)
 
 	GetTeamsByTournamentAndStage(ctx context.Context, logger zerolog.Logger, tournamentId, stageId int64) ([]entities.TournamentTeam, error)
+	GetUniqueTeamIdsByStage(ctx context.Context, logger zerolog.Logger, stageId int64) ([]int64, error)
 }

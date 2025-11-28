@@ -22,9 +22,9 @@ type IMatchRW interface {
 	CreateGameMatch(logger zerolog.Logger, ctx context.Context, match entities.GamesMatch, gameId int64, tx tx.ITx) (id int64, err error)
 	UpdateMatch(logger zerolog.Logger, ctx context.Context, match entities.Match) error
 	DeleteMatch(logger zerolog.Logger, ctx context.Context, id int64) (bool, error)
-	DeleteOldGameMatches(logger zerolog.Logger, ctx context.Context, gameId int64, newMatchesIds []int, tx tx.ITx) error
-	UpdateOldMatch(logger zerolog.Logger, ctx context.Context, gameId int64, match *entities.NewMatch, tx tx.ITx) error
-	CreateNewMatch(logger zerolog.Logger, ctx context.Context, gameId int64, match *entities.NewMatch, tx tx.ITx) error
+	DeleteOldGameMatches(ctx context.Context, logger zerolog.Logger, gameId int64, newMatchesIds []int, tx tx.ITx) error
+	UpdateOldMatch(ctx context.Context, logger zerolog.Logger, gameId int64, match *entities.NewMatch, tx tx.ITx) error
+	CreateNewMatch(ctx context.Context, logger zerolog.Logger, gameId int64, match *entities.NewMatch, tx tx.ITx) error
 	DeleteTournamentMatches(logger zerolog.Logger, ctx context.Context, tournamentId int64, tx tx.ITx) error
 	RewriteMatchesAndPlayerRatings(logger zerolog.Logger, ctx context.Context, matches []entities.Match, ratings map[int64]entities.Rating) error
 	RewriteTournamentMatchesAndPlayerRatings(logger zerolog.Logger, ctx context.Context, matches []entities.Match, ratings map[int64]entities.TournamentRating, tx tx.ITx) error

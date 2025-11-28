@@ -533,7 +533,7 @@ func (db *RWDBOperation) RewriteTournamentMatchesAndPlayerRatings(logger zerolog
 	return nil
 }
 
-func (db *RWDBOperation) DeleteOldGameMatches(logger zerolog.Logger, ctx context.Context, gameId int64, newMatchesIds []int, tx tx.ITx) error {
+func (db *RWDBOperation) DeleteOldGameMatches(ctx context.Context, logger zerolog.Logger, gameId int64, newMatchesIds []int, tx tx.ITx) error {
 	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 
@@ -546,7 +546,7 @@ func (db *RWDBOperation) DeleteOldGameMatches(logger zerolog.Logger, ctx context
 	return nil
 }
 
-func (db *RWDBOperation) CreateNewMatch(logger zerolog.Logger, ctx context.Context, gameId int64, match *entities.NewMatch, tx tx.ITx) error {
+func (db *RWDBOperation) CreateNewMatch(ctx context.Context, logger zerolog.Logger, gameId int64, match *entities.NewMatch, tx tx.ITx) error {
 	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 
@@ -581,7 +581,7 @@ func (db *RWDBOperation) CreateNewMatch(logger zerolog.Logger, ctx context.Conte
 	return nil
 }
 
-func (db *RWDBOperation) UpdateOldMatch(logger zerolog.Logger, ctx context.Context, gameId int64, match *entities.NewMatch, tx tx.ITx) error {
+func (db *RWDBOperation) UpdateOldMatch(ctx context.Context, logger zerolog.Logger, gameId int64, match *entities.NewMatch, tx tx.ITx) error {
 	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 

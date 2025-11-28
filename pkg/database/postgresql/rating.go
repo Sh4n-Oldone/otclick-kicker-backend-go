@@ -87,7 +87,7 @@ func (db *RWDBOperation) CreateRatingUpdateOnConflict(logger zerolog.Logger, ctx
 	return nil
 }
 
-func (db *RWDBOperation) CreateTournamentRating(logger zerolog.Logger, ctx context.Context, playerID, value, tournamentID int64, tx tx.ITx) error {
+func (db *RWDBOperation) CreateTournamentRating(ctx context.Context, logger zerolog.Logger, playerID, value, tournamentID int64, tx tx.ITx) error {
 	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 
@@ -120,7 +120,7 @@ func (db *RWDBOperation) UpdateRating(logger zerolog.Logger, ctx context.Context
 	return nil
 }
 
-func (db *RDBOperation) GetPlayerRatingByTournamentId(logger zerolog.Logger, ctx context.Context, playerID, tournamentID int64) (int64, error) {
+func (db *RDBOperation) GetPlayerRatingByTournamentId(ctx context.Context, logger zerolog.Logger, playerID, tournamentID int64) (int64, error) {
 	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 

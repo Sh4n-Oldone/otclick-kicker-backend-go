@@ -53,14 +53,14 @@ func (db *RDBOperation) GetTournamentTypeList(logger zerolog.Logger, ctx context
 	return types, nil
 }
 
-func (db *RDBOperation) GetTournamentById(logger zerolog.Logger, ctx context.Context, tournamentId int64) (entities.Tournament, error) {
+func (db *RDBOperation) GetTournamentById(ctx context.Context, logger zerolog.Logger, tournamentId int64) (entities.Tournament, error) {
 	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 
 	var t entities.Tournament
 
 	const query1 string = `SELECT id, type_id, name, rules, city_id, season_id FROM tournaments	WHERE id = $1;`
-	const query2 string = `SELECT id, tournament_id, is_finished, number FROM tournament_stages WHERE tournament_id = $1;`
+	const query2 string = `SELECT id, tournament_id, is_finished, number FROM tournament_stages WHERE tournament_id = $1 ORDER BY id ASC;`
 	const query3 string = `SELECT team_id FROM tournaments_teams_link WHERE tournament_id = $1;`
 
 	var rulesBytes []byte
@@ -121,7 +121,7 @@ func (db *RDBOperation) GetTournamentById(logger zerolog.Logger, ctx context.Con
 	return t, nil
 }
 
-func (db *RDBOperation) GetTournamentStage(logger zerolog.Logger, ctx context.Context, stageId int64) (entities.TournamentStage, error) {
+func (db *RDBOperation) GetTournamentStage(ctx context.Context, logger zerolog.Logger, stageId int64) (entities.TournamentStage, error) {
 	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 
@@ -312,7 +312,7 @@ func (db *RWDBOperation) CreateTournamentStage(logger zerolog.Logger, ctx contex
 	return id, nil
 }
 
-func (db *RDBOperation) GetTournamentStageGames(logger zerolog.Logger, ctx context.Context, stageId int64) ([]entities.TournamentGame, error) {
+func (db *RDBOperation) GetTournamentStageGames(ctx context.Context, logger zerolog.Logger, stageId int64) ([]entities.TournamentGame, error) {
 	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 

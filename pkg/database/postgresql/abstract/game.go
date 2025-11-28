@@ -20,8 +20,8 @@ type IGameR interface {
 	GetFutureGames(logger zerolog.Logger, ctx context.Context, cityID int) ([]entities.ShortGame, error)
 	GetTeamGames(logger zerolog.Logger, ctx context.Context, teamID int) ([]entities.TeamGame, error)
 	GetTournamentGameList(logger zerolog.Logger, ctx context.Context, request *entities.GetTournamentGameList) ([]entities.TournamentGame, error)
-	GetTournamentGame(logger zerolog.Logger, ctx context.Context, gameID int64, cfg *config.DBConfig) (entities.TournamentGame, error)
-	GetTournamentStageGames(logger zerolog.Logger, ctx context.Context, stageId int64) ([]entities.TournamentGame, error)
+	GetTournamentGame(ctx context.Context, logger zerolog.Logger, gameID int64, cfg *config.DBConfig) (entities.TournamentGame, error)
+	GetTournamentStageGames(ctx context.Context, logger zerolog.Logger, stageId int64) ([]entities.TournamentGame, error)
 	FetchPastGames(logger zerolog.Logger, ctx context.Context, teamID1, teamID2, cityID, leagueID int64, tiebreak *bool) ([]entities.GameFetch, error)
 	FetchPastGamesTiebreak(logger zerolog.Logger, ctx context.Context, leagueId int64) ([]entities.GameTiebreak, error)
 	GetPastGamesByPlayersTeam(logger zerolog.Logger, ctx context.Context, teamID int) ([]entities.GameShort, error)
@@ -35,7 +35,7 @@ type IGameR interface {
 }
 
 type IGameRW interface {
-	DeleteGame(logger zerolog.Logger, ctx context.Context, gameID int64, cfg *config.DBConfig) error
+	DeleteGame(ctx context.Context, logger zerolog.Logger, gameID int64, tx tx.ITx) error
 	UpdateGame(logger zerolog.Logger, ctx context.Context, request entities.UpdateGameRequest, tx tx.ITx) error
 	UpdateFutureGame(logger zerolog.Logger, ctx context.Context, request entities.UpdateFutureGameRequest, tx tx.ITx) error
 	CreateFutureGame(logger zerolog.Logger, ctx context.Context, request entities.CreateFutureGameRequest, tx tx.ITx) (int, error)
@@ -43,9 +43,9 @@ type IGameRW interface {
 	DeleteFutureGame(logger zerolog.Logger, ctx context.Context, req entities.DeleteFutureGameRequest, tx tx.ITx) error
 	CreateFutureTournamentStageGames(ctx context.Context, logger zerolog.Logger, stageID, cityID int64, team1IDs, team2IDs []int64, tx tx.ITx) error
 	CreateFutureTournamentGame(ctx context.Context, logger zerolog.Logger, request *entities.CreateFutureTournamentGameRequest, tx tx.ITx) (int64, error)
-	UpdateFutureTournamentGame(logger zerolog.Logger, ctx context.Context, request *entities.UpdateFutureTournamentGameRequest, cfg *config.DBConfig) error
+	UpdateFutureTournamentGame(logger zerolog.Logger, ctx context.Context, request *entities.UpdateFutureTournamentGameRequest, tx tx.ITx) error
 	CreatePlayedTournamentGame(ctx context.Context, logger zerolog.Logger, request *entities.CreatePlayedTournamentGameRequest, tx tx.ITx) (int64, error)
-	UpdatePlayedTournamentGame(logger zerolog.Logger, ctx context.Context, req *entities.UpdatePlayedTournamentGameRequest, tx tx.ITx) error
+	UpdatePlayedTournamentGame(ctx context.Context, logger zerolog.Logger, req *entities.UpdatePlayedTournamentGameRequest, tx tx.ITx) error
 	DeleteTournamentGames(logger zerolog.Logger, ctx context.Context, tournamentId int64, tx tx.ITx) error
 
 	UpdateMigratedTournamentGame(ctx context.Context, logger zerolog.Logger, game entities.TournamentGame, tournamentId int64, tx tx.ITx) (int64, error)

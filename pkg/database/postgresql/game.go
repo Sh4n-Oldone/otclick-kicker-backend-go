@@ -115,8 +115,8 @@ func (db *RDBOperation) GetPastGamesByPlayersTeams(logger zerolog.Logger, ctx co
 	return games, nil
 }
 
-func (db *RWDBOperation) DeleteGame(logger zerolog.Logger, ctx context.Context, gameID int64, cfg *config.DBConfig) error {
-	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+func (db *RWDBOperation) DeleteGame(ctx context.Context, logger zerolog.Logger, gameID int64, tx tx.ITx) error {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 
 	const query1 string = `
@@ -129,37 +129,21 @@ func (db *RWDBOperation) DeleteGame(logger zerolog.Logger, ctx context.Context, 
 		WHERE id = $1
 	`
 
-	tx, err := db.db.Begin(timeout)
+	_, err := poolOrTx(db.db, tx).Exec(timeout, query1, gameID)
 	if err != nil {
-		logger.Error().Err(err).Msg("failed to postgresql.DeleteGame")
-		return DecodeDatabaseError(errors.New(pkgerr.ErrDeleteGame))
-	}
-
-	_, err = tx.Exec(timeout, query1, gameID)
-	if err != nil {
-		_ = tx.Rollback(ctx)
 		logger.Error().Err(err).Msg("failed to postgresql.DeleteGame")
 		return DecodeDatabaseError(errors.New(pkgerr.ErrDeleteMatch))
 	}
 
-	tag, err := tx.Exec(timeout, query2, gameID)
+	tag, err := poolOrTx(db.db, tx).Exec(timeout, query2, gameID)
 	if err != nil {
-		_ = tx.Rollback(ctx)
 		logger.Error().Err(err).Msg("failed to postgresql.DeleteGame")
 		return DecodeDatabaseError(errors.New(pkgerr.ErrDeleteGame))
 	}
 	if tag.RowsAffected() == 0 {
-		_ = tx.Rollback(ctx)
 		err = errors.New(pkgerr.ErrGameNotFound)
 		logger.Error().Err(err).Msg("failed to postgresql.DeleteGame")
 		return DecodeDatabaseError(err)
-	}
-
-	err = tx.Commit(timeout)
-	if err != nil {
-		_ = tx.Rollback(ctx)
-		logger.Error().Err(err).Msg("failed to postgresql.DeleteGame")
-		return DecodeDatabaseError(errors.New(pkgerr.ErrDeleteGame))
 	}
 
 	return nil
@@ -902,8 +886,8 @@ func (db *RWDBOperation) CreateFutureTournamentGame(ctx context.Context, logger 
 	return id, nil
 }
 
-func (db *RWDBOperation) UpdateFutureTournamentGame(logger zerolog.Logger, ctx context.Context, req *entities.UpdateFutureTournamentGameRequest, cfg *config.DBConfig) error {
-	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
+func (db *RWDBOperation) UpdateFutureTournamentGame(logger zerolog.Logger, ctx context.Context, req *entities.UpdateFutureTournamentGameRequest, tx tx.ITx) error {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 
 	const query string = `
@@ -915,7 +899,7 @@ func (db *RWDBOperation) UpdateFutureTournamentGame(logger zerolog.Logger, ctx c
 			team2_id = COALESCE($5, team2_id)
 		WHERE id = $1;`
 
-	tag, err := db.db.Exec(
+	tag, err := poolOrTx(db.db, tx).Exec(
 		timeout,
 		query,
 		req.GameID,
@@ -937,7 +921,7 @@ func (db *RWDBOperation) UpdateFutureTournamentGame(logger zerolog.Logger, ctx c
 	return nil
 }
 
-func (db *RDBOperation) GetTournamentGame(logger zerolog.Logger, ctx context.Context, gameID int64, cfg *config.DBConfig) (entities.TournamentGame, error) {
+func (db *RDBOperation) GetTournamentGame(ctx context.Context, logger zerolog.Logger, gameID int64, cfg *config.DBConfig) (entities.TournamentGame, error) {
 	timeout, cancel := context.WithTimeout(ctx, cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 
@@ -979,7 +963,7 @@ func (db *RWDBOperation) CreatePlayedTournamentGame(ctx context.Context, logger 
 	return id, nil
 }
 
-func (db *RWDBOperation) UpdatePlayedTournamentGame(logger zerolog.Logger, ctx context.Context, req *entities.UpdatePlayedTournamentGameRequest, tx tx.ITx) error {
+func (db *RWDBOperation) UpdatePlayedTournamentGame(ctx context.Context, logger zerolog.Logger, req *entities.UpdatePlayedTournamentGameRequest, tx tx.ITx) error {
 	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
 	defer cancel()
 
