@@ -1079,7 +1079,7 @@ func (s *Service) createRegularOneVsOne(ctx context.Context, logger zerolog.Logg
 	for _, p := range players {
 		teamAlreadyExist, existingTeam := false, entities.TeamItem{}
 
-		// получаем все команды игрока, если команд нет,ошибки быть не должно
+		// получаем все команды игрока, если команд нет, ошибки быть не должно
 		teams, err := s.rdbOperations.GetTeamsByPlayerID(logger, ctx, p.ID, tx)
 		if err != nil {
 			tx.Rollback(ctx)
@@ -1105,14 +1105,11 @@ func (s *Service) createRegularOneVsOne(ctx context.Context, logger zerolog.Logg
 			}
 		}
 
-		// добавим существующую команду
 		if teamAlreadyExist == true {
-
+			// добавим существующую команду
 			teamIds = append(teamIds, int64(existingTeam.ID))
-
-			// если такой команды не нашлось, создаем новую по имени
 		} else {
-
+			// если такой команды не нашлось, создаем новую по имени
 			name, shortName := helpers.BuildTeamName(p.Name, p.SecondName, p.LastName, int64(p.ID))
 
 			teamId, err := s.rwdbOperations.CreateTeam(logger, ctx, entities.CreateTeamRequest{
