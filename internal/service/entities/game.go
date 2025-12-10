@@ -333,6 +333,7 @@ type GameStat struct {
 	Game     TournamentGame
 	Matches  []ShortMatch
 	WinnerId int64
+	LoserId  int64
 }
 
 type TeamRating struct {

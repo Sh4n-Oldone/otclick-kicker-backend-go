@@ -80,7 +80,6 @@ type Regular struct {
 
 type PlayOff struct {
 	Stages map[int64]BestOf `json:"stages" validate:"required=true,min=1"`
-	Looser *Looser          `json:"looser,omitempty"`
 }
 
 type RegularPlayoff struct {
@@ -88,11 +87,6 @@ type RegularPlayoff struct {
 	PlayOff                  PlayOff `json:"playOff" validate:"required=true"`
 	PlayoffTeamsCountOnStart int32   `json:"playoffTeamsCountOnStart" validate:"required=true,gt=0"`
 }
-
-type Looser struct {
-	Stages map[int64]BestOf `json:"stages validate:required=true"`
-}
-
 type BestOf struct {
 	Bo int64 `json:"bo" validate:"required,gt=0"`
 }
@@ -151,9 +145,9 @@ type StageStat struct {
 	Number    int64
 	GameStats []GameStat
 	Winners   []int64
+	Losers    []int64
 	BestOf    int64
 }
-
 type TeamTournamentIdRequest struct {
 	TeamId       int64 `json:"teamId"`
 	TournamentId int64 `json:"tournamentId"`
@@ -190,6 +184,11 @@ type DeleteExtraPointsRequest struct {
 	Id     int64 `json:"id" validate:"required,gt=0"`
 	UserId int64
 	Role   string
+}
+
+type TournamentBrackets struct {
+	TeamsOfWinnerBracket []*int64
+	TeamsOfLoserBracket  []*int64
 }
 
 type EmptyRequest struct{}
