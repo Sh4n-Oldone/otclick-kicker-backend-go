@@ -341,7 +341,16 @@ func (db *RDBOperation) GetTournamentStageGames(ctx context.Context, logger zero
 
 	for rows.Next() {
 		var g entities.TournamentGame
-		err = rows.Scan(&g.ID, &g.CityID, &g.PlaceID, &g.Date, &g.Team1ID, &g.Team2ID, &g.TechLooseTeamID, &g.IsTiebreak, &g.StageID)
+		err = rows.Scan(
+			&g.ID,
+			&g.CityID,
+			&g.PlaceID,
+			&g.Date,
+			&g.Team1ID,
+			&g.Team2ID,
+			&g.TechLooseTeamID,
+			&g.IsTiebreak,
+			&g.StageID)
 		if err != nil {
 			logger.Error().Err(err).Msg("Failed rows.Scan")
 			return nil, DecodeDatabaseError(err)
@@ -732,4 +741,69 @@ func (db *RWDBOperation) UpdateMigratedTournamentGame(ctx context.Context, logge
 	}
 
 	return gameId, nil
+}
+
+func (db *RWDBOperation) AddTeamsToTournamentBrackets(ctx context.Context, logger zerolog.Logger, tournamentID int64, stageID int64, teamsOfWB []int64, teamsOfLB []int64, tx tx.ITx) error {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	var err error
+
+	const query string = `
+        INSERT INTO public.tournament_brackets (tournament_id, stage_number, winners_team_id, losers_team_id)
+        VALUES ($1, $2, $3, $4);`
+
+	exec := poolOrTx(db.db, tx)
+
+	for i := range teamsOfWB {
+		_, err = exec.Exec(timeout, query, tournamentID, stageID, teamsOfWB[i], nil)
+		if err != nil {
+			logger.Error().Err(err).Msg("failed tx.Exec postgresql.AddTeamsToTournamentBrackets")
+			return DecodeDatabaseError(err)
+		}
+	}
+
+	for i := range teamsOfLB {
+		_, err = exec.Exec(timeout, query, tournamentID, stageID, nil, teamsOfLB[i])
+		if err != nil {
+			logger.Error().Err(err).Msg("failed tx.Exec postgresql.AddTeamsToTournamentBrackets")
+			return DecodeDatabaseError(err)
+		}
+	}
+
+	return nil
+}
+
+func (db *RDBOperation) GetTeamsFromTournamentBrackets(ctx context.Context, logger zerolog.Logger, tournamentID int64, stageID int64) (entities.TournamentBrackets, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	const query string = `
+		SELECT winners_team_id, losers_team_id
+		FROM public.tournament_brackets
+		WHERE tournament_id = $1
+		AND stage_number = $2;`
+
+	rows, err := db.db.Query(timeout, query, tournamentID, stageID)
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed postgresql.GetTournamentTypeList")
+		return entities.TournamentBrackets{}, DecodeDatabaseError(err)
+	}
+	defer rows.Close()
+
+	var bracket entities.TournamentBrackets
+
+	for rows.Next() {
+		var winner *int64
+		var loser *int64
+		err = rows.Scan(&winner, &loser)
+		if err != nil {
+			logger.Error().Err(err).Msg("Failed postgresql.GetTournamentTypeList")
+			return entities.TournamentBrackets{}, DecodeDatabaseError(err)
+		}
+		bracket.TeamsOfWinnerBracket = append(bracket.TeamsOfWinnerBracket, winner)
+		bracket.TeamsOfLoserBracket = append(bracket.TeamsOfLoserBracket, loser)
+	}
+
+	return bracket, nil
 }

@@ -22,6 +22,7 @@ type ITournamentRW interface {
 	UpdateTournamentStage(ctx context.Context, logger zerolog.Logger, stage entities.NullableStage, tx tx.ITx) error
 	UnlinkTeamsFromTournament(logger zerolog.Logger, ctx context.Context, tournamentID int64, tx tx.ITx) error
 	DeleteTournamentStages(logger zerolog.Logger, ctx context.Context, tournamentID int64, tx tx.ITx) error
+	AddTeamsToTournamentBrackets(ctx context.Context, logger zerolog.Logger, tournamentID int64, stageID int64, teamsOfWB []int64, teamsOfLB []int64, tx tx.ITx) error
 
 	MarkLeagueAsMigrated(ctx context.Context, logger zerolog.Logger, leagueId, tournamentId int64, tx tx.ITx) error
 	UnmarkMigratedLeague(ctx context.Context, logger zerolog.Logger, tournamentId int64, tx tx.ITx) error
@@ -34,6 +35,7 @@ type ITournamentR interface {
 	GetTournamentStageList(ctx context.Context, logger zerolog.Logger, tournamentId int64) ([]entities.TournamentStage, error)
 	GetTournamentList(logger zerolog.Logger, ctx context.Context, req entities.GetTournamentListRequest) ([]entities.TournamentShort, int64, error)
 	GetTournamentListByPlayerID(logger zerolog.Logger, ctx context.Context, playerId int64) ([]entities.PlayersTournament, error)
+	GetTeamsFromTournamentBrackets(ctx context.Context, logger zerolog.Logger, tournamentID int64, stageID int64) (entities.TournamentBrackets, error)
 
 	GetMigratedTournamentIds(ctx context.Context, logger zerolog.Logger) ([]int64, error)
 }

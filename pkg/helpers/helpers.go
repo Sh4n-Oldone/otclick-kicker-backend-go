@@ -244,6 +244,50 @@ func CheckQtyTeamsInRegularPlayoffStage(neededTeamsForFirstPlayoffStageQty, curr
 	return error_templates.New(err.Error(), err, codes.Internal, http.StatusInternalServerError)
 }
 
+// CheckQtyTeamsInRegularPlayoffWithLooserBracket Проверяет кол-во команд, которые пройдут в следующий этап playoff в regular+playoff турнире с сеткой лузеров
+// Логика турнира с loser bracket:
+// - Этап 2 (первый playoff): neededTeamsForFirstPlayoffStageQty команд
+// - Нечетные этапы > 2: количество команд делится на 2 (команды приходят из двух источников: верхняя и нижняя сетки)
+// - Четные этапы: количество команд остается таким же
+func CheckQtyTeamsInRegularPlayoffWithLooserBracket(neededTeamsForFirstPlayoffStageQty, currentStageTeamsQty, nextStageNumber, stageQty int) error {
+	if nextStageNumber < 2 || nextStageNumber > stageQty {
+		err := errors.New("некорректный номер следующего этапа")
+		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	// Вычисляем требуемое количество команд для следующего этапа сразу
+	var requiredTeams int
+	if nextStageNumber == 2 {
+		requiredTeams = neededTeamsForFirstPlayoffStageQty
+	} else {
+		// Для этапов > 2: считаем количество нечетных этапов от 3 до nextStageNumber включительно
+		// На каждом нечетном этапе количество команд делится на 2
+		// Формула: количество нечетных чисел от 3 до N = ceil((N - 2) / 2)
+		oddStagesCount := (nextStageNumber - 2 + (nextStageNumber % 2)) / 2
+		requiredTeams = neededTeamsForFirstPlayoffStageQty >> oddStagesCount // Используем битовый сдвиг вместо деления на int(math.Pow(2, float64(oddStagesCount)), чтобы избежать ошибки округления при преобразовании float64 в int
+	}
+
+	// Проверка для нечетных этапов > 2: команды приходят из двух источников
+	if nextStageNumber > 2 && nextStageNumber%2 != 0 {
+		// На нечетных этапах команды приходят из верхней и нижней сеток
+		// Минимальное количество команд из текущего этапа должно быть >= requiredTeams / 2
+		// Но так как команды приходят из двух источников, проверяем: requiredTeams <= 2 * currentStageTeamsQty
+		if requiredTeams > 2*currentStageTeamsQty {
+			err := errors.New("недостаточное мин. кол-во команд для перехода в следующий этап")
+			return error_templates.New(err.Error(), err, codes.FailedPrecondition, http.StatusConflict)
+		}
+		return nil
+	}
+
+	// Проверка для этапа 2 и четных этапов > 2
+	if requiredTeams > currentStageTeamsQty {
+		err := errors.New("недостаточное мин. кол-во команд для перехода в следующий этап")
+		return error_templates.New(err.Error(), err, codes.FailedPrecondition, http.StatusConflict)
+	}
+
+	return nil
+}
+
 func CheckQtyWinnersInPreviousRegularStage(neededTeamsCountToNextStage int32, currentTeamsCount int32) error {
 	if neededTeamsCountToNextStage > currentTeamsCount {
 		err := errors.New("ошибочное кол-во команд для следующего playoff этапа")
@@ -272,7 +316,7 @@ func CheckQtyWinnersInCurrentPlayoffStage(startTeamsQty int, currentStageWinners
 	return error_templates.New(err.Error(), err, codes.Internal, http.StatusInternalServerError)
 }
 
-func ExtractWinners(games []entities.GameStat) []int64 {
+func ExtractWinnersAndLosers(games []entities.GameStat) ([]int64, []int64) {
 	pairGames := make(map[[2]int64][]entities.GameStat)
 
 	for _, game := range games {
@@ -287,28 +331,35 @@ func ExtractWinners(games []entities.GameStat) []int64 {
 	}
 
 	winners := make([]int64, 0, len(pairGames))
+	losers := make([]int64, 0, len(pairGames))
 
 	for k, gameList := range pairGames {
 
 		winners1 := make([]int64, 0, len(gameList))
 		winners2 := make([]int64, 0, len(gameList))
+		losers1 := make([]int64, 0, len(gameList))
+		losers2 := make([]int64, 0, len(gameList))
 
 		for _, game := range gameList {
 			if game.WinnerId == k[0] {
 				winners1 = append(winners1, k[0])
+				losers1 = append(losers1, k[1])
 			} else if game.WinnerId == k[1] {
 				winners2 = append(winners2, k[1])
+				losers2 = append(losers2, k[0])
 			}
 		}
 
 		if len(winners1) > len(winners2) {
 			winners = append(winners, winners1[0])
+			losers = append(losers, losers1[0])
 		} else if len(winners2) > len(winners1) {
 			winners = append(winners, winners2[0])
+			losers = append(losers, losers2[0])
 		}
 	}
 
-	return winners
+	return winners, losers
 }
 
 // ExtractWinnersRegularPlayoff используется для получения отсортированного слайса команд
@@ -330,9 +381,19 @@ func ExtractWinnersRegularPlayoff(games []entities.GameStat, teamsExtraPoints ma
 
 	for _, teamsGames := range pairGames {
 		for _, g := range teamsGames {
-			for _, m := range g.Matches {
-				teamsRatings[m.Team1ID] += m.ScoreTeam1
-				teamsRatings[m.Team2ID] += m.ScoreTeam2
+			if g.Game.TechLooseTeamID != nil {
+				if *g.Game.TechLooseTeamID == g.Game.Team2ID {
+					teamsRatings[g.Game.Team1ID] += int64(constant.TechWinGoals)
+					teamsRatings[g.Game.Team2ID] += int64(constant.TechLooseGoals)
+				} else {
+					teamsRatings[g.Game.Team1ID] += int64(constant.TechWinGoals)
+					teamsRatings[g.Game.Team2ID] += int64(constant.TechLooseGoals)
+				}
+			} else {
+				for _, m := range g.Matches {
+					teamsRatings[m.Team1ID] += m.ScoreTeam1
+					teamsRatings[m.Team2ID] += m.ScoreTeam2
+				}
 			}
 		}
 	}
@@ -340,10 +401,7 @@ func ExtractWinnersRegularPlayoff(games []entities.GameStat, teamsExtraPoints ma
 	eTeamRatingList := make([]entities.TeamRating, 0)
 
 	for teamId, rating := range teamsRatings {
-		if extraPoints, ok := teamsExtraPoints[teamId]; ok {
-			rating += extraPoints
-		}
-
+		rating += teamsExtraPoints[teamId]
 		eTeamRatingList = append(eTeamRatingList, entities.TeamRating{TeamID: teamId, Rating: rating})
 	}
 

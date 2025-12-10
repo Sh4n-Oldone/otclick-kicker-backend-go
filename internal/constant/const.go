@@ -28,11 +28,11 @@ const (
 	TechWinGoals   int = 42
 	TechLooseGoals int = 30
 
-	RegularTournamentTypeID                  int64 = 1
-	PlayoffTournamentTypeID                  int64 = 2
-	RegularPlayoffTournamentTypeID           int64 = 3
-	RegularPlayoffWithLooserTournamentTypeID int64 = 4
-	RegularOneVsOneTournamentTypeID          int64 = 5
+	RegularTournamentTypeID                        int64 = 1
+	PlayoffTournamentTypeID                        int64 = 2
+	RegularPlayoffTournamentTypeID                 int64 = 3
+	RegularPlayoffWithLoserBracketTournamentTypeID int64 = 4
+	RegularOneVsOneTournamentTypeID                int64 = 5
 
 	SeparatorStageNumber string = "/"
 

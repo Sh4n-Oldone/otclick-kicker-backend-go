@@ -956,6 +956,11 @@ func (s *Service) DeleteFutureGame(ctx context.Context, req entities.DeleteFutur
 func (s *Service) CreateFutureTournamentGame(ctx context.Context, request *entities.CreateFutureTournamentGameRequest) (int64, error) {
 	logger := s.logger.With().Str("service", "game.CreateFutureTournamentGame").Logger()
 
+	if err := checkTiebreakGame(request.IsTiebreak); err != nil {
+		logger.Error().Err(err).Msg("failed to checkTiebreakGame")
+		return 0, err
+	}
+
 	tournament, err := s.rdbOperations.GetTournamentById(ctx, logger, request.TournamentID)
 	if err != nil {
 		return 0, err
@@ -1020,15 +1025,6 @@ func (s *Service) CreateFutureTournamentGame(ctx context.Context, request *entit
 		return 0, err
 	}
 
-	if err = checkTiebreakGame(request.IsTiebreak); err != nil {
-		logger.Error().Err(err).Msg("failed to checkTiebreakGame")
-		return 0, err
-	}
-
-	if tournament.TypeID == constant.RegularPlayoffWithLooserTournamentTypeID {
-		return 0, errors.New("not implemented")
-	}
-
 	tx, err := s.rwdbOperations.BeginTx(ctx, logger)
 	if err != nil {
 		return 0, err
@@ -1053,6 +1049,11 @@ func (s *Service) UpdateFutureTournamentGame(ctx context.Context, request *entit
 
 	game, err := s.rdbOperations.GetTournamentGame(ctx, logger, request.GameID, &s.config.RDB)
 	if err != nil {
+		return err
+	}
+
+	if err = checkTiebreakGame(game.IsTiebreak); err != nil {
+		logger.Error().Err(err).Msg("failed to checkTiebreakGame")
 		return err
 	}
 
@@ -1122,15 +1123,6 @@ func (s *Service) UpdateFutureTournamentGame(ctx context.Context, request *entit
 		return err
 	}
 
-	if err = checkTiebreakGame(game.IsTiebreak); err != nil {
-		logger.Error().Err(err).Msg("failed to checkTiebreakGame")
-		return err
-	}
-
-	if tournament.TypeID == constant.RegularPlayoffWithLooserTournamentTypeID {
-		return errors.New("not implemented")
-	}
-
 	if err = s.checkGameForMatches(ctx, logger, game.ID); err != nil {
 		logger.Error().Err(err).Msg("failed to checkGameForMatches")
 		return err
@@ -1160,6 +1152,11 @@ func (s *Service) DeleteFutureTournamentGame(ctx context.Context, request *entit
 
 	game, err := s.rdbOperations.GetTournamentGame(ctx, logger, request.GameID, &s.config.RDB)
 	if err != nil {
+		return err
+	}
+
+	if err = checkTiebreakGame(game.IsTiebreak); err != nil {
+		logger.Error().Err(err).Msg("failed to checkTiebreakGame")
 		return err
 	}
 
@@ -1199,15 +1196,6 @@ func (s *Service) DeleteFutureTournamentGame(ctx context.Context, request *entit
 		return err
 	}
 
-	if err = checkTiebreakGame(game.IsTiebreak); err != nil {
-		logger.Error().Err(err).Msg("failed to checkTiebreakGame")
-		return err
-	}
-
-	if tournament.TypeID == constant.RegularPlayoffWithLooserTournamentTypeID {
-		return errors.New("not implemented")
-	}
-
 	tx, err := s.rwdbOperations.BeginTx(ctx, logger)
 	if err != nil {
 		return err
@@ -1229,6 +1217,11 @@ func (s *Service) DeleteFutureTournamentGame(ctx context.Context, request *entit
 
 func (s *Service) CreatePlayedTournamentGame(ctx context.Context, request *entities.CreatePlayedTournamentGameRequest) (entities.CreatePlayedTournamentGameResponse, error) {
 	logger := s.logger.With().Str("service", "game.CreatePlayedTournamentGame").Logger()
+
+	if err := checkTiebreakGame(request.IsTiebreak); err != nil {
+		logger.Error().Err(err).Msg("failed to checkTiebreakGame")
+		return entities.CreatePlayedTournamentGameResponse{}, err
+	}
 
 	tournament, err := s.rdbOperations.GetTournamentById(ctx, logger, request.TournamentID)
 	if err != nil {
@@ -1304,8 +1297,6 @@ func (s *Service) CreatePlayedTournamentGame(ctx context.Context, request *entit
 				return entities.CreatePlayedTournamentGameResponse{}, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 			}
 		}
-	} else if tournament.TypeID == constant.RegularPlayoffWithLooserTournamentTypeID {
-		return entities.CreatePlayedTournamentGameResponse{}, errors.New("not implemented")
 	}
 
 	// Map for keeping player ratings while going game calculation
@@ -1446,7 +1437,7 @@ func (s *Service) CreatePlayedTournamentGame(ctx context.Context, request *entit
 		stateStageMsg = "не завершён: этапы турниров Regular и 1vs1 завершаются вручную"
 	} else if tournament.TypeID == constant.PlayoffTournamentTypeID {
 		stateStageMsg = s.checkPlayoffStageForFinish(ctx, logger, currentStage, tournament, currentStageNumber, stageQty)
-	} else if tournament.TypeID == constant.RegularPlayoffTournamentTypeID {
+	} else if tournament.TypeID == constant.RegularPlayoffTournamentTypeID || tournament.TypeID == constant.RegularPlayoffWithLoserBracketTournamentTypeID {
 		stateStageMsg = s.checkRegularPlayoffStageForFinish(ctx, logger, currentStage, tournament, currentStageNumber, stageQty)
 	} else {
 		return entities.CreatePlayedTournamentGameResponse{}, errors.New("not implemented")
@@ -1533,8 +1524,6 @@ func (s *Service) UpdatePlayedTournamentGame(ctx context.Context, request *entit
 				return entities.UpdatePlayedTournamentGameResponse{}, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 			}
 		}
-	} else if tournament.TypeID == constant.RegularPlayoffWithLooserTournamentTypeID {
-		return entities.UpdatePlayedTournamentGameResponse{}, errors.New("not implemented")
 	}
 
 	newRates := make(map[int]int)
@@ -1748,7 +1737,7 @@ func (s *Service) UpdatePlayedTournamentGame(ctx context.Context, request *entit
 		stateStageMsg = "не завершён: этапы турниров Regular и 1vs1 завершаются вручную"
 	} else if tournament.TypeID == constant.PlayoffTournamentTypeID {
 		stateStageMsg = s.checkPlayoffStageForFinish(ctx, logger, currentStage, tournament, currentStageNumber, stageQty)
-	} else if tournament.TypeID == constant.RegularPlayoffTournamentTypeID {
+	} else if tournament.TypeID == constant.RegularPlayoffTournamentTypeID || tournament.TypeID == constant.RegularPlayoffWithLoserBracketTournamentTypeID {
 		stateStageMsg = s.checkRegularPlayoffStageForFinish(ctx, logger, currentStage, tournament, currentStageNumber, stageQty)
 	} else {
 		return entities.UpdatePlayedTournamentGameResponse{}, errors.New("not implemented")
@@ -1793,10 +1782,6 @@ func (s *Service) DeletePlayedTournamentGame(ctx context.Context, request *entit
 	if err = checkTiebreakGame(game.IsTiebreak); err != nil {
 		logger.Error().Err(err).Msg("failed to checkTiebreakGame")
 		return err
-	}
-
-	if tournament.TypeID == constant.RegularPlayoffWithLooserTournamentTypeID {
-		return errors.New("not implemented")
 	}
 
 	matches, err := s.rdbOperations.GetMatchListByGameID(ctx, logger, request.GameID)
@@ -2149,7 +2134,7 @@ func (s *Service) checkPlayoffStageForFinish(
 		gameStats = append(gameStats, gs)
 	}
 
-	winners := helpers.ExtractWinners(gameStats)
+	winners, _ := helpers.ExtractWinnersAndLosers(gameStats)
 
 	err = helpers.CheckQtyWinnersInCurrentPlayoffStage(len(tournament.TeamIDs), len(winners), int(currenStageNumber), int(stageQty))
 	if err != nil {
@@ -2253,15 +2238,23 @@ func (s *Service) checkRegularPlayoffStageForFinish(
 		}
 	} else {
 		// для всех остальных playoff этапов
-		winners = helpers.ExtractWinners(gameStats)
+		winners, _ = helpers.ExtractWinnersAndLosers(gameStats)
 	}
 
 	if int(currenStageNumber)+1 <= int(stageQty) {
 		nextStageNumber := currenStageNumber + 1
 
-		err = helpers.CheckQtyTeamsInRegularPlayoffStage(int(tournament.Rules.RegularPlayoff.PlayoffTeamsCountOnStart), len(winners), int(nextStageNumber), int(stageQty))
-		if err != nil {
-			return "не может быть завершён: " + err.Error()
+		switch {
+		case tournament.TypeID == constant.RegularPlayoffTournamentTypeID:
+			err = helpers.CheckQtyTeamsInRegularPlayoffStage(int(tournament.Rules.RegularPlayoff.PlayoffTeamsCountOnStart), len(winners), int(nextStageNumber), int(stageQty))
+			if err != nil {
+				return "не может быть завершён: " + err.Error()
+			}
+		case tournament.TypeID == constant.RegularPlayoffWithLoserBracketTournamentTypeID:
+			err = helpers.CheckQtyTeamsInRegularPlayoffWithLooserBracket(int(tournament.Rules.RegularPlayoff.PlayoffTeamsCountOnStart), len(winners), int(nextStageNumber), int(stageQty))
+			if err != nil {
+				return "не может быть завершён: " + err.Error()
+			}
 		}
 	}
 

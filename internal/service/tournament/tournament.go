@@ -129,8 +129,16 @@ func (s *Service) Create(ctx context.Context, request *entities.CreateTournament
 
 		return tournamentID, nil
 
-	} else { //временная ошибка, создание других турниров реализуется позже
-		return 0, errors.New("not implemented")
+	} else if request.TournamentTypeID == constant.RegularPlayoffWithLoserBracketTournamentTypeID {
+		tournamentID, err := s.createRegularPlayoffWithLooserBracket(ctx, logger, *request)
+		if err != nil {
+			return 0, err
+		}
+
+		return tournamentID, nil
+
+	} else {
+		return 0, errors.New("there is no such type of tournament")
 	}
 }
 
@@ -214,9 +222,16 @@ func (s *Service) Update(ctx context.Context, request *entities.UpdateTournament
 		}
 
 		return nil
+	} else if request.TournamentTypeID == constant.RegularPlayoffWithLoserBracketTournamentTypeID {
+		err = s.updateRegularPlayoffWithLooserBracket(ctx, logger, *request, tournament)
+		if err != nil {
+			return err
+		}
+
+		return nil
 	}
 
-	return errors.New("not implemented")
+	return errors.New("there is no such type of tournament")
 }
 
 func (s *Service) Delete(ctx context.Context, request *entities.DeleteTournamentRequest) error {
@@ -346,13 +361,13 @@ func (s *Service) FinishStage(ctx context.Context, request *entities.FinishStage
 			return err
 		}
 
-	} else if tournament.TypeID == constant.RegularPlayoffTournamentTypeID {
+	} else if tournament.TypeID == constant.RegularPlayoffTournamentTypeID || tournament.TypeID == constant.RegularPlayoffWithLoserBracketTournamentTypeID {
 		err = s.finishStageRegularPlayoff(ctx, logger, tournament, games, stage)
 		if err != nil {
 			return err
 		}
 	} else {
-		return errors.New("tournament type 4 not implemented")
+		return errors.New("this tournament type is not implemented")
 	}
 
 	tx, err := s.rwdbOperations.BeginTx(ctx, logger)
@@ -611,6 +626,13 @@ func (s *Service) StartNextStage(ctx context.Context, req *entities.StartNextSta
 		return stageId, nil
 	} else if tournament.TypeID == constant.RegularPlayoffTournamentTypeID {
 		stageId, err := s.startNextStageRegularPlayoff(ctx, logger, tournament)
+		if err != nil {
+			return 0, err
+		}
+
+		return stageId, nil
+	} else if tournament.TypeID == constant.RegularPlayoffWithLoserBracketTournamentTypeID {
+		stageId, err := s.startNextStageRegularPlayoffWithLooserBracket(ctx, logger, tournament)
 		if err != nil {
 			return 0, err
 		}
@@ -1241,8 +1263,73 @@ func (s *Service) createRegularPlayoff(ctx context.Context, logger zerolog.Logge
 	// т.к. ещё нет результатов regular-этапа
 	playoffStageNums, _, err := helpers.SortKeysValues(req.Rules.RegularPlayoff.PlayOff.Stages)
 	if err != nil {
-		logger.Error().Err(err).Msg("failed helpers.SortKeysValues")
 		err = errors.New("нарушена нумерация этапов")
+		logger.Error().Err(err).Msg("failed helpers.SortKeysValues")
+		return 0, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	tournamentId, err := s.rwdbOperations.CreateTournament(logger, ctx, req, tx)
+	if err != nil {
+		tx.Rollback(ctx)
+		return 0, err
+	}
+
+	// создаем regular-этап 1/N
+	regularStage := strconv.FormatInt(constant.FirstStage, 10) + constant.SeparatorStageNumber + strconv.Itoa(constant.FirstStage+len(req.Rules.RegularPlayoff.PlayOff.Stages))
+
+	firstStageId, err := s.rwdbOperations.CreateTournamentStage(logger, ctx, tournamentId, regularStage, tx)
+	if err != nil {
+		tx.Rollback(ctx)
+		return 0, err
+	}
+
+	team1IDs, team2IDs := helpers.GeneratePairs(req.TeamsIDs, int(req.Rules.RegularPlayoff.Regular.BestOf))
+
+	// игры regular-этапа
+	err = s.rwdbOperations.CreateFutureTournamentStageGames(ctx, logger, firstStageId, *req.CityID, team1IDs, team2IDs, tx)
+	if err != nil {
+		tx.Rollback(ctx)
+		return 0, err
+	}
+
+	for i := 0; i < len(playoffStageNums); i++ {
+		// создаём строку вида <порядковый_номер_этапа>/<кол-во_этапов>, образец: 2/4, 3/4, 4/4 - финал.
+		// 1/N пропускаем, так как он уже создан в рамках regular
+		stageSlashNumberOfStages := strconv.FormatInt(int64(i+2), 10) + constant.SeparatorStageNumber + strconv.Itoa(constant.FirstStage+len(req.Rules.RegularPlayoff.PlayOff.Stages))
+
+		_, err = s.rwdbOperations.CreateTournamentStage(logger, ctx, tournamentId, stageSlashNumberOfStages, tx)
+		if err != nil {
+			tx.Rollback(ctx)
+			return 0, err
+		}
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		tx.Rollback(ctx)
+		return 0, err
+	}
+
+	return tournamentId, nil
+}
+
+func (s *Service) createRegularPlayoffWithLooserBracket(ctx context.Context, logger zerolog.Logger, req entities.CreateTournamentRequest) (int64, error) {
+	tx, err := s.rwdbOperations.BeginTx(ctx, logger)
+	if err != nil {
+		return 0, err
+	}
+
+	err = helpers.ValidateRegularPlayoffWithLooserBracketTournamentRulesOnCreate(&req)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed helpers.ValidateRegularPlayoffWithLooserBracketTournamentRulesOnCreate")
+		return 0, err
+	}
+
+	// здесь важно просто создать этапы для будущих игр, но на данный момент мы не знаем, кто будет играть в них,
+	// т.к. ещё нет результатов regular-этапа
+	playoffStageNums, _, err := helpers.SortKeysValues(req.Rules.RegularPlayoff.PlayOff.Stages)
+	if err != nil {
+		err = errors.New("нарушена нумерация этапов")
+		logger.Error().Err(err).Msg("failed helpers.SortKeysValues")
 		return 0, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
@@ -1932,6 +2019,142 @@ func (s *Service) updateRegularPlayoff(ctx context.Context, logger zerolog.Logge
 	return nil
 }
 
+func (s *Service) updateRegularPlayoffWithLooserBracket(ctx context.Context, logger zerolog.Logger, req entities.UpdateTournamentRequest, tournament entities.Tournament) error {
+	// вызываем первый раз для валидации только входящих данных, второй параметр поэтому равен nil
+	err := helpers.ValidateRegularPlayoffWithLooserBracketTournamentRulesOnUpdate(req, nil)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to helpers.ValidateRegularPlayoffWithLooserBracketTournamentRulesOnUpdate")
+		return err
+	}
+
+	// собираем запрос с учетом старых данных турнира
+	newReq := entities.UpdateTournamentRequest{
+		ID:               req.ID,
+		Executor:         req.Executor,
+		TournamentTypeID: req.TournamentTypeID,
+	}
+	if req.CityID != nil {
+		newReq.CityID = req.CityID
+	} else {
+		newReq.CityID = &tournament.CityID
+	}
+	if req.SeasonID != nil {
+		newReq.SeasonID = req.SeasonID
+	} else {
+		newReq.SeasonID = &tournament.SeasonID
+	}
+	if req.Name != nil {
+		newReq.Name = req.Name
+	} else {
+		newReq.Name = &tournament.Name
+	}
+	if req.Rules != nil {
+		newReq.Rules = req.Rules
+	} else {
+		newReq.Rules = &tournament.Rules
+	}
+
+	// если в запросе были новые команды, то заново их проверить на соответствие городу
+	if len(req.TeamsIDs) > 0 {
+		err := s.checkTeamsCityIds(ctx, logger, req.TeamsIDs, tournament, newReq.CityID)
+		if err != nil {
+			return err
+		}
+		newReq.TeamsIDs = req.TeamsIDs
+	} else {
+		newReq.TeamsIDs = tournament.TeamIDs
+	}
+
+	// вызываем второй раз для валидации собранных данных турнира
+	err = helpers.ValidateRegularPlayoffWithLooserBracketTournamentRulesOnUpdate(req, &newReq)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to helpers.ValidateRegularPlayoffWithLooserBracketTournamentRulesOnUpdate")
+		return err
+	}
+
+	tx, err := s.rwdbOperations.BeginTx(ctx, logger)
+	if err != nil {
+		return err
+	}
+
+	err = s.rwdbOperations.UpdateTournament(logger, ctx, newReq, tx)
+	if err != nil {
+		tx.Rollback(ctx)
+		return err
+	}
+
+	// если пришли новые команды, или если изменились правила или город - всё перезаписываем
+	if len(req.TeamsIDs) > 0 || req.Rules != nil || req.CityID != nil {
+		// старые команды отвязать от турнира
+		if err = s.rwdbOperations.UnlinkTeamsFromTournament(logger, ctx, tournament.ID, tx); err != nil {
+			tx.Rollback(ctx)
+			return err
+		}
+
+		// удалить игры старых команд
+		if err = s.rwdbOperations.DeleteTournamentGames(logger, ctx, tournament.ID, tx); err != nil {
+			tx.Rollback(ctx)
+			return err
+		}
+
+		// удалить этапы турнира
+		if err = s.rwdbOperations.DeleteTournamentStages(logger, ctx, tournament.ID, tx); err != nil {
+			tx.Rollback(ctx)
+			return err
+		}
+
+		// добавим новые команды в турнир
+		if err = s.rwdbOperations.AddTeamsToTournament(ctx, logger, newReq.TeamsIDs, tournament.ID, tx); err != nil {
+			tx.Rollback(ctx)
+			return err
+		}
+
+		playoffStageNums, _, err := helpers.SortKeysValues(newReq.Rules.RegularPlayoff.PlayOff.Stages)
+		if err != nil {
+			logger.Error().Err(err).Msg("failed helpers.SortKeysValues")
+			err = errors.New("нарушена нумерация этапов")
+			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		}
+
+		// создаем regular-этап 1/N
+		regularStage := strconv.FormatInt(constant.FirstStage, 10) + constant.SeparatorStageNumber + strconv.Itoa(constant.FirstStage+len(newReq.Rules.RegularPlayoff.PlayOff.Stages))
+
+		regularStageId, err := s.rwdbOperations.CreateTournamentStage(logger, ctx, newReq.ID, regularStage, tx)
+		if err != nil {
+			tx.Rollback(ctx)
+			return err
+		}
+
+		team1IDs, team2IDs := helpers.GeneratePairs(newReq.TeamsIDs, int(newReq.Rules.RegularPlayoff.Regular.BestOf))
+
+		// игры regular-этапа
+		err = s.rwdbOperations.CreateFutureTournamentStageGames(ctx, logger, regularStageId, *newReq.CityID, team1IDs, team2IDs, tx)
+		if err != nil {
+			tx.Rollback(ctx)
+			return err
+		}
+
+		for i := 0; i < len(playoffStageNums); i++ {
+			// создаём строку вида <порядковый_номер_этапа>/<кол-во_этапов>, образец: 2/4, 3/4, 4/4 - финал.
+			// 1/N пропускаем, так как он уже создан в рамках regular
+			stageSlashNumberOfStages := strconv.FormatInt(int64(i+2), 10) + constant.SeparatorStageNumber + strconv.Itoa(constant.FirstStage+len(newReq.Rules.RegularPlayoff.PlayOff.Stages))
+
+			_, err = s.rwdbOperations.CreateTournamentStage(logger, ctx, newReq.ID, stageSlashNumberOfStages, tx)
+			if err != nil {
+				tx.Rollback(ctx)
+				return err
+			}
+		}
+
+		if err = tx.Commit(ctx); err != nil {
+			tx.Rollback(ctx)
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (s *Service) checkTournamentMasterCredentials(ctx context.Context, logger zerolog.Logger, req *entities.UpdateTournamentRequest, tournament entities.Tournament, games []entities.TournamentGame) error {
 	master, err := s.rdbOperations.GetTournamentMasterByUserId(logger, ctx, req.Executor.ID)
 	if err != nil {
@@ -2284,7 +2507,7 @@ func (s *Service) startNextStageRegularPlayoff(ctx context.Context, logger zerol
 	}
 
 	// Логика следующая (старый номер этапа -> новый номер этапа):
-	// Формула: КОЛ-ВО_КОМАНД_ДЛЯ_ПЕРЕХОДА_В_ПЛЕЙОФФ (задано при создании турнира) / (2 ^ КОЛ-ВО_ПРОЙДЕННЫХ_ЭТАПОВ)
+	// Формула: КОЛ-ВО_КОМАНД_ДЛЯ_ПЕРЕХОДА_В_ПЛЕЙОФФ (задано при создании турнира) / (2 ^ КОЛ-ВО_ПРОЙДЕННЫХ_ЭТАПОВ_В_ПЛЕЙОФФ)
 	// Пусть при создании турнира задано, что в playoff перейдут 4 лучшие команды
 	// При переходе из regular в playoff (1 -> 2): 4 / (2 ^ 0) = 4 (0 в степени двойки потому, что на данный момент пройден regular-этап => 0 пройденных playoff-этапов)
 	// При переходе из playoff-1 в playoff-2 (2 -> 3): 4 / (2 ^ 1) = 2; далее этапов нет, то есть в этом этапе определится победитель
@@ -2313,6 +2536,210 @@ func (s *Service) startNextStageRegularPlayoff(ctx context.Context, logger zerol
 	if err = tx.Commit(ctx); err != nil {
 		tx.Rollback(ctx)
 		return 0, err
+	}
+
+	return nextStage.Stage.ID, nil
+}
+
+func (s *Service) startNextStageRegularPlayoffWithLooserBracket(ctx context.Context, logger zerolog.Logger, tournament entities.Tournament) (int64, error) {
+	stages, err := s.rdbOperations.GetTournamentStageList(ctx, logger, tournament.ID)
+	if err != nil {
+		return 0, err
+	}
+
+	orderedStages, err := s.getOrderedStagesRegularPlayoff(ctx, logger, tournament, stages)
+	if err != nil {
+		return 0, err
+	}
+
+	nextStage, previousStage, foundNextStage, err := checkOrderedStages(orderedStages)
+	if err != nil {
+		return 0, err
+	}
+
+	// если такой не нашелся - либо играется последний этап, либо непредвиденный косяк
+	if *foundNextStage == false {
+		err = errors.New("не найден следующий этап")
+		logger.Error().Err(err).Msg("next stage not found")
+		return 0, error_templates.New(err.Error(), err, codes.FailedPrecondition, http.StatusConflict)
+	}
+
+	err = helpers.CheckQtyTeamsInRegularPlayoffWithLooserBracket(int(tournament.Rules.RegularPlayoff.PlayoffTeamsCountOnStart), len(previousStage.Winners), int(nextStage.Number), len(stages))
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to helpers.CheckQtyTeamsInRegularPlayoffWithLooserBracket")
+		return 0, err
+	}
+
+	// если предыдущий этап не завершён, не даем создать новый
+	if previousStage.Stage.IsFinished == false {
+		err = errors.New("предыдущий этап не завершён")
+		return 0, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+
+	var countFinishedPlayoffStages int
+	for _, stage := range orderedStages {
+		if stage.Stage.IsFinished && stage.Number != constant.FirstStage {
+			countFinishedPlayoffStages += 1
+		}
+	}
+	// Если countFinishedPlayoffStages == 0, то neededTeamsCountForNextStage == tournament.Rules.RegularPlayoff.PlayoffTeamsCountOnStart
+	// т.к. следующий этап туринра - это первый этап playoff
+	neededTeamsCountForNextStage := tournament.Rules.RegularPlayoff.PlayoffTeamsCountOnStart
+
+	// Если countFinishedPlayoffStages != 0, то считаем необходимое кол-во команд для следующего этапа.
+	// На каждом нечетном этапе количество команд делится на 2
+
+	for i := 1; i <= countFinishedPlayoffStages; i++ {
+		if i%2 != 0 {
+			neededTeamsCountForNextStage = neededTeamsCountForNextStage / 2
+		}
+	}
+
+	var teams1IdsOfWinnerBracket, teams2IdsOfWinnerBracket []int64
+	var teams1IdsOffLoserBracket, teams2IdsOfLoserBracket []int64
+
+	if previousStage.Number == constant.FirstStage {
+
+		// Разбиваем команды по рейтингу из турнирной таблицы на верхнюю и нижнюю сетки
+		teamsOfWB := previousStage.Winners[:len(previousStage.Winners)/2]
+		teamsOfLB := previousStage.Winners[len(previousStage.Winners)/2:]
+
+		// Отдельно для каждой сетки формируем игры
+		teams1IdsOfWinnerBracket, teams2IdsOfWinnerBracket = helpers.GeneratePairsRegularPlayoff(teamsOfWB, int(nextStage.BestOf))
+		teams1IdsOffLoserBracket, teams2IdsOfLoserBracket = helpers.GeneratePairsRegularPlayoff(teamsOfLB, int(nextStage.BestOf))
+
+		tx, err := s.rwdbOperations.BeginTx(ctx, logger)
+		if err != nil {
+			return 0, err
+		}
+
+		if err = s.rwdbOperations.AddTeamsToTournamentBrackets(ctx, logger, tournament.ID, nextStage.Number, teamsOfWB, teamsOfLB, tx); err != nil {
+			tx.Rollback(ctx)
+			return 0, err
+		}
+
+		if err = s.rwdbOperations.CreateFutureTournamentStageGames(ctx, logger, nextStage.Stage.ID, tournament.CityID, teams1IdsOfWinnerBracket, teams2IdsOfWinnerBracket, tx); err != nil {
+			tx.Rollback(ctx)
+			return 0, err
+		}
+
+		if err = s.rwdbOperations.CreateFutureTournamentStageGames(ctx, logger, nextStage.Stage.ID, tournament.CityID, teams1IdsOffLoserBracket, teams2IdsOfLoserBracket, tx); err != nil {
+			tx.Rollback(ctx)
+			return 0, err
+		}
+
+		if err = tx.Commit(ctx); err != nil {
+			tx.Rollback(ctx)
+			return 0, err
+		}
+	} else if previousStage.Number%2 == 0 {
+
+		// Получаем разбивку по винерам и лузерам предыдущего этапа
+		teamsOfBrackets, err := s.rdbOperations.GetTeamsFromTournamentBrackets(ctx, logger, tournament.ID, previousStage.Number)
+		if err != nil {
+			return 0, err
+		}
+
+		// Формируем списки команд для новой стадии и для обновленной сетки винеров и лузеров
+		losersOfWB := make([]int64, 0)
+		winnersOfWB := make([]int64, 0)
+		winnersOfLB := make([]int64, 0)
+		resultTeamsListOfStage := make([]int64, 0)
+
+		for _, team := range teamsOfBrackets.TeamsOfWinnerBracket {
+			if team != nil {
+				if slices.Contains(previousStage.Losers, *team) {
+					losersOfWB = append(losersOfWB, *team)
+				} else {
+					winnersOfWB = append(winnersOfWB, *team)
+				}
+			}
+		}
+
+		for _, team := range teamsOfBrackets.TeamsOfLoserBracket {
+			if team != nil && slices.Contains(previousStage.Winners, *team) {
+				winnersOfLB = append(winnersOfLB, *team)
+			}
+		}
+
+		// На четной стадии турнира кол-во победителей нижней сетки и проигравших верхней сетки всегда совпадают
+		for i := range losersOfWB {
+			resultTeamsListOfStage = append(resultTeamsListOfStage, losersOfWB[i])
+			resultTeamsListOfStage = append(resultTeamsListOfStage, winnersOfLB[i])
+		}
+
+		teams1Ids, teams2Ids := helpers.GeneratePlayoffPairs(resultTeamsListOfStage, int(nextStage.BestOf))
+
+		tx, err := s.rwdbOperations.BeginTx(ctx, logger)
+		if err != nil {
+			return 0, err
+		}
+
+		if err = s.rwdbOperations.AddTeamsToTournamentBrackets(ctx, logger, tournament.ID, nextStage.Number, winnersOfWB, resultTeamsListOfStage, tx); err != nil {
+			tx.Rollback(ctx)
+			return 0, err
+		}
+
+		if err = s.rwdbOperations.CreateFutureTournamentStageGames(ctx, logger, nextStage.Stage.ID, tournament.CityID, teams1Ids, teams2Ids, tx); err != nil {
+			tx.Rollback(ctx)
+			return 0, err
+		}
+
+		if err = tx.Commit(ctx); err != nil {
+			tx.Rollback(ctx)
+			return 0, err
+		}
+	} else {
+		// Получаем разбивку по винерам и лузерам предыдущего этапа
+		teamsOfBrackets, err := s.rdbOperations.GetTeamsFromTournamentBrackets(ctx, logger, tournament.ID, previousStage.Number)
+		if err != nil {
+			return 0, err
+		}
+
+		// На нечетной стадии всегда играется только нижняя сетка.
+		// Но в таблицу tournament_brackets участники верхней сетки обновляются всегда, просто между ними не формируются игры, они "отдыхают" на этой стадии.
+		// Поэтому для формирования следующей стадии мы просто берем все команды предыдущего этапа из врехней сетки.
+		winnersOfWB := make([]int64, 0)
+
+		for _, team := range teamsOfBrackets.TeamsOfWinnerBracket {
+			if team != nil {
+				winnersOfWB = append(winnersOfWB, *team)
+			}
+		}
+
+		// Проверяем, является ли новая стадия последней. Если да, то формируем игру из последнего участника верхней сетки и победителя нижей сетки.
+		if len(winnersOfWB) == 1 && len(previousStage.Winners) == 1 {
+			finalPair := append(winnersOfWB, previousStage.Winners...)
+			teams1IdsOfWinnerBracket, teams2IdsOfWinnerBracket = helpers.GeneratePlayoffPairs(finalPair, int(nextStage.BestOf))
+		} else {
+			teams1IdsOfWinnerBracket, teams2IdsOfWinnerBracket = helpers.GeneratePlayoffPairs(winnersOfWB, int(nextStage.BestOf))
+			teams1IdsOffLoserBracket, teams2IdsOfLoserBracket = helpers.GeneratePlayoffPairs(previousStage.Winners, int(nextStage.BestOf))
+		}
+
+		tx, err := s.rwdbOperations.BeginTx(ctx, logger)
+		if err != nil {
+			return 0, err
+		}
+
+		if err = s.rwdbOperations.AddTeamsToTournamentBrackets(ctx, logger, tournament.ID, nextStage.Number, winnersOfWB, previousStage.Winners, tx); err != nil {
+			tx.Rollback(ctx)
+			return 0, err
+		}
+
+		if err = s.rwdbOperations.CreateFutureTournamentStageGames(ctx, logger, nextStage.Stage.ID, tournament.CityID, teams1IdsOfWinnerBracket, teams2IdsOfWinnerBracket, tx); err != nil {
+			tx.Rollback(ctx)
+			return 0, err
+		}
+
+		if err = s.rwdbOperations.CreateFutureTournamentStageGames(ctx, logger, nextStage.Stage.ID, tournament.CityID, teams1IdsOffLoserBracket, teams2IdsOfLoserBracket, tx); err != nil {
+			tx.Rollback(ctx)
+			return 0, err
+		}
+
+		if err = tx.Commit(ctx); err != nil {
+			tx.Rollback(ctx)
+			return 0, err
+		}
 	}
 
 	return nextStage.Stage.ID, nil
@@ -2422,10 +2849,19 @@ func (s *Service) finishStageRegularPlayoff(ctx context.Context, logger zerolog.
 		return nil
 	}
 
-	err = helpers.CheckQtyTeamsInRegularPlayoffStage(int(tournament.Rules.RegularPlayoff.PlayoffTeamsCountOnStart), len(previousStage.Winners), int(nextStage.Number), len(stages))
-	if err != nil {
-		logger.Error().Err(err).Msg("failed to helpers.CheckQtyTeamsInRegularPlayoffStage")
-		return err
+	switch {
+	case tournament.TypeID == constant.RegularPlayoffTournamentTypeID:
+		err = helpers.CheckQtyTeamsInRegularPlayoffStage(int(tournament.Rules.RegularPlayoff.PlayoffTeamsCountOnStart), len(previousStage.Winners), int(nextStage.Number), len(stages))
+		if err != nil {
+			logger.Error().Err(err).Msg("failed to helpers.CheckQtyTeamsInRegularPlayoffStage")
+			return err
+		}
+	case tournament.TypeID == constant.RegularPlayoffWithLoserBracketTournamentTypeID:
+		err = helpers.CheckQtyTeamsInRegularPlayoffWithLooserBracket(int(tournament.Rules.RegularPlayoff.PlayoffTeamsCountOnStart), len(previousStage.Winners), int(nextStage.Number), len(stages))
+		if err != nil {
+			logger.Error().Err(err).Msg("failed to helpers.CheckQtyTeamsInRegularPlayoffWithLooserBracket")
+			return err
+		}
 	}
 
 	return nil
@@ -2438,7 +2874,7 @@ func (s *Service) validateGames(ctx context.Context, logger zerolog.Logger, game
 
 	for _, game := range games {
 		if game.Date == nil || game.Date.After(time.Now()) {
-			msg := fmt.Sprintf("дата игры с id=%d позже текущей даты", game.ID)
+			msg := fmt.Sprintf("дата игры с id=%d позже текущей даты или не установлена", game.ID)
 			err = errors.New(msg)
 			logger.Error().Err(err).Msg(msg)
 
@@ -2491,7 +2927,7 @@ func (s *Service) getOrderedStagesWithWinners(ctx context.Context, logger zerolo
 			return nil, err
 		}
 
-		sSt.Winners = helpers.ExtractWinners(sSt.GameStats)
+		sSt.Winners, _ = helpers.ExtractWinnersAndLosers(sSt.GameStats)
 
 		// парсим порядковый номер этапа
 		orderNumberStr := strings.Split(stage.Number, constant.SeparatorStageNumber)
@@ -2582,7 +3018,7 @@ func (s *Service) getOrderedStagesRegularPlayoff(ctx context.Context, logger zer
 			sSt.BestOf = tournament.Rules.RegularPlayoff.Regular.BestOf
 		} else {
 			// для всех остальных playoff этапов
-			sSt.Winners = helpers.ExtractWinners(sSt.GameStats)
+			sSt.Winners, sSt.Losers = helpers.ExtractWinnersAndLosers(sSt.GameStats)
 			sSt.BestOf = tournament.Rules.RegularPlayoff.PlayOff.Stages[orderNumber-1].Bo
 		}
 
@@ -2613,8 +3049,10 @@ func (s *Service) getGameStatsForStage(ctx context.Context, logger zerolog.Logge
 		if g.TechLooseTeamID != nil {
 			if *g.TechLooseTeamID == g.Team1ID {
 				gs.WinnerId = g.Team2ID
+				gs.LoserId = g.Team1ID
 			} else if *g.TechLooseTeamID == g.Team2ID {
 				gs.WinnerId = g.Team1ID
+				gs.LoserId = g.Team2ID
 			}
 
 			gs.Matches = nil
@@ -2642,8 +3080,10 @@ func (s *Service) getGameStatsForStage(ctx context.Context, logger zerolog.Logge
 			// если у кого-то есть преимущество по очкам - то он победитель, иначе - ничего не делаем
 			if totalScoreTeam1 > totalScoreTeam2 {
 				gs.WinnerId = g.Team1ID
+				gs.LoserId = g.Team2ID
 			} else if totalScoreTeam2 > totalScoreTeam1 {
 				gs.WinnerId = g.Team2ID
+				gs.LoserId = g.Team1ID
 			}
 		}
 
@@ -2814,7 +3254,7 @@ func checkOrderedStages(orderedStages []entities.StageStat) (*entities.StageStat
 
 			for _, g := range previousStage.GameStats {
 				if g.Game.Date == nil || time.Now().Before(*g.Game.Date) {
-					err = errors.New("предыдущий этап содержит игру с будущей датой")
+					err = errors.New("предыдущий этап имеет игру с будущей или неопредленной датой")
 					return nil, nil, nil, error_templates.New(err.Error(), err, codes.FailedPrecondition, http.StatusConflict)
 				}
 
@@ -2823,7 +3263,7 @@ func checkOrderedStages(orderedStages []entities.StageStat) (*entities.StageStat
 					return nil, nil, nil, error_templates.New(err.Error(), err, codes.FailedPrecondition, http.StatusConflict)
 				}
 
-				if g.Game.IsTiebreak && len(g.Matches) == 0 {
+				if g.Game.IsTiebreak && g.Game.TechLooseTeamID == nil && len(g.Matches) == 0 {
 					err = errors.New("есть несыгранные ничьи в предыдущем этапе")
 					return nil, nil, nil, error_templates.New(err.Error(), err, codes.FailedPrecondition, http.StatusConflict)
 				}
