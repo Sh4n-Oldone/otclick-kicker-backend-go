@@ -3,7 +3,9 @@ package postgresql
 import (
 	"context"
 	"errors"
+
 	"github.com/rs/zerolog"
+
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/constant"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
@@ -26,7 +28,7 @@ func (db *RWDBOperation) CreatePlayer(logger zerolog.Logger, ctx context.Context
 	err := db.db.QueryRow(timeout, query, p.Name, p.SecondName, p.LastName, p.ActivePlayer, p.Avatar, p.CityID).Scan(&id)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.CreatePlayer")
-		return 0, DecodeDatabaseError(errors.New(pkgerr.ErrCreatePlayer))
+		return 0, DecodeDatabaseError(err)
 	}
 
 	return id, nil
@@ -45,14 +47,14 @@ func (db *RWDBOperation) DeletePlayer(logger zerolog.Logger, ctx context.Context
 	tx, err := db.db.Begin(ctx)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.DeletePlayer")
-		return DecodeDatabaseError(errors.New(pkgerr.ErrDeletePlayer))
+		return DecodeDatabaseError(err)
 	}
 
 	tag, err := tx.Exec(ctx, query1, id)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.DeletePlayer")
 		_ = tx.Rollback(ctx)
-		return DecodeDatabaseError(errors.New(pkgerr.ErrDeletePlayer))
+		return DecodeDatabaseError(err)
 	}
 	if tag.RowsAffected() == 0 {
 		err = errors.New(pkgerr.ErrPlayerNotFound)
@@ -64,13 +66,13 @@ func (db *RWDBOperation) DeletePlayer(logger zerolog.Logger, ctx context.Context
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.DeletePlayer")
 		_ = tx.Rollback(ctx)
-		return DecodeDatabaseError(errors.New(pkgerr.ErrDeletePlayer))
+		return DecodeDatabaseError(err)
 	}
 
 	if err = tx.Commit(ctx); err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.DeletePlayer")
 		_ = tx.Rollback(ctx)
-		return DecodeDatabaseError(errors.New(pkgerr.ErrDeletePlayer))
+		return DecodeDatabaseError(err)
 	}
 
 	return nil
@@ -85,7 +87,7 @@ func (db *RWDBOperation) RecoverPlayer(logger zerolog.Logger, ctx context.Contex
 	tag, err := db.db.Exec(ctx, query, id)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.RecoverPlayer")
-		return DecodeDatabaseError(errors.New(pkgerr.ErrRecoverPlayer))
+		return DecodeDatabaseError(err)
 	}
 	if tag.RowsAffected() == 0 {
 		err = errors.New(pkgerr.ErrPlayerNotFound)
@@ -112,7 +114,7 @@ func (db *RWDBOperation) UpdatePlayer(logger zerolog.Logger, ctx context.Context
 	tag, err := db.db.Exec(ctx, query, p.Name, p.SecondName, p.LastName, p.ActivePlayer, p.Avatar, p.CityID, p.ID)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.UpdatePlayer")
-		return DecodeDatabaseError(errors.New(pkgerr.ErrUpdatePlayer))
+		return DecodeDatabaseError(err)
 	}
 	if tag.RowsAffected() == 0 {
 		err = errors.New(pkgerr.ErrPlayerNotFound)
@@ -176,7 +178,7 @@ func (db *RDBOperation) GetPlayersByTeamID(logger zerolog.Logger, ctx context.Co
 	rows, err := poolOrTx(db.db, tx).Query(timeout, query, teamID)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.GetPlayersByTeamID")
-		return nil, DecodeDatabaseError(errors.New(pkgerr.ErrGetPlayerList))
+		return nil, DecodeDatabaseError(err)
 	}
 	defer rows.Close()
 
@@ -186,7 +188,7 @@ func (db *RDBOperation) GetPlayersByTeamID(logger zerolog.Logger, ctx context.Co
 		err = rows.Scan(&p.ID, &p.Name, &p.SecondName, &p.LastName, &p.ActivePlayer, &p.DeletedAt, &p.Avatar, &p.CityID, &p.TeamID, &p.TeamName, &p.TeamShortName)
 		if err != nil {
 			logger.Error().Stack().Err(err).Msg("failed to postgresql.GetPlayersByTeamID")
-			return nil, DecodeDatabaseError(errors.New(pkgerr.ErrGetPlayer))
+			return nil, DecodeDatabaseError(err)
 		}
 
 		players = append(players, p)
@@ -257,7 +259,7 @@ func (db *RDBOperation) FindPlayers(logger zerolog.Logger, ctx context.Context, 
 	rows, err := db.db.Query(ctx, query, player.LeagueID, player.FindAny, player.GamesPlayedNumber, player.Rating, player.CityID, player.WithDeleted, player.OnlyFree)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.FindPlayers")
-		return nil, DecodeDatabaseError(errors.New(pkgerr.ErrGetPlayerList))
+		return nil, DecodeDatabaseError(err)
 	}
 	defer rows.Close()
 
@@ -267,7 +269,7 @@ func (db *RDBOperation) FindPlayers(logger zerolog.Logger, ctx context.Context, 
 		err = rows.Scan(&p.ID, &p.Name, &p.SecondName, &p.LastName, &p.Avatar, &p.ActivePlayer, &p.DeletedAt, &p.CityID, &p.CityName, &p.TeamID, &p.TeamName, &p.TeamShortName, &p.Rating)
 		if err != nil {
 			logger.Error().Stack().Err(err).Msg("failed to postgresql.FindPlayers")
-			return nil, DecodeDatabaseError(errors.New(pkgerr.ErrGetPlayer))
+			return nil, DecodeDatabaseError(err)
 		}
 		if p.Rating == nil {
 			p.Rating = pointer.GetPointer(constant.DefaultRating)
@@ -348,7 +350,7 @@ func (db *RDBOperation) FindPlayersV2(logger zerolog.Logger, ctx context.Context
 		err = rows.Scan(&p.ID, &p.Name, &p.SecondName, &p.LastName, &p.Avatar, &p.ActivePlayer, &p.DeletedAt, &p.CityID, &p.CityName)
 		if err != nil {
 			logger.Error().Stack().Err(err).Msg("failed to postgresql.FindPlayers")
-			return nil, DecodeDatabaseError(errors.New(pkgerr.ErrGetPlayer))
+			return nil, DecodeDatabaseError(err)
 		}
 		if p.Rating == nil {
 			p.Rating = pointer.GetPointer(constant.DefaultRating)
@@ -374,7 +376,7 @@ func (db *RDBOperation) GetPlayerIDsByLeagueID(logger zerolog.Logger, ctx contex
 	rows, err := db.db.Query(ctx, query, leagueID)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.GetPlayerIDsByLeagueID")
-		return nil, DecodeDatabaseError(errors.New(pkgerr.ErrGetPlayerList))
+		return nil, DecodeDatabaseError(err)
 	}
 	defer rows.Close()
 
@@ -384,7 +386,7 @@ func (db *RDBOperation) GetPlayerIDsByLeagueID(logger zerolog.Logger, ctx contex
 		err = rows.Scan(&id)
 		if err != nil {
 			logger.Error().Stack().Err(err).Msg("failed to postgresql.GetPlayersByTeamID")
-			return nil, DecodeDatabaseError(errors.New(pkgerr.ErrGetPlayer))
+			return nil, DecodeDatabaseError(err)
 		}
 
 		iDs = append(iDs, id)
@@ -410,7 +412,7 @@ func (db *RDBOperation) GetPlayerIdsByTournamentId(logger zerolog.Logger, ctx co
 	rows, err := db.db.Query(timeout, query, tournamentId)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.GetPlayerIDsByTournamentId")
-		return nil, DecodeDatabaseError(errors.New(pkgerr.ErrGetPlayerList))
+		return nil, DecodeDatabaseError(err)
 	}
 	defer rows.Close()
 
@@ -420,7 +422,7 @@ func (db *RDBOperation) GetPlayerIdsByTournamentId(logger zerolog.Logger, ctx co
 		err = rows.Scan(&id)
 		if err != nil {
 			logger.Error().Stack().Err(err).Msg("failed to postgresql.GetPlayerIDsByTournamentId")
-			return nil, DecodeDatabaseError(errors.New(pkgerr.ErrGetPlayer))
+			return nil, DecodeDatabaseError(err)
 		}
 
 		ids = append(ids, id)

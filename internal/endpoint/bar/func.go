@@ -5,31 +5,30 @@ import (
 
 	"github.com/go-kit/kit/endpoint"
 
-	// "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/middleware"
-
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/bar"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/middleware"
 	errTmpls "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/helpers"
-
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/bar"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 )
 
 func makeGetList(s bar.IService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		// reqID, ctx := middleware.GetRequestID(ctx)
-		logger := s.GetLogger().With().Str("Source", "makeGetList Bar").Logger()
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "makeGetList Bar").Str("request_id", reqID).Logger()
 
 		req, err := helpers.CastRequest[*entities.GetBarListRequest](request)
 		if err != nil {
-			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.FailedCastRequest)
+			serviceLogger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.FailedCastRequest)
 			return nil, err
 		}
 
 		records, err := s.GetList(ctx, req.CityID, req.WithDeleted)
 		if err != nil {
-			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.ErrGetPlaceList)
-			return nil, err
+			serviceLogger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).
+				Msg("failed to bar.GetList")
+			return nil, errTmpls.WrapErrorEndpoint(err, reqID)
 		}
 
 		return &entities.GetBarListResponse{Bars: records}, nil
@@ -38,18 +37,18 @@ func makeGetList(s bar.IService) endpoint.Endpoint {
 
 func makeCreate(s bar.IService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		// reqID, ctx := middleware.GetRequestID(ctx)
-		logger := s.GetLogger().With().Str("Source", "makeCreate Bar").Logger()
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "makeCreate Bar").Str("request_id", reqID).Logger()
 
 		req, err := helpers.CastRequest[*entities.CreateBarRequest](request)
 		if err != nil {
-			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.FailedCastRequest)
+			serviceLogger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.FailedCastRequest)
 			return nil, err
 		}
 
 		err = helpers.ValidateCreateBarRequest(req)
 		if err != nil {
-			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.FailedValidateRequest)
+			serviceLogger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.FailedValidateRequest)
 			return nil, err
 		}
 
@@ -64,8 +63,9 @@ func makeCreate(s bar.IService) endpoint.Endpoint {
 
 		id, err := s.Create(ctx, *entity)
 		if err != nil {
-			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.ErrCreateBar)
-			return nil, err
+			serviceLogger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).
+				Msg("failed to bar.Create")
+			return nil, errTmpls.WrapErrorEndpoint(err, reqID)
 		}
 
 		response := &struct {
@@ -80,18 +80,18 @@ func makeCreate(s bar.IService) endpoint.Endpoint {
 
 func makeUpdate(s bar.IService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		// reqID, ctx := middleware.GetRequestID(ctx)
-		logger := s.GetLogger().With().Str("Source", "makeUpdate Bar").Logger()
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "makeUpdate Bar").Str("request_id", reqID).Logger()
 
 		req, err := helpers.CastRequest[*entities.UpdateBarRequest](request)
 		if err != nil {
-			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.FailedCastRequest)
+			serviceLogger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.FailedCastRequest)
 			return nil, err
 		}
 
 		err = helpers.ValidateUpdateBarRequest(req)
 		if err != nil {
-			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.FailedValidateRequest)
+			serviceLogger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.FailedValidateRequest)
 			return nil, err
 		}
 
@@ -103,8 +103,9 @@ func makeUpdate(s bar.IService) endpoint.Endpoint {
 
 		err = s.Update(ctx, eBar)
 		if err != nil {
-			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.ErrUpdateBar)
-			return nil, err
+			serviceLogger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).
+				Msg("failed to bar.Update")
+			return nil, errTmpls.WrapErrorEndpoint(err, reqID)
 		}
 
 		response := &struct {
@@ -119,25 +120,26 @@ func makeUpdate(s bar.IService) endpoint.Endpoint {
 
 func makeDelete(s bar.IService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		// reqID, ctx := middleware.GetRequestID(ctx)
-		logger := s.GetLogger().With().Str("Source", "makeDelete Bar").Logger()
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "makeDelete Bar").Str("request_id", reqID).Logger()
 
 		req, err := helpers.CastRequest[*entities.DeleteBarRequest](request)
 		if err != nil {
-			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.FailedCastRequest)
+			serviceLogger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.FailedCastRequest)
 			return nil, err
 		}
 
 		err = helpers.ValidateDeleteBarRequest(req)
 		if err != nil {
-			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.FailedValidateRequest)
+			serviceLogger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.FailedValidateRequest)
 			return nil, err
 		}
 
 		err = s.Delete(ctx, req.ID)
 		if err != nil {
-			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.ErrDeleteBar)
-			return nil, err
+			serviceLogger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).
+				Msg("failed to bar.Delete")
+			return nil, errTmpls.WrapErrorEndpoint(err, reqID)
 		}
 
 		return nil, nil

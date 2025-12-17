@@ -2,12 +2,10 @@ package postgresql
 
 import (
 	"context"
-	"errors"
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/database/postgresql/tx"
-	pkgerr "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 )
 
 // GetLeagueList deprecated
@@ -180,7 +178,7 @@ func (db *RDBOperation) GetLeaguesByPlayerID(logger zerolog.Logger, ctx context.
 	rows, err := db.db.Query(ctx, query, playerID)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to postgresql.GetLeaguesByPlayerID")
-		return nil, DecodeDatabaseError(errors.New(pkgerr.ErrGetLeagueList))
+		return nil, DecodeDatabaseError(err)
 	}
 
 	for rows.Next() {
@@ -189,7 +187,7 @@ func (db *RDBOperation) GetLeaguesByPlayerID(logger zerolog.Logger, ctx context.
 		err = rows.Scan(&league.ID, &league.Name, &league.CityID, &league.Rating)
 		if err != nil {
 			logger.Error().Err(err).Msg("failed to postgresql.GetLeaguesByPlayerID")
-			return nil, DecodeDatabaseError(errors.New(pkgerr.ErrGetLeague))
+			return nil, DecodeDatabaseError(err)
 		}
 
 		leagues = append(leagues, league)

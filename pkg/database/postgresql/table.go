@@ -2,12 +2,9 @@ package postgresql
 
 import (
 	"context"
-	stderr "errors"
-
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 )
 
 func (db *RDBOperation) GetTableList(logger zerolog.Logger, ctx context.Context, withDeleted bool) ([]entities.Table, error) {
@@ -47,7 +44,7 @@ func (db *RDBOperation) GetTableByID(logger zerolog.Logger, ctx context.Context,
 		Scan(&table.ID, &table.Name, &table.UpdatedAt, &table.DeletedAt)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.GetTableByID")
-		return nil, DecodeDatabaseError(stderr.New(errors.ErrGetPlayer))
+		return nil, DecodeDatabaseError(err)
 	}
 
 	return &table, nil

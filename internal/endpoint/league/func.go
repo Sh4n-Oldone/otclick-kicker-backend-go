@@ -18,12 +18,14 @@ import (
 // makeGetList deprecated
 func makeGetList(s league.IService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		// reqID, ctx := middleware.GetRequestID(ctx)
-		// serviceLogger := s.GetLogger().With().Str("Source", "makeCreate").Logger()
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "makeCreate").Str("request_id", reqID).Logger()
 
 		leagues, err := s.GetList(ctx, request.(*entities.GetLeagueListRequest).CityID)
 		if err != nil {
-			return nil, err
+			serviceLogger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).
+				Msg("failed to league.GetList")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
 		response := &entities.GetLeagueListResponse{}
@@ -37,7 +39,7 @@ func makeGetList(s league.IService) endpoint.Endpoint {
 func makeCreate(s league.IService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		reqID, ctx := middleware.GetRequestID(ctx)
-		serviceLogger := s.GetLogger().With().Str("Source", "makeCreate").Logger()
+		serviceLogger := s.GetLogger().With().Str("Source", "makeCreate").Str("request_id", reqID).Logger()
 
 		err := helpers.ValidateCreateLeagueRequest(request.(*entities.CreateLeagueRequest))
 		if err != nil {
@@ -49,7 +51,8 @@ func makeCreate(s league.IService) endpoint.Endpoint {
 
 		id, err := s.Create(ctx, req)
 		if err != nil {
-			serviceLogger.Error().Err(err).Msg("Failed to league.makeCreate")
+			serviceLogger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).
+				Msg("failed to league.Create")
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
@@ -63,8 +66,8 @@ func makeCreate(s league.IService) endpoint.Endpoint {
 // makeUpdate deprecated
 func makeUpdate(s league.IService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		// reqID, ctx := middleware.GetRequestID(ctx)
-		serviceLogger := s.GetLogger().With().Str("Source", "makeUpdate").Logger()
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "makeUpdate").Str("request_id", reqID).Logger()
 
 		err := helpers.ValidateUpdateLeagueRequest(request.(*entities.UpdateLeagueRequest))
 		if err != nil {
@@ -76,7 +79,9 @@ func makeUpdate(s league.IService) endpoint.Endpoint {
 
 		err = s.Update(ctx, *league, request.(*entities.UpdateLeagueRequest).Teams)
 		if err != nil {
-			return nil, err
+			serviceLogger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).
+				Msg("failed to league.Update")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
 		response := &entities.UpdateLeagueResponse{}
@@ -89,12 +94,14 @@ func makeUpdate(s league.IService) endpoint.Endpoint {
 // makeDelete deprecated
 func makeDelete(s league.IService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		// reqID, ctx := middleware.GetRequestID(ctx)
-		// serviceLogger := s.GetLogger().With().Str("Source", "makeCreate").Logger()
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "makeCreate").Str("request_id", reqID).Logger()
 
 		err := s.Delete(ctx, request.(*entities.DeleteLeagueRequest).ID)
 		if err != nil {
-			return nil, err
+			serviceLogger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).
+				Msg("failed to league.Delete")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
 		return nil, nil
@@ -104,30 +111,29 @@ func makeDelete(s league.IService) endpoint.Endpoint {
 // makeRecalc deprecated
 func makeRecalc(s league.IService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		// reqID, ctx := middleware.GetRequestID(ctx)
-		// serviceLogger := s.GetLogger().With().Str("Source", "makeCreate").Logger()
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "makeCreate").Str("request_id", reqID).Logger()
 
 		err := s.Recalc(ctx, request.(*entities.RecalcLeagueRequest).ID)
 		if err != nil {
-			return nil, err
+			serviceLogger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).
+				Msg("failed to league.Recalc")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
 		return nil, nil
 	}
 }
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 // makeCreateExtraPoints deprecated
 func makeCreateExtraPoints(s league.IService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		reqID, ctx := middleware.GetRequestID(ctx)
-		serviceLogger := s.GetLogger().With().Str("Source", "makeCreateExtraPoints").Logger()
+		serviceLogger := s.GetLogger().With().Str("Source", "makeCreateExtraPoints").Str("request_id", reqID).Logger()
 
 		req, err := helpers.CastRequest[*entities.CreateExtraPointsRequest](request)
 		if err != nil {
-			serviceLogger.Error().Err(err).Msg("Failed to cast request")
+			serviceLogger.Error().Err(err).Msg(errors.FailedCastRequest)
 			return false, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
@@ -139,7 +145,9 @@ func makeCreateExtraPoints(s league.IService) endpoint.Endpoint {
 
 		res, err := s.CreateExtraPoints(ctx, req)
 		if err != nil {
-			return res, error_templates.WrapErrorEndpoint(err, reqID)
+			serviceLogger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).
+				Msg("failed to league.CreateExtraPoints")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
 		response := &struct {
@@ -154,11 +162,11 @@ func makeCreateExtraPoints(s league.IService) endpoint.Endpoint {
 func makeUpdateExtraPoints(s league.IService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		reqID, ctx := middleware.GetRequestID(ctx)
-		serviceLogger := s.GetLogger().With().Str("Source", "makeUpdateExtraPoints").Logger()
+		serviceLogger := s.GetLogger().With().Str("Source", "makeUpdateExtraPoints").Str("request_id", reqID).Logger()
 
 		req, err := helpers.CastRequest[*entities.UpdateExtraPointsRequest](request)
 		if err != nil {
-			serviceLogger.Error().Err(err).Msg("Failed to cast request")
+			serviceLogger.Error().Err(err).Msg(errors.FailedCastRequest)
 			return false, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
@@ -170,7 +178,9 @@ func makeUpdateExtraPoints(s league.IService) endpoint.Endpoint {
 
 		res, err := s.UpdateExtraPoints(ctx, req)
 		if err != nil {
-			return res, error_templates.WrapErrorEndpoint(err, reqID)
+			serviceLogger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).
+				Msg("failed to league.UpdateExtraPoints")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
 		response := &struct {
@@ -186,11 +196,11 @@ func makeUpdateExtraPoints(s league.IService) endpoint.Endpoint {
 func makeDeleteExtraPoints(s league.IService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		reqID, ctx := middleware.GetRequestID(ctx)
-		serviceLogger := s.GetLogger().With().Str("Source", "makeDeleteExtraPoints").Logger()
+		serviceLogger := s.GetLogger().With().Str("Source", "makeDeleteExtraPoints").Str("request_id", reqID).Logger()
 
 		req, err := helpers.CastRequest[*entities.IdRequest](request)
 		if err != nil {
-			serviceLogger.Error().Err(err).Msg("Failed to cast request")
+			serviceLogger.Error().Err(err).Msg(errors.FailedCastRequest)
 			return false, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
@@ -202,7 +212,9 @@ func makeDeleteExtraPoints(s league.IService) endpoint.Endpoint {
 
 		res, err := s.DeleteExtraPoints(ctx, req.Id)
 		if err != nil {
-			return res, error_templates.WrapErrorEndpoint(err, reqID)
+			serviceLogger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).
+				Msg("failed to league.DeleteExtraPoints")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
 		response := &struct {
@@ -218,11 +230,11 @@ func makeDeleteExtraPoints(s league.IService) endpoint.Endpoint {
 func makeGetExtraPointsListByTeamAndLeagueId(s league.IService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		reqID, ctx := middleware.GetRequestID(ctx)
-		serviceLogger := s.GetLogger().With().Str("Source", "makeGetExtraPointsListByTeamAndLeagueId").Logger()
+		serviceLogger := s.GetLogger().With().Str("Source", "makeGetExtraPointsListByTeamAndLeagueId").Str("request_id", reqID).Logger()
 
 		req, err := helpers.CastRequest[*entities.TeamLeagueIdRequest](request)
 		if err != nil {
-			serviceLogger.Error().Err(err).Msg("Failed to cast request")
+			serviceLogger.Error().Err(err).Msg(errors.FailedCastRequest)
 			return false, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
@@ -234,7 +246,9 @@ func makeGetExtraPointsListByTeamAndLeagueId(s league.IService) endpoint.Endpoin
 
 		res, err := s.GetExtraPointsListByTeamAndLeagueId(ctx, req.TeamId, req.LeagueId)
 		if err != nil {
-			return res, error_templates.WrapErrorEndpoint(err, reqID)
+			serviceLogger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).
+				Msg("failed to league.GetExtraPointsListByTeamAndLeagueId")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
 		return res, nil
@@ -245,11 +259,11 @@ func makeGetExtraPointsListByTeamAndLeagueId(s league.IService) endpoint.Endpoin
 func makeGetExtraPointsById(s league.IService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		reqID, ctx := middleware.GetRequestID(ctx)
-		serviceLogger := s.GetLogger().With().Str("Source", "makeGetExtraPointsById").Logger()
+		serviceLogger := s.GetLogger().With().Str("Source", "makeGetExtraPointsById").Str("request_id", reqID).Logger()
 
 		req, err := helpers.CastRequest[*entities.IdRequest](request)
 		if err != nil {
-			serviceLogger.Error().Err(err).Msg("Failed to cast request")
+			serviceLogger.Error().Err(err).Msg(errors.FailedCastRequest)
 			return false, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
@@ -261,7 +275,9 @@ func makeGetExtraPointsById(s league.IService) endpoint.Endpoint {
 
 		res, err := s.GetExtraPointsById(ctx, req.Id)
 		if err != nil {
-			return res, error_templates.WrapErrorEndpoint(err, reqID)
+			serviceLogger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).
+				Msg("failed to league.GetExtraPointsById")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
 		return res, nil

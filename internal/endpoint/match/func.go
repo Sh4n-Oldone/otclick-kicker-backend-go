@@ -5,20 +5,18 @@ import (
 
 	"github.com/go-kit/kit/endpoint"
 
-	// "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/middleware"
-
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/match"
+	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/transport/http/middleware"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/helpers"
-
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
-	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/match"
 )
 
 func makeCreate(s match.IService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		// reqID, ctx := middleware.GetRequestID(ctx)
-		serviceLogger := s.GetLogger().With().Str("Source", "makeCreate").Logger()
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "makeCreate").Str("request_id", reqID).Logger()
 
 		err := helpers.ValidateCreateMatchRequest(request.(*entities.CreateMatchRequest))
 		if err != nil {
@@ -30,7 +28,9 @@ func makeCreate(s match.IService) endpoint.Endpoint {
 
 		id, err := s.Create(ctx, *match)
 		if err != nil {
-			return nil, err
+			serviceLogger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).
+				Msg("failed to match.Create")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
 		response := &struct {
@@ -45,8 +45,8 @@ func makeCreate(s match.IService) endpoint.Endpoint {
 
 func makeUpdate(s match.IService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		// reqID, ctx := middleware.GetRequestID(ctx)
-		serviceLogger := s.GetLogger().With().Str("Source", "makeUpdate").Logger()
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "makeUpdate").Str("request_id", reqID).Logger()
 
 		err := helpers.ValidateUpdateMatchRequest(request.(*entities.UpdateMatchRequest))
 		if err != nil {
@@ -58,7 +58,9 @@ func makeUpdate(s match.IService) endpoint.Endpoint {
 
 		err = s.Update(ctx, *match)
 		if err != nil {
-			return nil, err
+			serviceLogger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).
+				Msg("failed to match.Update")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
 		response := &struct {
@@ -73,12 +75,14 @@ func makeUpdate(s match.IService) endpoint.Endpoint {
 
 func makeDelete(s match.IService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		// reqID, ctx := middleware.GetRequestID(ctx)
-		// serviceLogger := s.GetLogger().With().Str("Source", "makeCreate").Logger()
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "makeCreate").Str("request_id", reqID).Logger()
 
 		res, err := s.Delete(ctx, request.(*entities.DeleteMatchRequest).ID)
 		if err != nil {
-			return res, err
+			serviceLogger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).
+				Msg("failed to match.Delete")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
 		response := &struct {

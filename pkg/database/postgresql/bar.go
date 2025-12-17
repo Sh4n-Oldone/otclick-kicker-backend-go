@@ -2,14 +2,11 @@ package postgresql
 
 import (
 	"context"
-	"errors"
-
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog"
 
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
-	pkgerr "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 )
 
 func (db *RDBOperation) GetBarList(logger zerolog.Logger, ctx context.Context, cityID *int64, withDeleted bool) ([]entities.Bar, error) {
@@ -74,7 +71,7 @@ func (db *RDBOperation) GetBarByID(logger zerolog.Logger, ctx context.Context, i
 		Scan(&bar.ID, &bar.City.ID, &bar.Name, &bar.Description, &bar.UpdatedAt, &bar.DeletedAt)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.GetBarByID")
-		return nil, DecodeDatabaseError(errors.New(pkgerr.ErrGetPlayer))
+		return nil, DecodeDatabaseError(err)
 	}
 
 	return &bar, nil

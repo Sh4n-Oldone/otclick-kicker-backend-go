@@ -27,7 +27,7 @@ func makeGetList(s place.IService) endpoint.Endpoint {
 
 		records, err := s.GetList(ctx, req.BarID, req.TableID, req.CityID, req.WithDeleted)
 		if err != nil {
-			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.ErrGetPlaceList)
+			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg("failed to place.GetList")
 			return nil, errTmpls.WrapErrorEndpoint(err, reqID)
 		}
 
@@ -54,7 +54,7 @@ func makeCreate(s place.IService) endpoint.Endpoint {
 
 		id, err := s.Create(ctx, *req)
 		if err != nil {
-			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.ErrCreatePlace)
+			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg("failed to place.Create")
 			return nil, errTmpls.WrapErrorEndpoint(err, reqID)
 		}
 
@@ -87,7 +87,7 @@ func makeUpdate(s place.IService) endpoint.Endpoint {
 
 		err = s.Update(ctx, *req)
 		if err != nil {
-			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.ErrDeletePlace)
+			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg("failed to place.Update")
 			return nil, errTmpls.WrapErrorEndpoint(err, reqID)
 		}
 
@@ -120,7 +120,7 @@ func makeDelete(s place.IService) endpoint.Endpoint {
 
 		err = s.Delete(ctx, req.ID, req.Executor)
 		if err != nil {
-			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg(errors.ErrDeletePlace)
+			logger.Error().Stack().Err(errTmpls.ErrorDetailFromError(err)).Msg("failed to place.Delete")
 			return nil, errTmpls.WrapErrorEndpoint(err, reqID)
 		}
 

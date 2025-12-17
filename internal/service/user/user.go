@@ -137,7 +137,7 @@ func (s *Service) CheckAuth(ctx context.Context, userID int64, token string) (*b
 		return []byte(s.config.Secret.Key), nil
 	})
 	if err != nil {
-		return nil, nil, nil, nil, errTmpl.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+		return nil, nil, nil, nil, errTmpl.New(pkgerr.FailedParseJWTToken, err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
 	if claims, ok := _token.Claims.(jwtV5.MapClaims); ok && _token.Valid {

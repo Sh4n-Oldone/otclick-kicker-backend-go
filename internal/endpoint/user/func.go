@@ -16,8 +16,8 @@ import (
 
 func makeCreate(s user.IService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		// reqID, ctx := middleware.GetRequestID(ctx)
-		serviceLogger := s.GetLogger().With().Str("Source", "makeCreate").Logger()
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "makeCreate").Str("request_id", reqID).Logger()
 
 		err := helpers.ValidateCreateUserRequest(request.(*entities.CreateUserRequest))
 		if err != nil {
@@ -27,7 +27,8 @@ func makeCreate(s user.IService) endpoint.Endpoint {
 
 		id, err := s.Create(ctx, *request.(*entities.CreateUserRequest))
 		if err != nil {
-			return nil, err
+			serviceLogger.Error().Err(err).Msg("failed to user.Create")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
 		response := &struct {
@@ -53,6 +54,7 @@ func makeLogin(s user.IService) endpoint.Endpoint {
 
 		uID, uRole, uTeamID, token, cityId, err := s.Login(ctx, req)
 		if err != nil {
+			serviceLogger.Error().Err(err).Msg("failed to user.Login")
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
@@ -70,8 +72,8 @@ func makeLogin(s user.IService) endpoint.Endpoint {
 
 func makeChangePassword(s user.IService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		// reqID, ctx := middleware.GetRequestID(ctx)
-		serviceLogger := s.GetLogger().With().Str("Source", "makeCreate").Logger()
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "makeCreate").Str("request_id", reqID).Logger()
 
 		req, err := helpers.CastRequest[*entities.ChangePasswordRequest](request)
 		if err != nil {
@@ -97,7 +99,8 @@ func makeChangePassword(s user.IService) endpoint.Endpoint {
 
 		err = s.ChangePassword(ctx, *userOld, *userNew)
 		if err != nil {
-			return nil, err
+			serviceLogger.Error().Err(err).Msg("failed to user.ChangePassword")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
 		return nil, nil
@@ -106,18 +109,19 @@ func makeChangePassword(s user.IService) endpoint.Endpoint {
 
 func makeCheckAuth(s user.IService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		// reqID, ctx := middleware.GetRequestID(ctx)
-		logger := s.GetLogger().With().Str("Source", "makeCheckAuth").Logger()
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "makeCheckAuth").Str("request_id", reqID).Logger()
 
 		req, err := helpers.CastRequest[*entities.CheckAuthRequest](request)
 		if err != nil {
-			logger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).Msg(pkgerr.FailedCastRequest)
+			serviceLogger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).Msg(pkgerr.FailedCastRequest)
 			return nil, err
 		}
 
 		isAuth, role, teamID, cityId, err := s.CheckAuth(ctx, req.UserID, req.Token)
 		if err != nil {
-			return nil, err
+			serviceLogger.Error().Err(err).Msg("failed to user.CheckAuth")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
 		response := &entities.CheckAuthResponse{
@@ -134,7 +138,7 @@ func makeCheckAuth(s user.IService) endpoint.Endpoint {
 func makeCreateTournamentMaster(s user.IService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		reqID, ctx := middleware.GetRequestID(ctx)
-		serviceLogger := s.GetLogger().With().Str("Source", "makeCreateTournamentMaster").Logger()
+		serviceLogger := s.GetLogger().With().Str("Source", "makeCreateTournamentMaster").Str("request_id", reqID).Logger()
 
 		req, err := helpers.CastRequest[*entities.CreateTournamentMasterRequest](request)
 		if err != nil {
@@ -150,7 +154,7 @@ func makeCreateTournamentMaster(s user.IService) endpoint.Endpoint {
 
 		id, err := s.CreateTournamentMaster(ctx, *request.(*entities.CreateTournamentMasterRequest))
 		if err != nil {
-			serviceLogger.Error().Err(err).Msg("failed user.makeCreateTournamentMaster")
+			serviceLogger.Error().Err(err).Msg("failed to user.CreateTournamentMaster")
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
@@ -165,7 +169,7 @@ func makeCreateTournamentMaster(s user.IService) endpoint.Endpoint {
 func makeUpdateTournamentMaster(s user.IService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		reqID, ctx := middleware.GetRequestID(ctx)
-		serviceLogger := s.GetLogger().With().Str("Source", "makeUpdateTournamentMaster").Logger()
+		serviceLogger := s.GetLogger().With().Str("Source", "makeUpdateTournamentMaster").Str("request_id", reqID).Logger()
 
 		req, err := helpers.CastRequest[*entities.UpdateTournamentMasterRequest](request)
 		if err != nil {
@@ -181,7 +185,7 @@ func makeUpdateTournamentMaster(s user.IService) endpoint.Endpoint {
 
 		err = s.UpdateTournamentMaster(ctx, *req)
 		if err != nil {
-			serviceLogger.Error().Err(err).Msg("failed user.makeUpdateTournamentMaster")
+			serviceLogger.Error().Err(err).Msg("failed to user.UpdateTournamentMaster")
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
@@ -192,7 +196,7 @@ func makeUpdateTournamentMaster(s user.IService) endpoint.Endpoint {
 func makeGetTournamentMasterListByCityId(s user.IService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		reqID, ctx := middleware.GetRequestID(ctx)
-		serviceLogger := s.GetLogger().With().Str("Source", "makeGetTournamentMasterListByCityId").Logger()
+		serviceLogger := s.GetLogger().With().Str("Source", "makeGetTournamentMasterListByCityId").Str("request_id", reqID).Logger()
 
 		id, err := helpers.CastRequest[int64](request)
 		if err != nil {
@@ -208,7 +212,7 @@ func makeGetTournamentMasterListByCityId(s user.IService) endpoint.Endpoint {
 
 		tMasters, err := s.GetTournamentMasterListByCityId(ctx, id)
 		if err != nil {
-			serviceLogger.Error().Err(err).Msg("failed user.makeGetTournamentMasterListByCityId")
+			serviceLogger.Error().Err(err).Msg("failed to user.GetTournamentMasterListByCityId")
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
@@ -221,7 +225,7 @@ func makeGetTournamentMasterListByCityId(s user.IService) endpoint.Endpoint {
 func makeGetTournamentMasterUserById(s user.IService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		reqID, ctx := middleware.GetRequestID(ctx)
-		serviceLogger := s.GetLogger().With().Str("Source", "makeGetTournamentMasterUserById").Logger()
+		serviceLogger := s.GetLogger().With().Str("Source", "makeGetTournamentMasterUserById").Str("request_id", reqID).Logger()
 
 		id, err := helpers.CastRequest[int64](request)
 		if err != nil {
@@ -237,7 +241,7 @@ func makeGetTournamentMasterUserById(s user.IService) endpoint.Endpoint {
 
 		tMaster, err := s.GetTournamentMasterByUserId(ctx, id)
 		if err != nil {
-			serviceLogger.Error().Err(err).Msg("failed user.makeGetTournamentMasterUserById")
+			serviceLogger.Error().Err(err).Msg("failed to user.GetTournamentMasterByUserId")
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
@@ -250,11 +254,11 @@ func makeGetTournamentMasterUserById(s user.IService) endpoint.Endpoint {
 func makeGetTournamentMasterList(s user.IService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		reqID, ctx := middleware.GetRequestID(ctx)
-		serviceLogger := s.GetLogger().With().Str("Source", "makeGetTournamentMasterList").Logger()
+		serviceLogger := s.GetLogger().With().Str("Source", "makeGetTournamentMasterList").Str("request_id", reqID).Logger()
 
 		tMasters, err := s.GetTournamentMasterList(ctx)
 		if err != nil {
-			serviceLogger.Error().Err(err).Msg("failed user.makeGetTournamentMasterList")
+			serviceLogger.Error().Err(err).Msg("failed to user.GetTournamentMasterList")
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
@@ -267,7 +271,7 @@ func makeGetTournamentMasterList(s user.IService) endpoint.Endpoint {
 func makeDeleteTournamentMaster(s user.IService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		reqID, ctx := middleware.GetRequestID(ctx)
-		serviceLogger := s.GetLogger().With().Str("Source", "makeDeleteTournamentMaster").Logger()
+		serviceLogger := s.GetLogger().With().Str("Source", "makeDeleteTournamentMaster").Str("request_id", reqID).Logger()
 
 		id, err := helpers.CastRequest[int64](request)
 		if err != nil {
@@ -283,7 +287,7 @@ func makeDeleteTournamentMaster(s user.IService) endpoint.Endpoint {
 
 		err = s.DeleteTournamentMaster(ctx, id)
 		if err != nil {
-			serviceLogger.Error().Err(err).Msg("failed user.makeDeleteTournamentMaster")
+			serviceLogger.Error().Err(err).Msg("failed to user.DeleteTournamentMaster")
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 

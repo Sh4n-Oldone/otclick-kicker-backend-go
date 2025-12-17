@@ -2,14 +2,11 @@ package postgresql
 
 import (
 	"context"
-	"errors"
-
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog"
 
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/config"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
-	pkgerr "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 )
 
 func (db *RDBOperation) GetPlaceList(logger zerolog.Logger, ctx context.Context, barID, tableID, cityID *int64, withDeleted bool) ([]entities.Place, error) {
@@ -59,7 +56,7 @@ func (db *RDBOperation) GetPlaceList(logger zerolog.Logger, ctx context.Context,
 	}
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.GetPlaceList")
-		return nil, errors.New(pkgerr.ErrGetPlaceList)
+		return nil, DecodeDatabaseError(err)
 	}
 	defer rows.Close()
 
@@ -73,7 +70,7 @@ func (db *RDBOperation) GetPlaceList(logger zerolog.Logger, ctx context.Context,
 		err = rows.Scan(&place.ID, &place.Bar.ID, &place.Bar.Name, &place.Table.ID, &place.Table.Name, &place.UpdatedAt, &place.DeletedAt)
 		if err != nil {
 			logger.Error().Stack().Err(err).Msg("failed scan to postgresql.GetPlaceList")
-			return nil, errors.New(pkgerr.ErrGetPlaceList)
+			return nil, DecodeDatabaseError(err)
 		}
 
 		places = append(places, place)
@@ -93,7 +90,7 @@ func (db *RDBOperation) GetPlaceByID(logger zerolog.Logger, ctx context.Context,
 	err := db.db.QueryRow(timeout, queryGetPlaceByID, id).
 		Scan(&place.ID, &place.Bar.ID, &place.Table.ID, &place.UpdatedAt, &place.DeletedAt)
 	if err != nil {
-		logger.Error().Stack().Err(err).Msg("failed to postgresql.GetBarByID")
+		logger.Error().Stack().Err(err).Msg("failed to postgresql.GetPlaceByID")
 		return nil, DecodeDatabaseError(err)
 	}
 

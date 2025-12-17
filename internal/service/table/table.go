@@ -49,3 +49,14 @@ func (s *Service) Delete(ctx context.Context, id int64) error {
 
 	return nil
 }
+
+func (s *Service) GetTableByID(ctx context.Context, id int64) (*entities.Table, error) {
+	logger := s.logger.With().Interface("service", "GetTableByID").Logger()
+
+	table, err := s.rdbOperations.GetTableByID(logger, ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return table, nil
+}
