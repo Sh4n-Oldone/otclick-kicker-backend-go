@@ -35,6 +35,7 @@ func NewServer(endpoints table.Endpoints, options []kithttp.ServerOption, cfg *c
 		Put("/tables", kithttp.NewServer(endpoints.Update, decodeUpdateRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 	r.With(custom_middleware.Auth(cfg, service), custom_middleware.AuthSuperUserAdmin()).
 		Delete("/tables/{id}", kithttp.NewServer(endpoints.Delete, decodeDeleteRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
+	r.Get("/tables/{id}", kithttp.NewServer(endpoints.GetTableByID, decodeGetTableByIDRequest, kithttp.EncodeJSONResponse, options...).ServeHTTP)
 
 	return r
 }

@@ -29,7 +29,8 @@ func makeGetList(s season.IService) endpoint.Endpoint {
 
 		seasons, err := s.GetList(ctx, req)
 		if err != nil {
-			return nil, err
+			serviceLogger.Error().Err(err).Msg("failed to season.GetList")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
 		response := &entities.GetSeasonResponse{}
@@ -64,7 +65,7 @@ func makeCreate(s season.IService) endpoint.Endpoint {
 
 		id, err := s.Create(ctx, *entityReq)
 		if err != nil {
-			serviceLogger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).Msg(pkgerr.ErrCreateSeason)
+			serviceLogger.Error().Err(err).Msg("failed to season.Create")
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
@@ -78,18 +79,18 @@ func makeCreate(s season.IService) endpoint.Endpoint {
 func makeUpdate(s season.IService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		reqID, ctx := middleware.GetRequestID(ctx)
-		logger := s.GetLogger().With().Str("Source", "makeUpdate").Str("request_id", reqID).Logger()
+		serviceLogger := s.GetLogger().With().Str("Source", "makeUpdate").Str("request_id", reqID).Logger()
 
 		req, err := helpers.CastRequest[*entities.UpdateSeasonRequest](request)
 		if err != nil {
-			logger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).Msg(pkgerr.FailedCastRequest)
+			serviceLogger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).Msg(pkgerr.FailedCastRequest)
 			return nil, error_templates.WrapErrorEndpoint(
 				error_templates.New(pkgerr.FailedCastRequest, err, codes.InvalidArgument, http.StatusBadRequest), reqID)
 		}
 
 		err = helpers.ValidateUpdateSeasonRequest(req)
 		if err != nil {
-			logger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).Msg(pkgerr.FailedValidateRequest)
+			serviceLogger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).Msg(pkgerr.FailedValidateRequest)
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
@@ -101,7 +102,7 @@ func makeUpdate(s season.IService) endpoint.Endpoint {
 
 		err = s.Update(ctx, entityReq)
 		if err != nil {
-			logger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).Msg(pkgerr.ErrUpdateSeason)
+			serviceLogger.Error().Err(err).Msg("failed to season.Update")
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
@@ -118,25 +119,25 @@ func makeUpdate(s season.IService) endpoint.Endpoint {
 func makeDelete(s season.IService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		reqID, ctx := middleware.GetRequestID(ctx)
-		logger := s.GetLogger().With().Str("Source", "makeDelete").Str("request_id", reqID).Logger()
+		serviceLogger := s.GetLogger().With().Str("Source", "makeDelete").Str("request_id", reqID).Logger()
 
 		req, err := helpers.CastRequest[*entities.DeleteSeasonRequest](request)
 		if err != nil {
-			logger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).Msg(pkgerr.FailedCastRequest)
+			serviceLogger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).Msg(pkgerr.FailedCastRequest)
 			return nil, error_templates.WrapErrorEndpoint(
 				error_templates.New(pkgerr.FailedCastRequest, err, codes.InvalidArgument, http.StatusBadRequest), reqID)
 		}
 
 		err = helpers.ValidateDeleteSeasonRequest(req)
 		if err != nil {
-			logger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).Msg(pkgerr.FailedValidateRequest)
+			serviceLogger.Error().Stack().Err(error_templates.ErrorDetailFromError(err)).Msg(pkgerr.FailedValidateRequest)
 			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
 		res, err := s.Delete(ctx, req.ID)
 		if err != nil {
-			logger.Error().Err(err).Msg("s.Delete")
-			return res, error_templates.WrapErrorEndpoint(err, reqID)
+			serviceLogger.Error().Err(err).Msg("failed to season.Delete")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
 		}
 
 		response := &struct {

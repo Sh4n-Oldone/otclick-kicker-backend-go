@@ -26,7 +26,7 @@ func (db *RDBOperation) GetPastGamesByPlayersTeam(logger zerolog.Logger, ctx con
 	rows, err := db.db.Query(ctx, query, teamID)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to postgresql.GetPastGamesByPlayersTeam")
-		return nil, DecodeDatabaseError(errors.New(pkgerr.ErrGetGameList))
+		return nil, DecodeDatabaseError(err)
 	}
 	defer rows.Close()
 
@@ -36,7 +36,7 @@ func (db *RDBOperation) GetPastGamesByPlayersTeam(logger zerolog.Logger, ctx con
 		err = rows.Scan(&game.ID, &game.CityID, &game.Date, &game.Team1ID, &game.Team2ID)
 		if err != nil {
 			logger.Error().Err(err).Msg("failed to postgresql.GetPastGamesByPlayersTeam")
-			return nil, DecodeDatabaseError(errors.New(pkgerr.ErrGetGame))
+			return nil, DecodeDatabaseError(err)
 		}
 
 		games = append(games, game)
@@ -57,7 +57,7 @@ func (db *RDBOperation) GetPastGamesByTeamAndLeague(logger zerolog.Logger, ctx c
 	rows, err := db.db.Query(ctx, query, teamId, leagueId)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to postgresql.GetPastGamesByTeamAndLeague")
-		return nil, DecodeDatabaseError(errors.New(pkgerr.ErrGetGameList))
+		return nil, DecodeDatabaseError(err)
 	}
 	defer rows.Close()
 
@@ -67,7 +67,7 @@ func (db *RDBOperation) GetPastGamesByTeamAndLeague(logger zerolog.Logger, ctx c
 		err = rows.Scan(&game.ID)
 		if err != nil {
 			logger.Error().Err(err).Msg("failed to postgresql.GetPastGamesByTeamAndLeague")
-			return nil, DecodeDatabaseError(errors.New(pkgerr.ErrGetGame))
+			return nil, DecodeDatabaseError(err)
 		}
 
 		games = append(games, game)
@@ -96,7 +96,7 @@ func (db *RDBOperation) GetPastGamesByPlayersTeams(logger zerolog.Logger, ctx co
 	rows, err := db.db.Query(ctx, query, teamIDs)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to postgresql.GetPastGamesByPlayersTeams")
-		return nil, DecodeDatabaseError(errors.New(pkgerr.ErrGetGameList))
+		return nil, DecodeDatabaseError(err)
 	}
 	defer rows.Close()
 
@@ -106,7 +106,7 @@ func (db *RDBOperation) GetPastGamesByPlayersTeams(logger zerolog.Logger, ctx co
 		err = rows.Scan(&game.ID, &game.LeagueID, &game.CityID, &game.Date, &game.Team1ID, &game.Team2ID, &game.TournamentID)
 		if err != nil {
 			logger.Error().Err(err).Msg("failed to postgresql.GetPastGamesByPlayersTeams")
-			return nil, DecodeDatabaseError(errors.New(pkgerr.ErrGetGame))
+			return nil, DecodeDatabaseError(err)
 		}
 
 		games = append(games, game)
@@ -132,13 +132,13 @@ func (db *RWDBOperation) DeleteGame(ctx context.Context, logger zerolog.Logger, 
 	_, err := poolOrTx(db.db, tx).Exec(timeout, query1, gameID)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to postgresql.DeleteGame")
-		return DecodeDatabaseError(errors.New(pkgerr.ErrDeleteMatch))
+		return DecodeDatabaseError(err)
 	}
 
 	tag, err := poolOrTx(db.db, tx).Exec(timeout, query2, gameID)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to postgresql.DeleteGame")
-		return DecodeDatabaseError(errors.New(pkgerr.ErrDeleteGame))
+		return DecodeDatabaseError(err)
 	}
 	if tag.RowsAffected() == 0 {
 		err = errors.New(pkgerr.ErrGameNotFound)
@@ -220,7 +220,7 @@ func (db *RDBOperation) GetGame(logger zerolog.Logger, ctx context.Context, game
 	rows, err := db.db.Query(timeout, query, gameID)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to postgresql.GetGame")
-		return entities.GetGameResponse{}, DecodeDatabaseError(errors.New(pkgerr.ErrGetGame))
+		return entities.GetGameResponse{}, DecodeDatabaseError(err)
 	}
 	defer rows.Close()
 
@@ -265,7 +265,7 @@ func (db *RDBOperation) GetGame(logger zerolog.Logger, ctx context.Context, game
 		)
 		if err != nil {
 			logger.Error().Err(err).Msg("failed to postgresql.GetGame")
-			return entities.GetGameResponse{}, DecodeDatabaseError(errors.New(pkgerr.ErrGetGame))
+			return entities.GetGameResponse{}, DecodeDatabaseError(err)
 		}
 
 		if p1t1Name != nil {
@@ -387,7 +387,7 @@ func (db *RDBOperation) FindGames(logger zerolog.Logger, ctx context.Context, re
 	rows, err := db.db.Query(ctx, query, request.Team1ID, request.Team2ID, now)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to postgresql.FindGame")
-		return nil, DecodeDatabaseError(errors.New(pkgerr.ErrGetGame))
+		return nil, DecodeDatabaseError(err)
 	}
 
 	for rows.Next() {
@@ -405,7 +405,7 @@ func (db *RDBOperation) FindGames(logger zerolog.Logger, ctx context.Context, re
 		)
 		if err != nil {
 			logger.Error().Err(err).Msg("failed to postgresql.FindGame")
-			return nil, DecodeDatabaseError(errors.New(pkgerr.ErrGetGame))
+			return nil, DecodeDatabaseError(err)
 		}
 
 		games = append(games, game)
@@ -611,7 +611,7 @@ func (db *RDBOperation) GetComingGames(logger zerolog.Logger, ctx context.Contex
 	rows, err := db.db.Query(ctx, query)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to postgresql.GetComingGames")
-		return nil, DecodeDatabaseError(errors.New(pkgerr.ErrGetGame))
+		return nil, DecodeDatabaseError(err)
 	}
 
 	for rows.Next() {
@@ -630,7 +630,7 @@ func (db *RDBOperation) GetComingGames(logger zerolog.Logger, ctx context.Contex
 		)
 		if err != nil {
 			logger.Error().Err(err).Msg("failed to postgresql.GetComingGames")
-			return nil, DecodeDatabaseError(errors.New(pkgerr.ErrGetGame))
+			return nil, DecodeDatabaseError(err)
 		}
 
 		games = append(games, game)
@@ -670,7 +670,7 @@ func (db *RDBOperation) GetFutureGames(logger zerolog.Logger, ctx context.Contex
 	rows, err := db.db.Query(ctx, query, cityID)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to postgresql.GetFutureGames")
-		return nil, DecodeDatabaseError(errors.New(pkgerr.ErrGetGameList))
+		return nil, DecodeDatabaseError(err)
 	}
 	defer rows.Close()
 
@@ -763,7 +763,7 @@ func (db *RDBOperation) GetTeamGames(logger zerolog.Logger, ctx context.Context,
 	rows, err := db.db.Query(timeout, query, teamID)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to postgresql.GetTeamGames")
-		return nil, errors.New(pkgerr.ErrGetGameList)
+		return nil, DecodeDatabaseError(err)
 	}
 
 	for rows.Next() {
@@ -773,7 +773,7 @@ func (db *RDBOperation) GetTeamGames(logger zerolog.Logger, ctx context.Context,
 			&game.Place.Bar.ID, &game.Place.Bar.Name, &game.Place.Table.ID, &game.Place.Table.Name, &game.Date, &game.IsHomeGame)
 		if err != nil {
 			logger.Error().Err(err).Msg("failed to postgresql.GetTeamGames")
-			return nil, errors.New(pkgerr.ErrGetGameList)
+			return nil, DecodeDatabaseError(err)
 		}
 
 		games = append(games, game)

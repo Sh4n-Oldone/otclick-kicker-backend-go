@@ -39,7 +39,7 @@ func (s *Service) Create(ctx context.Context, request *entities.CreateLeagueRequ
 		}
 
 		if master.City.ID != request.CityID {
-			err = errors.New(pkgerr.ErrLeagueNotInMasterCity)
+			err = errors.New(pkgerr.ErrCityLeagueAndMasterMismatch)
 			return nil, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 		}
 	}
@@ -82,8 +82,8 @@ func (s *Service) Update(ctx context.Context, league entities.League, teams []in
 		}
 
 		if len(games) > 0 {
-			err = errors.New(fmt.Sprintf(pkgerr.ErrDeleteTeamFromLeague, teamId, league.ID))
-			return err
+			err = fmt.Errorf(pkgerr.ErrDeleteTeamFromLeague, teamId, league.ID)
+			return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 		}
 	}
 

@@ -17,7 +17,6 @@ import (
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/constant"
 	"node71.otclick.ru/sideprojects/kicker/kicker-backend-go/internal/service/entities"
 	errtmp "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/error_templates"
-	pkgerr "node71.otclick.ru/sideprojects/kicker/kicker-backend-go/pkg/errors"
 )
 
 func (db *RDBOperation) GetTeam(logger zerolog.Logger, ctx context.Context, teamID int64) (entities.GetTeamResponse, error) {
@@ -56,7 +55,7 @@ func (db *RDBOperation) GetTeam(logger zerolog.Logger, ctx context.Context, team
 			Scan(&l.Name)
 		if err != nil {
 			logger.Error().Stack().Err(err).Msg("failed to postgresql.GetTeam/queryGetPlayerByID")
-			return entities.GetTeamResponse{}, DecodeDatabaseError(errors.New(pkgerr.ErrGetPlayer))
+			return entities.GetTeamResponse{}, DecodeDatabaseError(err)
 		}
 
 		leagues = append(leagues, l)
@@ -108,7 +107,7 @@ func (db *RDBOperation) GetTeam(logger zerolog.Logger, ctx context.Context, team
 				&p.RatingNumber)
 		if err != nil {
 			logger.Error().Stack().Err(err).Msg("failed to postgresql.GetTeam/queryGetPlayerByID")
-			return entities.GetTeamResponse{}, DecodeDatabaseError(errors.New(pkgerr.ErrGetPlayer))
+			return entities.GetTeamResponse{}, DecodeDatabaseError(err)
 		}
 		players = append(players, p)
 	}
@@ -452,7 +451,7 @@ func (db *RDBOperation) FetchTournamentPastGames(logger zerolog.Logger, ctx cont
 		var game entities.GameFetch
 		err = rows.Scan(&game.ID, &game.TechLooseTeamID)
 		if err != nil {
-			logger.Error().Stack().Err(err).Msg("failсed rows.Scan postgresql.FetchTournamentPastGames")
+			logger.Error().Stack().Err(err).Msg("failed rows.Scan postgresql.FetchTournamentPastGames")
 			return nil, err
 		}
 		games = append(games, game)
@@ -486,7 +485,7 @@ func (db *RDBOperation) FetchMatches(logger zerolog.Logger, ctx context.Context,
 			&match.ScoreTeam1,
 			&match.ScoreTeam2)
 		if err != nil {
-			logger.Error().Err(err).Msg("failed to postgresql.FetchMatches")
+			logger.Error().Err(err).Msg("failed rows.Scan postgresql.FetchMatches")
 			return nil, DecodeDatabaseError(err)
 		}
 		matches = append(matches, match)
@@ -624,7 +623,7 @@ func (db *RWDBOperation) DeleteTeam(logger zerolog.Logger, ctx context.Context, 
 	tx, err := db.db.Begin(timeout)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to begin transaction in DeleteTeam")
-		return false, DecodeDatabaseError(errors.New(pkgerr.ErrDeleteTeam))
+		return false, DecodeDatabaseError(err)
 	}
 
 	// Удаление из `players_teams_links`
@@ -663,7 +662,7 @@ func (db *RWDBOperation) DeleteTeam(logger zerolog.Logger, ctx context.Context, 
 	if err = tx.Commit(timeout); err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to commit transaction in DeleteTeam")
 		_ = tx.Rollback(timeout)
-		return false, DecodeDatabaseError(errors.New(pkgerr.ErrDeleteTeam))
+		return false, DecodeDatabaseError(err)
 	}
 
 	return true, nil
@@ -1200,7 +1199,7 @@ func (db *RDBOperation) GetLeagueListByTeamId(logger zerolog.Logger, ctx context
 	rows, err := db.db.Query(ctx, query, teamID)
 	if err != nil {
 		logger.Error().Stack().Err(err).Msg("failed to postgresql.GetLeagueListByTeamId")
-		return nil, DecodeDatabaseError(errors.New(pkgerr.ErrGetPlayer))
+		return nil, DecodeDatabaseError(err)
 	}
 	defer rows.Close()
 

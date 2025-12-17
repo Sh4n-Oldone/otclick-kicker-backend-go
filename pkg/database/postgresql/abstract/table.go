@@ -16,4 +16,5 @@ type ITableRW interface {
 
 type ITableR interface {
 	GetTableList(logger zerolog.Logger, ctx context.Context, withDelete bool) ([]entities.Table, error)
+	GetTableByID(logger zerolog.Logger, ctx context.Context, id int64) (*entities.Table, error)
 }

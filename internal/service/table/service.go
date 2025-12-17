@@ -15,6 +15,7 @@ type IService interface {
 	Create(ctx context.Context, entity entities.Table) (*int64, error)
 	Update(ctx context.Context, entity entities.Table) error
 	Delete(ctx context.Context, id int64) error
+	GetTableByID(ctx context.Context, id int64) (*entities.Table, error)
 
 	GetLogger() *zerolog.Logger
 }
