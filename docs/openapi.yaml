@@ -1,0 +1,181 @@
+openapi: 3.1.0
+info:
+  title: Документация транспортного слоя Kicker
+  description: |
+    В Kicker API реализовано через RESTful API, здесь представлено описание путей, request-ов и response-ов
+  version: 1.0.0
+
+tags:
+  - name: Турниры
+    description: Операции с турнирами
+  - name: Команды
+    description: Операции с командами
+  - name: Таблицы
+    description: Операции с таблицами
+  - name: Сезоны
+    description: Операции с сезонами
+  - name: Роли
+    description: Операции с ролями
+  - name: Игроки
+    description: Операции с игроками
+  - name: Места игр
+    description: Операции с местами игр (локациями)
+  - name: Матчи
+    description: Операции с матчами (игры состоят из матчей)
+  - name: Лиги
+    description: Операции с лигами
+  - name: Игры
+    description: Операции с играми турниров и лиг
+  - name: Города
+    description: Операции с городами, где играют в кикер
+  - name: Бары
+    description: Операции с барами, где играют в кикер
+  - name: Пользователи
+    description: Операции с пользователями приложения
+
+paths:
+  /tournaments/types:
+    $ref: './paths/tournaments/tournaments-types.yaml'
+  /tournaments/{id}/stages:
+    $ref: './paths/tournaments/tournaments-id-stages.yaml'
+  /tournaments/stages/{id}:
+    $ref: './paths/tournaments/tournaments-stages-id.yaml'
+  /tournaments/{id}/recalc:
+    $ref: './paths/tournaments/tournaments-id-recalc.yaml'
+  /tournaments:
+    $ref: './paths/tournaments/tournaments.yaml'
+  /tournaments/{id}:
+    $ref: './paths/tournaments/tournaments-id.yaml'
+  /tournaments/extra-points:
+    $ref: './paths/tournaments/tournaments-extraPoints.yaml'
+  /tournaments/extra-points/{id}:
+    $ref: './paths/tournaments/tournaments-extraPoints-id.yaml'
+  /tournaments/{id}/teams/{team_id}/extra-points:
+    $ref: './paths/tournaments/tournaments-id-teams-teamId-extraPoints.yaml'
+  /tournaments/migrate-leagues-up:
+    $ref: './paths/tournaments/tournaments-migrate-leagues-up.yaml'
+  /tournaments/migrate-leagues-down:
+    $ref: './paths/tournaments/tournaments-migrate-leagues-down.yaml'
+
+  /teams/{id}:
+    $ref: './paths/teams/teams-id.yaml'
+  /teams:
+    $ref: './paths/teams/teams.yaml'
+  /teams/cities/{city_id}:
+    $ref: './paths/teams/teams-cities-cityId.yaml'
+  /teams/leagues/{league_id}:
+    $ref: './paths/teams/teams-leagues-leagueId.yaml'
+  /teams/vs:
+    $ref: './paths/teams/teams-vs.yaml'
+  /tournaments/1vs1/teams/vs:
+    $ref: './paths/teams/teams-tournaments-1vs1-teams-vs.yaml'
+  /teams/add-player:
+    $ref: './paths/teams/teams-add-player.yaml'
+  /teams/remove-player:
+    $ref: './paths/teams/teams-remove-player.yaml'
+
+  /tables:
+    $ref: './paths/table/table-tables.yaml'
+  /tables/{id}:
+    $ref: './paths/table/table-tables-id.yaml'
+
+  /seasons:
+    $ref: './paths/season/season-seasons.yaml'
+  /seasons/{id}:
+    $ref: './paths/season/season-seasons-id.yaml'
+
+  /roles:
+    $ref: './paths/role/role-roles.yaml'
+
+  /players/find:
+    $ref: './paths/player/player-players-find.yaml'
+  /tournaments/{id}/players:
+    $ref: './paths/player/player-tournaments-id-players.yaml'
+  /players/{id}:
+    $ref: './paths/player/player-players-id.yaml'
+  /players/team/{teamId}:
+    $ref: './paths/player/player-players-team-teamId.yaml'
+  /players:
+    $ref: './paths/player/player-players.yaml'
+  /players/{id}/revocer:
+    $ref: './paths/player/player-players-id-revocer.yaml'
+
+  /places:
+    $ref: './paths/place/place-places.yaml'
+  /places/{id}:
+    $ref: './paths/place/place-places-id.yaml'
+
+  /games/matches:
+    $ref: './paths/match/match-games-matches.yaml'
+  /matches:
+    $ref: './paths/match/match-matches.yaml'
+  /matches/{id}:
+    $ref: './paths/match/match-matches-id.yaml'
+  
+  /leagues:
+    $ref: './paths/league/league-leagues.yaml'
+  /leagues/{id}:
+    $ref: './paths/league/league-leagues-id.yaml'
+  /leagues/{id}/recalc:
+    $ref: './paths/league/league-id-recalc.yaml'
+  /extra-points:
+    $ref: './paths/league/league-extra-points.yaml'
+  /extra-points/{id}:
+    $ref: './paths/league/league-extra-points-id.yaml'
+  /leagues/{league_id}/teams/{team_id}/extra-points:
+    $ref: './paths/league/league-leagues-leagueId-teams-teamId-extra-points.yaml'
+
+  /games/played:
+    $ref: './paths/game/game-games-played.yaml'
+  /games/played/{id}:
+    $ref: './paths/game/game-games-played-id.yaml'
+  /games/future:
+    $ref: './paths/game/game-games-future.yaml'
+  /games/future/{id}:
+    $ref: './paths/game/game-games-future-id.yaml'
+  /games/find-games:
+    $ref: './paths/game/game-games-find-games.yaml'
+  /games/years:
+    $ref: './paths/game/game-games-years.yaml'
+  /games/coming:
+    $ref: './paths/game/game-games-coming.yaml'
+  /games:
+    $ref: './paths/game/game-games.yaml'
+  /games/teams/{team_id}:
+    $ref: './paths/game/game-teams-teamId.yaml'
+  /tournaments/games/played:
+    $ref: './paths/game/game-tournaments-games-played.yaml'
+  /tournaments/games/played/{id}:
+    $ref: './paths/game/game-tournaments-games-played-id.yaml'
+  /tournaments/games/future:
+    $ref: './paths/game/game-tournaments-games-future.yaml'
+  /tournaments/games/future/{id}:
+    $ref: './paths/game/game-tournaments-games-future-id.yaml'
+  /tournaments/{id}/games:
+    $ref: './paths/game/game-tournaments-id-games.yaml'
+
+
+  /cities:
+    $ref: './paths/city/city-cities.yaml'
+  /cities/delete/{id}:
+    $ref: './paths/city/city-cities-delete-id.yaml'
+
+  /bars:
+    $ref: './paths/bar/bar-bars.yaml'
+  /bars/{id}:
+    $ref: './paths/bar/bar-bars-id.yaml'
+
+  /login:
+    $ref: './paths/user/user-login.yaml'
+  /users:
+    $ref: './paths/user/user-users.yaml'
+  /users/tournament-masters:
+    $ref: './paths/user/user-users-tournament-masters.yaml'
+  /users/tournament-masters/{id}:
+    $ref: './paths/user/user-users-tournament-masters-id.yaml'
+  /users/tournament-masters/cities/{id}:
+    $ref: './paths/user/user-users-tournaments-masters-cities-id.yaml'
+  /users/change-password:
+    $ref: './paths/user/user-users-change-password.yaml'
+  /users/check-auth:
+    $ref: './paths/user/user-users-check-auth.yaml'

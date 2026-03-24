@@ -1,0 +1,14 @@
+get:
+  tags:
+    - Игры
+  summary:
+
+post:
+  tags:
+    - Игры
+  summary:
+
+patch:
+  tags:
+    - Игры
+  summary:

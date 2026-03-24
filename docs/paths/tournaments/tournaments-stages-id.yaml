@@ -1,0 +1,93 @@
+post:
+  tags:
+    - Турниры
+  summary: Завершает текущий этап турнира
+  parameters:
+    - name: id
+      in: query
+      required: true
+      schema:
+        type: integer
+  responses:
+    200:
+      description: Этап турнира успешно завершен
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              finishedStageId:
+                type: integer
+    400:
+      description: Некорректный(-ые) параметр(-ы)
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/responses/errors.yaml'
+          examples:
+            ErrStageAlreadyFinished:
+              value:
+                message: этап уже завершён
+                msgDescription: этап уже завершён
+            ErrTournamentCityNotEqualToMasterCity:
+              value:
+                message: город турнира и город мастера по турнирам не совпадают
+                msgDescription: город турнира и город мастера по турнирам не совпадают
+            ErrNoDateInGame:
+              value:
+                message: 'дата игры позже текущей даты или не установлена'
+                msgDescription: 'дата игры позже текущей даты или не установлена'
+            ErrGameWithoutMatches:
+              value:
+                message: 'обнаружена игра без матчей'
+                msgDescription: 'обнаружена игра без матчей'
+            ErrPreviousStageNotFinished:
+              value:
+                message: 'предыдущий этап не завершён'
+                msgDescription: 'предыдущий этап не завершён'
+            ErrNextStageAlreadyFinished:
+              value:
+                message: 'следующий этап уже завершён'
+                msgDescription: 'следующий этап уже завершён'
+            ErrRegularExpectedMoreGames:
+              value:
+                message: в этапе турнирной сетки ожидается больше игр
+                msgDescription: в этапе турнирной сетки ожидается больше игр
+    409:
+      description: Конфликт
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/responses/errors.yaml'
+          examples:
+            ErrPreviousStageWithFutureOrUnknownDate:
+              value:
+                message: 'предыдущий этап имеет игру с будущей или неопределенной датой'
+                msgDescription: 'предыдущий этап имеет игру с будущей или неопределенной датой'
+            ErrPreviousStageHasGameWithoutMathcesAndTechloose:
+              value:
+                message: 'предыдущий этап содержит игру без матчей и без присуждения тех. поражения'
+                msgDescription: 'предыдущий этап содержит игру без матчей и без присуждения тех. поражения'
+            ErrPreviousStageHasTiebreaks:
+              value:
+                message: 'есть несыгранные ничьи в предыдущем этапе'
+                msgDescription: 'есть несыгранные ничьи в предыдущем этапе'
+    500:
+      description: Внутренняя ошибка
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/responses/errors.yaml'
+          examples:
+            ErrNotFoundNextStage:
+              value:
+                message: 'не найден следующий этап'
+                msgDescription: 'не найден следующий этап'
+            ErrFirstStageCannotBeWithoutGames:
+              value:
+                message: 'первый этап не может быть без игр'
+                msgDescription: 'первый этап не может быть без игр'
+            ErrPreviousStageCannotBeWithoutGames:
+              value:
+                message: 'предыдущий этап не может быть без игр'
+                msgDescription: 'предыдущий этап не может быть без игр'

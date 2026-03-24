@@ -1,0 +1,14 @@
+get:
+  tags:
+    - Таблицы
+  summary:
+
+post:
+  tags:
+    - Таблицы
+  summary:
+
+put:
+  tags:
+    - Таблицы
+  summary:

@@ -1,0 +1,14 @@
+get:
+  tags:
+    - Бары
+  summary:
+
+post:
+  tags:
+    - Бары
+  summary:
+
+patch:
+  tags:
+    - Бары
+  summary:

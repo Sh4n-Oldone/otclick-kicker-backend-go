@@ -1,0 +1,93 @@
+post:
+  tags:
+    - Турниры
+  summary: Добавляет доп.очки в турнире определенной команде
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - teamId
+            - tournamentId
+            - reason
+            - points
+          properties:
+            teamId:
+              type: integer
+            tournamentId:
+              type: integer
+            reason:
+              type: string
+            points:
+              type: integer
+  responses:
+    200:
+      description: Доп.очки успешно добавлены для команды
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: integer
+    400:
+      description: Некорректный(-ые) параметр(-ы)
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/responses/errors.yaml'
+          examples:
+            ErrCityIdNotEqualMasterCityId:
+              value:
+                message: город турнира и город мастера по турнирам не совпадают
+                msgDescription: город турнира и город мастера по турнирам не совпадают
+            ErrExtraPointsForPlayoff:
+              value:
+                message: для playoff турнира нельзя создать доп.очки
+                msgDescription: для playoff турнира нельзя создать доп.очки
+
+patch:
+  tags:
+    - Турниры
+  summary: Изменяет доп.очки в турнире для определенной команды
+  requestBody:
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - id
+          properties:
+            id:
+              type: integer
+            teamId:
+              type: integer
+            tournamentId:
+              type: integer
+            reason:
+              type: string
+            points:
+              type: integer
+  responses:
+    200:
+      description: Доп.очки для команды успешно изменены
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+    400:
+      description: Некорректный(-ые) параметр(-ы)
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/responses/errors.yaml'
+          examples:
+            ErrCityIdNotEqualMasterCityId:
+              value:
+                message: город турнира и город мастера по турнирам не совпадают
+                msgDescription: город турнира и город мастера по турнирам не совпадают

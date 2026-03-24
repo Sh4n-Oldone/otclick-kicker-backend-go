@@ -1,0 +1,14 @@
+patch:
+  tags:
+    - Пользователи
+  summary:
+
+get:
+  tags:
+    - Пользователи
+  summary:
+
+delete:
+  tags:
+    - Пользователи
+  summary:

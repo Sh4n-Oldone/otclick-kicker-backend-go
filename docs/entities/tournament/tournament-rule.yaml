@@ -1,0 +1,19 @@
+type: object
+properties:
+  regular:
+    type: object
+    $ref: './regular.yaml'
+  playoff:
+    type: object
+    $ref: './playoff.yaml'
+  regularPlayoff:
+    type: object
+    properties:
+      regular:
+        type: object
+        $ref: './regular.yaml'
+      playoff:
+        type: object
+        $ref: './playoff.yaml'
+      playoffTeamsCountOnStart:
+        type: integer

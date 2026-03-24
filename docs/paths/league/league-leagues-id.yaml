@@ -1,0 +1,9 @@
+put:
+  tags:
+    - Лиги
+  summary:
+
+delete:
+  tags:
+    - Лиги
+  summary:

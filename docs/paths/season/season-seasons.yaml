@@ -1,0 +1,14 @@
+get:
+  tags:
+    - Сезоны
+  summary:
+
+post:
+  tags:
+    - Сезоны
+  summary:
+
+patch:
+  tags:
+    - Сезоны
+  summary:

@@ -1,0 +1,50 @@
+delete:
+  tags:
+    - Турниры
+  summary: Удаляет доп.очки в турнире у конкретной команды
+  parameters:
+    - name: id
+      in: query
+      required: true
+      schema:
+        type: integer
+  responses:
+    200:
+      description: Доп.очки успешно удалены у команды
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+    400:
+      description: Некорректный(-ые) параметр(-ы)
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/responses/errors.yaml'
+          examples:
+            ErrCityIdNotEqualMasterCityId:
+              value:
+                message: город турнира и город мастера по турнирам не совпадают
+                msgDescription: город турнира и город мастера по турнирам не совпадают
+
+get:
+  tags:
+    - Турниры
+  summary: Возвращает информацию о доп.очках по идентификатору очков в БД
+  parameters:
+    - name: id
+      in: query
+      required: true
+      schema:
+        type: integer
+  responses:
+    200:
+      description: Информация о доп.очках успешно возвращена
+      content:
+        application/json:
+          schema:
+            type: object
+            $ref: '../../entities/tournament/extra-points-tournament.yaml'

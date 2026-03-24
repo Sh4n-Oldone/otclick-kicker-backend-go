@@ -1,0 +1,10 @@
+type: object
+properties:
+  stage:
+    type: object
+    $ref: './stage.yaml'
+  games:
+    type: array
+    items:
+      type: object
+      $ref: '../game/tournament-game.yaml'

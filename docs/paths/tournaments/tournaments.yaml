@@ -1,0 +1,235 @@
+post:
+  tags:
+    - Турниры
+  summary: Создаёт турниры разных типов
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - cityId
+            - typeId
+            - seasonId
+            - name
+            - rules
+          properties:
+            cityId:
+              type: integer
+              description: идентификатор города
+            typeId:
+              type: integer
+              description: идентификатор типа создаваемого турнира
+            seasonId:
+              type: integer
+              description: идентификатор сезона
+            name:
+              type: string
+              description: название турнира
+            teamsIds:
+              type: array
+              description: идентификаторы команд турнира
+              items:
+                type: integer
+            rules:
+              type: object
+              description: правила проведения турнира в зависимости от его типа
+              properties:
+                regular:
+                  $ref: '../../entities/tournament/regular.yaml'
+                playoff:
+                  $ref: '../../entities/tournament/playoff.yaml'
+                playoffTeamsCountOnStart:
+                  type: integer
+            playerIds:
+              type: array
+              description: идентификаторы игроков турнира
+              items:
+                type: integer
+  responses:
+    200:
+      description: Турнир успешно создан
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: integer
+                description: Идентификатор созданного турнира
+    500:
+      description: Внутренняя ошибка сервера
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/responses/errors.yaml'
+          examples:
+            FailedTournamentType:
+              value:
+                message: failed to set tournament type
+                msgDescription: валидация соответствия типа турнира входящим параметрам не прошла проверку
+            EmptyParameterError:
+              value:
+                message: 'отсутствует параметр в запросе: <имя_параметра>'
+                msgDescription: 'отсутствует параметр в запросе: <имя_параметра>'
+            NotImplemented:
+              value:
+                message: not implemented
+                msgDescription: тип турнира еще не реализован
+    400:
+      description: Некорректный(-ые) параметр(-ы)
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/responses/errors.yaml'
+          examples:
+            ErrCityIdNotEqualMasterCityId:
+              value:
+                message: cityId должен быть равен cityId мастера по турнирам
+                msgDescription: cityId должен быть равен cityId мастера по турнирам
+            TeamCityIdNotEqualToTournamentCityId:
+              value:
+                message: id города команды не совпадает с id города турнира
+                msgDescription: id города команды не совпадает с id города турнира
+            PlayersRequired:
+              value:
+                message: игроки обязательны
+                msgDescription: при создании regularOneVsOne-турнира обязательно надо передать игроков в запросе
+            PlayoffRulesNoPlayers:
+              value:
+                message: для турнира типа Playoff команды обязательны, а игроков быть не должно
+                msgDescription: для турнира типа Playoff команды обязательны, а игроков быть не должно
+            PlayoffRulesEmpty:
+              value:
+                message: правила для турнира типа Playoff не заполнены
+                msgDescription: правила для турнира типа Playoff не заполнены
+            PlayoffRulesWrongTeamCount:
+              value:
+                message: в турнире типа Playoff команд должно быть 2^N штук
+                msgDescription: в турнире типа Playoff команд должно быть 2^N штук
+            PlayoffRulesWrongStageCount:
+              value:
+                message: неверное кол-во этапов, считается по формуле "кол-во_команд = 2 ^ кол-во_этапов"
+                msgDescription: неверное кол-во этапов, считается по формуле "кол-во_команд = 2 ^ кол-во_этапов"
+            PlayoffRulesRegularMustBeEmpty:
+              value:
+                message: для турнира типа Playoff поле "regular" не должно быть заполнено
+                msgDescription: для турнира типа Playoff поле "regular" не должно быть заполнено
+            PlayoffStageNumeration:
+              value:
+                message: нарушена нумерация этапов
+                msgDescription: нарушена нумерация этапов
+            RegularPlayoffRulesEmptyRegularAndPlayoff:
+              value:
+                message: для турнира типа Regular+Playoff regular и playoff заполняются в regularPlayoff
+                msgDescription: для турнира типа Regular+Playoff regular и playoff заполняются в regularPlayoff
+            RegularPlayoffRulesNoPlayers:
+              value:
+                message: для турнира типа Regular+Playoff команды обязательны, игроков быть не должно
+                msgDescription: для турнира типа Regular+Playoff команды обязательны, игроков быть не должно
+            RegularPlayoffRulesEmpty:
+              value:
+                message: не заданы правила regular+playoff турнира в regularPlayoff
+                msgDescription: не заданы правила regular+playoff турнира в regularPlayoff
+            RegularPlayoffRulesPlayoffEmpty:
+              value:
+                message: правила для playoff этапа турнира типа Regular+Playoff не заполнены в regularPlayoff
+                msgDescription: правила для playoff этапа турнира типа Regular+Playoff не заполнены в regularPlayoff
+            RegularPlayoffRulesPlayoffTeamCount:
+              value:
+                message: команд в первом playoff этапе должно быть степенью числа 2, но не равно 0
+                msgDescription: команд в первом playoff этапе должно быть степенью числа 2, но не равно 0
+            RegularPlayoffRulesFirstStage:
+              value:
+                message: количество команд в первом playoff этапе regular+playoff турнира не может быть больше изначального кол-ва команд
+                msgDescription: количество команд в первом playoff этапе regular+playoff турнира не может быть больше изначального кол-ва команд
+            RegularPlayoffRulesWrongStageCount:
+              value:
+                message: неверное кол-во этапов, считается по формуле "кол-во_команд_первого_этапа_playoff = 2 ^ кол-во_этапов"
+                msgDescription: неверное кол-во этапов, считается по формуле "кол-во_команд_первого_этапа_playoff = 2 ^ кол-во_этапов"
+            RegularPlayoffStageNumeration:
+              value:
+                message: нарушена нумерация этапов
+                msgDescription: нарушена нумерация этапов
+    403:
+      description: Ошибка доступа
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/responses/errors.yaml'
+          examples:
+            WrongUserRole:
+              value:
+                message: 'forbidden for this role: <имя_роли>'
+                msgDescription: Если турнир создает не тур-мастер, то это должен быть Суперюзер или Админ
+get:
+  tags:
+    - Турниры
+  summary: Возвращает список турниров
+  parameters:
+    - name: cityId
+      in: query
+      required: false
+      schema:
+        type: integer
+        exclusiveMinimum: 0
+    - name: seasonId
+      in: query
+      required: false
+      schema:
+        type: integer
+        exclusiveMinimum: 0
+    - name: tournamentId
+      in: query
+      required: false
+      schema:
+        type: integer
+        exclusiveMinimum: 0
+    - name: tournamentTypeId
+      in: query
+      required: false
+      schema:
+        type: integer
+        exclusiveMinimum: 0
+  responses:
+    200:
+      description: Список турниров успешно получен
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              count:
+                type: integer
+                description: количество найденных турниров
+              tournaments:
+                type: array
+                description: массив найденных турниров
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    typeId:
+                      type: integer
+                    name:
+                      type: string
+                    rules:
+                      type: object
+                      properties:
+                        regular:
+                          $ref: '../../entities/tournament/regular.yaml'
+                        playoff:
+                          $ref: '../../entities/tournament/playoff.yaml'
+                        regularPlayoff:
+                          type: object
+                          properties:
+                            regular:
+                              $ref: '../../entities/tournament/regular.yaml'
+                            playoff:
+                              $ref: '../../entities/tournament/playoff.yaml'
+                    cityId:
+                      type: integer
+                    seasonId:
+                      type: integer

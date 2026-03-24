@@ -1,0 +1,14 @@
+post:
+  tags:
+    - Турниры
+  summary: Запускает миграцию переноса лиг в турниры
+  responses:
+    200:
+      description: Миграция переноса лиг в турниры успешно применена
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean

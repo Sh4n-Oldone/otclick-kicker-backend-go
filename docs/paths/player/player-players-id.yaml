@@ -1,0 +1,14 @@
+get:
+  tags:
+    - Игроки
+  summary:
+
+delete:
+  tags:
+    - Игроки
+  summary:
+
+patch:
+  tags:
+    - Игроки
+  summary:

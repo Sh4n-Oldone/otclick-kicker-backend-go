@@ -1,0 +1,14 @@
+post:
+  tags:
+    - Турниры
+  summary: Откатывает миграцию переноса лиг в турниры
+  responses:
+    200:
+      description: Откат миграции переноса лиг в турниры успешно применен
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean

@@ -1,0 +1,11 @@
+type: object
+required:
+  - message
+  - msgDescription
+properties:
+  message:
+    type: string
+    description: Оригинальная ошибка
+  msgDescription:
+    type: string
+    description: Описание ошибки
