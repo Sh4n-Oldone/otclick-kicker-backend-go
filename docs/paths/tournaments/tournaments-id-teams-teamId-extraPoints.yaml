@@ -1,0 +1,25 @@
+get:
+  tags:
+    - Турниры
+  summary: Возвращает информацию о списке доп.очков конкретной команды в конкретном турнире
+  parameters:
+    - name: team_id
+      in: query
+      required: true
+      schema:
+        type: integer
+    - name: id
+      in: query
+      required: true
+      schema:
+        type: integer
+  responses:
+    200:
+      description: Информация о списке доп.очков конкретной команды в конкретном турнире успешно возвращена
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              $ref: '../../entities/tournament/extra-points-tournament.yaml'

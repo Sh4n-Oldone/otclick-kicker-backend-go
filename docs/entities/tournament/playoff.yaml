@@ -1,0 +1,10 @@
+type: object
+properties:
+  stages:
+    type: object
+    properties:
+      "1":
+        type: object
+        properties:
+          bo:
+            type: integer

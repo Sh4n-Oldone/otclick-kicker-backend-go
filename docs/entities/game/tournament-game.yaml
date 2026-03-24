@@ -1,0 +1,26 @@
+type: object
+properties:
+  id:
+    type: integer
+  cityId:
+    type: integer
+  placeId:
+    type: integer
+    description: Опционально
+  date:
+    type: string
+    description: Тип *date.Date, Опционально
+  team1Id:
+    type: integer
+  team2Id:
+    type: integer
+  techLooseTeamId:
+    type: integer
+    description: Опционально
+  isTiebreak:
+    type: boolean
+  stageId:
+    type: integer
+  updatedAt:
+    type: string
+    description: Тип *date.Date, Опционально

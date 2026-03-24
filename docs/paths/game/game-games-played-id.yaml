@@ -1,0 +1,9 @@
+get:
+  tags:
+    - Игры
+  summary:
+
+delete:
+  tags:
+    - Игры
+  summary:

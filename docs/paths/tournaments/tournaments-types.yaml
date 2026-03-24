@@ -1,0 +1,24 @@
+get:
+  tags:
+    - Турниры
+  summary: Возвращает список типов турниров
+  parameters:
+    - name: withDeleted
+      in: query
+      required: true
+      schema:
+        type: boolean
+        default: false
+  responses:
+    200:
+      description: Список типов турниров успешно получен
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              tournamentTypeList:
+                type: array
+                items:
+                  type: object
+                  $ref: '../../entities/tournament/tournament-type.yaml'

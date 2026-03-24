@@ -1,0 +1,24 @@
+post:
+  tags:
+    - Турниры
+  summary: Пересчитывает все рейтинги игроков в матчах в турнире
+  parameters:
+    - name: id
+      in: query
+      required: true
+      schema:
+        type: integer
+  responses:
+    200:
+      description: Все рейтинги игроков в матчах успешно пересчитаны
+    500:
+      description: Внутренние ошибки
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/responses/errors.yaml'
+          examples:
+            FailedTournamentType:
+              value:
+                message: nil player id from match id
+                msgDescription: был обнаружен пустой id игрока в матче

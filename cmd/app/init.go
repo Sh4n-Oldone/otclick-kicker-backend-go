@@ -219,6 +219,14 @@ func initKitHTTP(appConfig *config.Configuration, service srvUser.IService, endp
 		router.Mount("/dbg", ProfilerHandler())
 	}
 
+	fs := http.FileServer(http.Dir("./docs"))
+
+	router.Get("/docs", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/docs/swagger-ui/", http.StatusPermanentRedirect)
+	})
+
+	router.Handle("/docs/*", http.StripPrefix("/docs/", fs))
+
 	httpServer := &http.Server{
 		Handler:      router,
 		TLSConfig:    nil,

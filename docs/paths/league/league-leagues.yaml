@@ -1,0 +1,9 @@
+get:
+  tags:
+    - Лиги
+  summary:
+
+post:
+  tags:
+    - Лиги
+  summary:

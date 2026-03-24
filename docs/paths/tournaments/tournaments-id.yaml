@@ -1,0 +1,240 @@
+patch:
+  tags:
+    - Турниры
+  summary: Обновляет турнир
+  parameters:
+    - name: id
+      in: query
+      required: true
+      schema:
+        type: integer
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            cityId:
+              type: integer
+            seasonId:
+              type: integer
+            name:
+              type: string
+            teamsIds:
+              type: array
+              items:
+                type: integer
+            playersIds:
+              type: array
+              items:
+                type: integer
+            rules:
+              type: object
+              $ref: '../../entities/tournament/tournament-rule.yaml'
+  responses:
+    200:
+      description: Турнир успешно обновлен
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              updatedTournamentId:
+                type: integer
+    400:
+      description: Некорректный(-ые) параметр(-ы) или иное
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/responses/errors.yaml'
+          examples:
+            ErrCityIdNotEqualMasterCityId:
+              value:
+                message: 'город турнира не совпадает с городом мастера по турнирам'
+                msgDescription: 'город турнира не совпадает с городом мастера по турнирам'
+            ErrCityNotEqualFromRequest:
+              value:
+                message: 'город в запросе не совпадает с городом мастера по турнирам'
+                msgDescription: 'город в запросе не совпадает с городом мастера по турнирам'
+            ErrCityNotEqualForTeam:
+              value:
+                message: 'город команды не совпадает с городом мастера по турнирам'
+                msgDescription: 'город команды не совпадает с городом мастера по турнирам'
+            ErrCityNotEqualForPlayer:
+              value:
+                message: 'город игрока не совпадает с городом мастера по турнирам'
+                msgDescription: 'город игрока не совпадает с городом мастера по турнирам'
+            ErrTournamentHasFinishedStages:
+              value:
+                message: турнир не может меняться мастером по турнирам если имеет завершенные этапы
+                msgDescription: турнир не может меняться мастером по турнирам если имеет завершенные этапы
+            ErrTournamentHasUnfinishedGames:
+              value:
+                message: 'турнир не может меняться мастером по турнирам если имеет завершенные/текущие игры'
+                msgDescription: 'турнир не может меняться мастером по турнирам если имеет завершенные/текущие игры'
+            ErrTournamentHadUnplayedMatches:
+              value:
+                message: 'турнир не может меняться мастером по турнирам если есть сыгранные матчи'
+                msgDescription: 'турнир не может меняться мастером по турнирам если есть сыгранные матчи'
+            ErrCityOfGameNotEqualToCityOfMaster:
+              value:
+                message: 'город игры не совпадает с городом мастера по турнирам'
+                msgDescription: 'город игры не совпадает с городом мастера по турнирам'
+            ErrTournamentCannotBeUpdatedWithClauses:
+              value:
+                message: 'турнир с завершенными или начатыми играми не могут обновляться поля: cityId, rules, teamIds, playersIds'
+                msgDescription: 'турнир с завершенными или начатыми играми не могут обновляться поля: cityId, rules, teamIds, playersIds'
+            ErrRegularWithPlayersIds:
+              value:
+                message: для обновления тура Regular playersIDs не должны быть заполнены
+                msgDescription: для обновления тура Regular playersIDs не должны быть заполнены
+            ErrRulesRequired:
+              value:
+                message: 'правила не установлены'
+                msgDescription: 'должны быть установлены хоть какие-нибудь правила в Rules для дальнейшей валидации'
+            ErrRegularPlayersAndTeamsNotEmpty:
+              value:
+                message: 'в запросе могут только игроки или только команды'
+                msgDescription: 'заполнены либо playerIds, либо teamsIds'
+            ErrRegularEmptyTeams:
+              value:
+                message: 'для турнира типа Regular команды обязательны'
+                msgDescription: 'teamsIds не должно быть пустым'
+            ErrRegularRulesEmpty:
+              value:
+                message: 'правила для турнира типа Regular не заполнены'
+                msgDescription: 'regular в rules должно быть заполненным'
+            ErrRegularRulesPlayoffNotEmpty:
+              value:
+                message: 'для турнира типа Regular поле "playOff" не должно быть заполнено'
+                msgDescription: 'для турнира типа Regular поле "playOff" не должно быть заполнено'
+            ErrRegular1vs1Clauses:
+              value:
+                message: 'для обновления тура Regular.OneVsOne в запросе должны быть либо только teamsIds, либо playersIds, либо ничего'
+                msgDescription: 'для обновления тура Regular.OneVsOne в запросе должны быть либо только teamsIds, либо playersIds, либо ничего'
+            ErrRegular1vs1PlayersAndTeamsEmpty:
+              value:
+                message: 'для турнира типа Regular.OneVsOne обязательны или игроки или команды'
+                msgDescription: 'для турнира типа Regular.OneVsOne обязательны или игроки или команды'
+            ErrRegular1vs1RulesEmpty:
+              value:
+                message: 'правила для турнира типа Regular.OneVsOne не заполнены'
+                msgDescription: 'правила для турнира типа Regular.OneVsOne не заполнены'
+            ErrRegular1vs1PlayoffNotEmpty:
+              value:
+                message: 'для турнира типа Regular.OneVsOne поле "playOff" не должно быть заполнено'
+                msgDescription: 'для турнира типа Regular.OneVsOne поле "playOff" не должно быть заполнено'
+            ErrPlayoffWithPlayers:
+              value:
+                message: 'для турнира "Playoff" игроков быть не должно'
+                msgDescription: 'для турнира "Playoff" игроков быть не должно'
+            ErrPlayoffWithNotNullRegularRules:
+              value:
+                message: 'для турнира "Playoff" поле "regular" должно быть null'
+                msgDescription: 'для турнира "Playoff" поле "regular" должно быть null'
+            ErrPlayoffRulesRequired:
+              value:
+                message: 'для турнира "Playoff" правила должны быть заполнены'
+                msgDescription: 'для турнира "Playoff" правила должны быть заполнены'
+            ErrPlayoffTeamsCount:
+              value:
+                message: 'в турнире типа Playoff команд должно быть 2^N штук'
+                msgDescription: 'в турнире типа Playoff команд должно быть 2^N штук'
+            ErrStagesCount:
+              value:
+                message: 'неверное кол-во этапов, считается по формуле "кол-во_команд = 2 ^ кол-во_этапов"'
+                msgDescription: 'неверное кол-во этапов, считается по формуле "кол-во_команд = 2 ^ кол-во_этапов"'
+            ErrPlayoffNewRulesRequired:
+              value:
+                message: 'в существующем турнире "Playoff" правила должны быть заполнены'
+                msgDescription: 'в существующем турнире "Playoff" правила должны быть заполнены'
+            ErrWrongStageNumeration:
+              value:
+                message: нарушена нумерация этапов
+                msgDescription: нарушена нумерация этапов
+            ErrRegularPlayoffRegularNotInPlace:
+              value:
+                message: 'для турнира Regular+Playoff поле regular должно быть заполнено только в regularPlayoff'
+                msgDescription: 'для турнира Regular+Playoff поле regular должно быть заполнено только в regularPlayoff'
+            ErrRegularPlayoffPlayoffNotInPlace:
+              value:
+                message: 'для турнира Regular+Playoff поле playoff должно быть заполнено только в regularPlayoff'
+                msgDescription: 'для турнира Regular+Playoff поле playoff должно быть заполнено только в regularPlayoff'
+            ErrRegularPlayoffTeamsCountOnStart:
+              value:
+                message: 'для турнира Regular+Playoff поле playoffTeamsCountOnStart должно быть степенью двойки и больше 0'
+                msgDescription: 'для турнира Regular+Playoff поле playoffTeamsCountOnStart должно быть степенью двойки и больше 0'
+            ErrRegularPlayoffTeamsOnStartGraterThen:
+              value:
+                message: 'нельзя задать playoffTeamsCountOnStart больше кол-ва команд'
+                msgDescription: 'нельзя задать playoffTeamsCountOnStart больше кол-ва команд'
+    500:
+      description: Внутренние ошибки
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/responses/errors.yaml'
+          examples:
+            ErrNoSuchTypeOfTournament:
+              value:
+                message: 'there is no such type of tournament'
+                msgDescription: 'тип турнира не реализован или такого типа турнира в принципе нет в системе'
+delete:
+  tags:
+    - Турниры
+  summary: Удаляет турнир
+  parameters:
+    - name: id
+      in: query
+      required: true
+      schema:
+        type: integer
+  responses:
+    200:
+      description: Турнир успешно удален
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              deletedTournamentId:
+                type: integer
+    403:
+      description: Недостаточно прав для выполнения запроса
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/responses/errors.yaml'
+          examples:
+            ErrWrongRoleToAction:
+              value:
+                message: некорректная роль пользователя
+                msgDescription: некорректная роль пользователя
+    400:
+      description: Некорректный(-ые) параметр(-ы)
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/responses/errors.yaml'
+          examples:
+            ErrCityIdNotEqualMasterCityId:
+              value:
+                message: 'город турнира не совпадает с городом мастера по турнирам'
+                msgDescription: 'город турнира не совпадает с городом мастера по турнирам'
+            ErrTournamentHasFinishedStages:
+              value:
+                message: турнир не может меняться мастером по турнирам если имеет завершенные этапы
+                msgDescription: турнир не может меняться мастером по турнирам если имеет завершенные этапы
+            ErrTournamentHasUnfinishedGames:
+              value:
+                message: 'турнир не может меняться мастером по турнирам если имеет завершенные/текущие игры'
+                msgDescription: 'турнир не может меняться мастером по турнирам если имеет завершенные/текущие игры'
+            ErrTournamentHadUnplayedMatches:
+              value:
+                message: 'турнир не может меняться мастером по турнирам если есть сыгранные матчи'
+                msgDescription: 'турнир не может меняться мастером по турнирам если есть сыгранные матчи'
+            ErrCityOfGameNotEqualToCityOfMaster:
+              value:
+                message: 'город игры не совпадает с городом мастера по турнирам'
+                msgDescription: 'город игры не совпадает с городом мастера по турнирам'

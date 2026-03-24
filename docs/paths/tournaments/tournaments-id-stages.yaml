@@ -1,0 +1,72 @@
+get:
+  tags:
+    - Турниры
+  summary: Возвращает этапы турнира с играми каждого этапа
+  parameters:
+    - name: id
+      in: query
+      required: true
+      schema:
+        type: integer
+  responses:
+    200:
+      description: Успешно возвращены этапы турнира с играми каждого этапа
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: '../../entities/tournament/tournament-stage-item.yaml'
+
+post:
+  tags:
+    - Турниры
+  summary: Начинает следующий этап турнира
+  parameters:
+    - name: id
+      in: query
+      required: true
+      schema:
+        type: integer
+  responses:
+    200:
+      description: Успешно начат следующий этап турнира
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              tournamentId:
+                type: integer
+              startedStageId:
+                type: integer
+    400:
+      description: Некорректный(-ые) параметр(-ы) или иное
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/responses/errors.yaml'
+          examples:
+            ErrCityIdNotEqualMasterCityId:
+              value:
+                message: cityId должен быть равен cityId мастера по турнирам
+                msgDescription: cityId должен быть равен cityId мастера по турнирам
+            ErrOneSageTournament:
+              value:
+                message: 'у турниров типа "Regular" и "RegularOneVsOne" может быть только один этап'
+                msgDescription: у турниров типа "Regular" и "RegularOneVsOne" может быть только один этап
+            ErrLastStageNotFinished:
+              value:
+                message: предыдущий этап не завершён
+                msgDescription: предыдущий этап не завершён
+    409:
+      description: Конфликт
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/responses/errors.yaml'
+          examples:
+            ErrNotFoundNextStage:
+              value:
+                message: не найден следующий этап
+                msgDescription: не найден следующий этап

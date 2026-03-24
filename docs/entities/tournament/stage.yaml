@@ -1,0 +1,10 @@
+type: object
+properties:
+  id:
+    type: integer
+  name:
+    type: string
+  isFinished:
+    type: boolean
+  number:
+    type: string

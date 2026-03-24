@@ -1,0 +1,14 @@
+get:
+  tags:
+    - Места игр
+  summary:
+
+post:
+  tags:
+    - Места игр
+  summary:
+
+put:
+  tags:
+    - Места игр
+  summary:
