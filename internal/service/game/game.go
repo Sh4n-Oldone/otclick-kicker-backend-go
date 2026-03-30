@@ -1052,11 +1052,6 @@ func (s *Service) UpdateFutureTournamentGame(ctx context.Context, request *entit
 		return err
 	}
 
-	if err = checkTiebreakGame(game.IsTiebreak); err != nil {
-		logger.Error().Err(err).Msg("failed to checkTiebreakGame")
-		return err
-	}
-
 	stage, err := s.rdbOperations.GetTournamentStage(ctx, logger, game.StageID)
 	if err != nil {
 		return err
@@ -1068,6 +1063,11 @@ func (s *Service) UpdateFutureTournamentGame(ctx context.Context, request *entit
 	}
 
 	updReq := buildNewRequest(request, &game)
+
+	if err = checkNonTiebreakGame(request, &game); err != nil {
+		logger.Error().Err(err).Msg("failed to checkNonTiebreakGame")
+		return err
+	}
 
 	// проверяем относится ли капитан к какой-либо из команд
 	if request.Executor.Role.Name == constant.CaptainRole {
@@ -1468,6 +1468,11 @@ func (s *Service) UpdatePlayedTournamentGame(ctx context.Context, request *entit
 	}
 	request.StageID = currentStage.ID
 
+	if err = checkNonTiebreakGame(request, &game); err != nil {
+		logger.Error().Err(err).Msg("failed to checkNonTiebreakGame")
+		return entities.UpdatePlayedTournamentGameResponse{}, err
+	}
+
 	// парсим порядковый номер этапа и общее кол-во этапов из поля number
 	currentStageNumber, stageQty, err := helpers.ParseTournamentStageNumber(currentStage.Number, constant.SeparatorStageNumber)
 	if err != nil {
@@ -1509,11 +1514,6 @@ func (s *Service) UpdatePlayedTournamentGame(ctx context.Context, request *entit
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to checkTournamentStage")
 		return entities.UpdatePlayedTournamentGameResponse{}, error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
-	}
-
-	if err = checkTiebreakGame(game.IsTiebreak); err != nil {
-		logger.Error().Err(err).Msg("failed to checkTiebreakGame")
-		return entities.UpdatePlayedTournamentGameResponse{}, err
 	}
 
 	if tournament.TypeID == constant.RegularOneVsOneTournamentTypeID {
@@ -2466,6 +2466,34 @@ func checkTiebreakGame(reqIsTiebreak bool) error {
 		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
 	}
 
+	return nil
+}
+
+func checkNonTiebreakGame(request any, game *entities.TournamentGame) error {
+	if game.IsTiebreak {
+		return nil
+	}
+	var team1ID, team2ID, stageID int64
+	switch r := request.(type) {
+	case *entities.UpdateFutureTournamentGameRequest:
+		upd := buildNewRequest(r, game)
+		team1ID = *upd.Team1ID
+		team2ID = *upd.Team2ID
+		stageID = game.StageID
+	case *entities.UpdatePlayedTournamentGameRequest:
+		team1ID = r.Team1ID
+		team2ID = r.Team2ID
+		stageID = r.StageID
+	default:
+		err := errors.New("некорректный тип запроса")
+		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
+	if (team1ID != game.Team1ID && team1ID != game.Team2ID) ||
+		(team2ID != game.Team2ID && team2ID != game.Team1ID) ||
+		stageID != game.StageID {
+		err := errors.New("для игр не tiebreak нельзя менять команды и этап")
+		return error_templates.New(err.Error(), err, codes.InvalidArgument, http.StatusBadRequest)
+	}
 	return nil
 }
 
