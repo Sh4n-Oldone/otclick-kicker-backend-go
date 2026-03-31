@@ -6,8 +6,12 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"slices"
+	"sort"
 	"strconv"
+	"strings"
 
+	"github.com/rs/zerolog"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 
@@ -635,6 +639,382 @@ func (s *Service) GetTournamentTeamVsTeamTable(ctx context.Context, cityID, seas
 	response.DataTournament = data
 	response.Message = "OK"
 	return response, nil
+}
+
+func (s *Service) GetTournamentsTeamVsTeamTable(ctx context.Context, cityID, seasonID int64) (entities.GetTournamentTeamVsTeamTableResponse, error) {
+	logger := s.logger.With().Interface("service", "GetTournamentsTeamVsTeamTable").Logger()
+	tournamentReq := entities.GetTournamentListRequest{CityID: &cityID, SeasonID: &seasonID, TournamentID: nil, TournamentTypeID: nil}
+	tournaments, totalTournamentCount, err := s.rdbOperations.GetTournamentList(logger, ctx, tournamentReq)
+	if err != nil {
+		return entities.GetTournamentTeamVsTeamTableResponse{}, err
+	}
+
+	if totalTournamentCount == 0 {
+		logger.Error().Err(err).Msg("No tournament found")
+		return entities.GetTournamentTeamVsTeamTableResponse{}, error_templates.New("No tournament found", errors.New("no tournament found"), codes.NotFound, http.StatusNotFound)
+	}
+
+	var data []entities.DataTournament
+
+	for _, tournament := range tournaments {
+		typeID := tournament.TypeID
+		var dataItem entities.DataTournament
+		dataItem.TournamentId = tournament.ID
+		dataItem.TournamentName = tournament.Name
+
+		dataItem.Table.Columns = append(dataItem.Table.Columns, entities.Column{Uid: "teamShortName", Name: "Команда"})
+
+		teams, err := s.rdbOperations.FetchTeamsByTournament(logger, ctx, &tournament.ID, &typeID)
+		if err != nil {
+			return entities.GetTournamentTeamVsTeamTableResponse{}, err
+		}
+		if len(teams) == 0 {
+			continue
+		}
+		teamNames := make(map[int64]string, len(teams))
+		for _, tm := range teams {
+			teamNames[tm.ID] = tm.Name
+		}
+
+		noGames, err := s.rdbOperations.TeamsHaveNoGamesTournament(logger, ctx, teams, seasonID)
+		if err != nil {
+			return entities.GetTournamentTeamVsTeamTableResponse{}, err
+		}
+		if noGames {
+			for _, team := range teams {
+				var bodyItem entities.BodyTournament
+
+				bodyItem.Id = team.ID
+				bodyItem.TeamShortName = team.ShortName
+				bodyItem.Score = 0
+				bodyItem.DifferenceInScore = 0
+				bodyItem.GamesPlayed = 0
+				bodyItem.GamesToPlay = int64(len(teams) - 1) // @TODO: для playoff невозможно посчитать кол-во предстоящих игр.
+				// @TODO: скорее всего, нужно оставить поле только для регулярки
+				for _, t := range teams {
+					var cell entities.TableCellTournament
+
+					cell.GameId = 0
+					cell.Score = "0:0"
+
+					bodyItem.TableCell[t.ShortName] = append(bodyItem.TableCell[t.ShortName], cell)
+				}
+				dataItem.Table.Body = append(dataItem.Table.Body, bodyItem)
+			}
+			pu, pd, err := s.fillPlayoffStages(ctx, logger, tournament, teamNames)
+			if err != nil {
+				return entities.GetTournamentTeamVsTeamTableResponse{}, err
+			}
+			dataItem.PlayoffUp = pu
+			dataItem.PlayoffDown = pd
+			gamesTiebreak, err := s.rdbOperations.FetchTournamentPastGamesTiebreak(logger, ctx, tournament.ID)
+			if err != nil {
+				return entities.GetTournamentTeamVsTeamTableResponse{}, err
+			}
+			dataItem.GamesTiebreak = gamesTiebreak
+			data = append(data, dataItem)
+			continue
+		}
+
+		for _, team := range teams {
+			var bodyItem entities.BodyTournament
+			bodyItem.TableCell = make(map[string][]entities.TableCellTournament, 0)
+
+			gamesToPlay, err := s.rdbOperations.FetchTournamentTeamGames(logger, ctx, tournament.ID, team.ID)
+			if err != nil {
+				return entities.GetTournamentTeamVsTeamTableResponse{}, err
+			}
+
+			bodyItem.Id = team.ID
+			bodyItem.TeamName = team.Name
+			bodyItem.TeamShortName = team.ShortName
+			bodyItem.Score = 0
+			bodyItem.DifferenceInScore = 0
+			bodyItem.GamesPlayed = 0
+			bodyItem.GamesToPlay = int64(len(gamesToPlay))
+
+			for _, t := range teams {
+				var cell entities.TableCellTournament
+
+				cell.GameId = 0
+				cell.Score = "0:0"
+
+				if t.ID == team.ID {
+					bodyItem.TableCell[t.ShortName] = append(bodyItem.TableCell[t.ShortName], cell)
+					continue
+				}
+
+				cell.TeamName = t.Name
+
+				tiebreak := false
+
+				games, err := s.rdbOperations.FetchTournamentPastGames(logger, ctx, team.ID, t.ID, cityID, tournament.ID, &tiebreak)
+				if err != nil {
+					return entities.GetTournamentTeamVsTeamTableResponse{}, err
+				}
+
+				if len(games) == 0 {
+					bodyItem.TableCell[t.ShortName] = append(bodyItem.TableCell[t.ShortName], cell)
+					continue
+				}
+
+				for _, g := range games {
+					cell.GameId = g.ID
+
+					var match1Team1Score int64 = 0
+					var match1Team2Score int64 = 0
+
+					if games[0].TechLooseTeamID != nil && *games[0].TechLooseTeamID == team.ID {
+						cell.Score = "30:42"
+						bodyItem.DifferenceInScore -= 12
+						bodyItem.GamesPlayed += 1
+						bodyItem.GamesToPlay -= 1
+					} else if games[0].TechLooseTeamID != nil && *games[0].TechLooseTeamID == t.ID {
+						cell.Score = "42:30"
+						bodyItem.DifferenceInScore += 12
+						bodyItem.Score += 2
+						bodyItem.GamesPlayed += 1
+						bodyItem.GamesToPlay -= 1
+					} else {
+						gamesMatches, err := s.rdbOperations.FetchMatches(logger, ctx, cell.GameId)
+						if err != nil {
+							return entities.GetTournamentTeamVsTeamTableResponse{}, err
+						}
+
+						for _, match := range gamesMatches {
+							if match.Team1ID == team.ID {
+								match1Team1Score += match.ScoreTeam1
+								match1Team2Score += match.ScoreTeam2
+							} else {
+								match1Team1Score += match.ScoreTeam2
+								match1Team2Score += match.ScoreTeam1
+							}
+						}
+						cell.Score = strconv.FormatInt(match1Team1Score, 10) + ":" + strconv.FormatInt(match1Team2Score, 10)
+
+						if len(gamesMatches) != 0 {
+							bodyItem.GamesPlayed += 1
+							bodyItem.GamesToPlay -= 1
+						}
+					}
+
+					bodyItem.Score = resumScore(bodyItem.Score, match1Team1Score, match1Team2Score)
+
+					extraPoints, err := s.rdbOperations.GetTournamentTeamExtraPointsCount(logger, ctx, team.ID, tournament.ID)
+					if err != nil {
+						return entities.GetTournamentTeamVsTeamTableResponse{}, err
+					}
+					bodyItem.Score += extraPoints
+
+					bodyItem.DifferenceInScore += (match1Team1Score - match1Team2Score)
+					bodyItem.TableCell[t.ShortName] = append(bodyItem.TableCell[t.ShortName], cell)
+				}
+			}
+
+			dataItem.Table.Body = append(dataItem.Table.Body, bodyItem)
+
+		}
+		dataItem.Table.Columns = append(dataItem.Table.Columns, entities.Column{Uid: "score", Name: "Очки"})
+		dataItem.Table.Columns = append(dataItem.Table.Columns, entities.Column{Uid: "differenceInScore", Name: "+/-"})
+		dataItem.Table.Columns = append(dataItem.Table.Columns, entities.Column{Uid: "gamesPlayed", Name: "Игры"})
+		dataItem.Table.Columns = append(dataItem.Table.Columns, entities.Column{Uid: "gamesToPlay", Name: "Осталось"})
+
+		gamesTiebreak, err := s.rdbOperations.FetchTournamentPastGamesTiebreak(logger, ctx, tournament.ID)
+		if err != nil {
+			return entities.GetTournamentTeamVsTeamTableResponse{}, err
+		}
+		dataItem.GamesTiebreak = gamesTiebreak
+
+		pu, pd, err := s.fillPlayoffStages(ctx, logger, tournament, teamNames)
+		if err != nil {
+			return entities.GetTournamentTeamVsTeamTableResponse{}, err
+		}
+		dataItem.PlayoffUp = pu
+		dataItem.PlayoffDown = pd
+
+		data = append(data, dataItem)
+	}
+
+	var response entities.GetTournamentTeamVsTeamTableResponse
+	response.DataTournament = data
+	response.Message = "OK"
+	return response, nil
+}
+
+func parseTournamentStageOrder(number string) (int64, error) {
+	parts := strings.Split(number, constant.SeparatorStageNumber)
+	if len(parts) == 0 || parts[0] == "" {
+		return 0, errors.New("empty stage number")
+	}
+	return strconv.ParseInt(parts[0], 10, 64)
+}
+
+func bracketTeamSets(b entities.TournamentBrackets) (wb, lb map[int64]struct{}) {
+	wb = make(map[int64]struct{})
+	lb = make(map[int64]struct{})
+	for _, p := range b.TeamsOfWinnerBracket {
+		if p != nil {
+			wb[*p] = struct{}{}
+		}
+	}
+	for _, p := range b.TeamsOfLoserBracket {
+		if p != nil {
+			lb[*p] = struct{}{}
+		}
+	}
+	return wb, lb
+}
+
+func (s *Service) tournamentGameScoreString(logger zerolog.Logger, ctx context.Context, g entities.TournamentGame) (string, error) {
+	if g.TechLooseTeamID != nil {
+		if *g.TechLooseTeamID == g.Team1ID {
+			return "30:42", nil
+		}
+		if *g.TechLooseTeamID == g.Team2ID {
+			return "42:30", nil
+		}
+	}
+	matches, err := s.rdbOperations.FetchMatches(logger, ctx, g.ID)
+	if err != nil {
+		return "", err
+	}
+	if len(matches) == 0 {
+		return "0:0", nil
+	}
+	var s1, s2 int64
+	for _, m := range matches {
+		if m.Team1ID == g.Team1ID {
+			s1 += m.ScoreTeam1
+			s2 += m.ScoreTeam2
+		} else {
+			s1 += m.ScoreTeam2
+			s2 += m.ScoreTeam1
+		}
+	}
+	return strconv.FormatInt(s1, 10) + ":" + strconv.FormatInt(s2, 10), nil
+}
+
+func (s *Service) tournamentGameInfo(ctx context.Context, logger zerolog.Logger, g entities.TournamentGame, teamNames map[int64]string) (entities.GameInfo, error) {
+	score, err := s.tournamentGameScoreString(logger, ctx, g)
+	if err != nil {
+		return entities.GameInfo{}, err
+	}
+	t1 := teamNames[g.Team1ID]
+	t2 := teamNames[g.Team2ID]
+	if t1 == "" {
+		logger.Error().Err(err).Msg("failed to s.tournamentGameInfo: could not get a teamName by teamId")
+		return entities.GameInfo{}, errors.New("failed to s.tournamentGameInfo: could not get teamName by teamId")
+	}
+	if t2 == "" {
+		logger.Error().Err(err).Msg("failed to s.tournamentGameInfo: could not get a teamName by teamId")
+		return entities.GameInfo{}, errors.New("failed to s.tournamentGameInfo: could not get teamName by teamId")
+	}
+	return entities.GameInfo{GameId: g.ID, Score: score, Team1Name: t1, Team2Name: t2}, nil
+}
+
+func (s *Service) fillPlayoffStages(ctx context.Context, logger zerolog.Logger, tournament entities.TournamentShort, teamNames map[int64]string) (playoffUp, playoffDown []entities.Stages, err error) {
+	switch tournament.TypeID {
+	case constant.RegularTournamentTypeID, constant.RegularOneVsOneTournamentTypeID:
+		return nil, nil, nil
+	}
+
+	stages, err := s.rdbOperations.GetTournamentStageList(ctx, logger, tournament.ID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	slices.SortFunc(stages, func(a, b entities.TournamentStage) int {
+		oa, errA := parseTournamentStageOrder(a.Number)
+		ob, errB := parseTournamentStageOrder(b.Number)
+		if errA != nil || errB != nil {
+			// если не удалось распарсить номер этапа, то сортируем по id стадии
+			return int(a.ID - b.ID)
+		}
+		if oa < ob {
+			return -1
+		}
+		if oa > ob {
+			return 1
+		}
+		// в случае, если каким-то образом номера стадий совпали, сортируем по id стадии
+		return int(a.ID - b.ID)
+	})
+
+	for _, st := range stages {
+		orderNum, err := parseTournamentStageOrder(st.Number)
+		if err != nil {
+			continue
+		}
+
+		games, err := s.rdbOperations.GetTournamentStageGames(ctx, logger, st.ID)
+		if err != nil {
+			return nil, nil, err
+		}
+		sort.Slice(games, func(i, j int) bool { return games[i].ID < games[j].ID })
+
+		if tournament.TypeID == constant.RegularPlayoffWithLoserBracketTournamentTypeID {
+			bracket, err := s.rdbOperations.GetTeamsFromTournamentBrackets(ctx, logger, tournament.ID, orderNum)
+			if err != nil {
+				return nil, nil, err
+			}
+			wbSet, lbSet := bracketTeamSets(bracket)
+			var upGames, downGames []entities.GameInfo
+
+			// Если оба множества пустые, то данных в brackets нет.
+			// Тогда все игры этапа попадают только в upGames — дальше они уйдут в PlayoffUp.
+			if len(wbSet) == 0 && len(lbSet) == 0 {
+				for _, g := range games {
+					gi, err := s.tournamentGameInfo(ctx, logger, g, teamNames)
+					if err != nil {
+						return nil, nil, err
+					}
+					upGames = append(upGames, gi)
+				}
+			} else {
+				for _, g := range games {
+					gi, err := s.tournamentGameInfo(ctx, logger, g, teamNames)
+					if err != nil {
+						return nil, nil, err
+					}
+					// Проверяем, к какой сетке принадлежит команда на данной стадии
+					_, inWb1 := wbSet[g.Team1ID]
+					_, inWb2 := wbSet[g.Team2ID]
+					_, inLb1 := lbSet[g.Team1ID]
+					_, inLb2 := lbSet[g.Team2ID]
+					switch {
+					case inWb1 && inWb2:
+						upGames = append(upGames, gi)
+					case inLb1 && inLb2:
+						downGames = append(downGames, gi)
+					// любая другая комбинация (кросс-сеточные пары, финал и т.д.)
+					default:
+						upGames = append(upGames, gi)
+					}
+				}
+			}
+			if len(upGames) > 0 {
+				sort.Slice(upGames, func(i, j int) bool { return upGames[i].GameId < upGames[j].GameId })
+				playoffUp = append(playoffUp, entities.Stages{StageId: st.ID, StageNumber: st.Number, Games: upGames})
+			}
+			if len(downGames) > 0 {
+				sort.Slice(downGames, func(i, j int) bool { return downGames[i].GameId < downGames[j].GameId })
+				playoffDown = append(playoffDown, entities.Stages{StageId: st.ID, StageNumber: st.Number, Games: downGames})
+			}
+			continue
+		}
+
+		var allGames []entities.GameInfo
+		for _, g := range games {
+			gi, err := s.tournamentGameInfo(ctx, logger, g, teamNames)
+			if err != nil {
+				return nil, nil, err
+			}
+			allGames = append(allGames, gi)
+		}
+		sort.Slice(allGames, func(i, j int) bool { return allGames[i].GameId < allGames[j].GameId })
+		playoffUp = append(playoffUp, entities.Stages{StageId: st.ID, StageNumber: st.Number, Games: allGames})
+	}
+	return playoffUp, playoffDown, nil
 }
 
 func (s *Service) Create(ctx context.Context, request *entities.CreateTeamRequest) (int64, error) {
