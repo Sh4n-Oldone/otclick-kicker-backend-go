@@ -207,11 +207,24 @@ type GetTournamentTeamVsTeamTableResponse struct {
 	DataTournament []DataTournament `json:"dataTournament"`
 	Message        string           `json:"message"`
 }
+type GameInfo struct {
+	GameId    int64  `json:"gameId"`
+	Score     string `json:"score"`
+	Team1Name string `json:"team1Name"`
+	Team2Name string `json:"team2Name"`
+}
+type Stages struct {
+	StageId     int64      `json:"stageId"`
+	StageNumber string     `json:"stageNumber"`
+	Games       []GameInfo `json:"games"`
+}
 
 type DataTournament struct {
 	TournamentId   int64           `json:"id"`
 	TournamentName string          `json:"name"`
 	Table          TableTournament `json:"table"`
+	PlayoffUp      []Stages        `json:"PlayoffUp,omitempty"`
+	PlayoffDown    []Stages        `json:"PlayoffDown,omitempty"`
 	GamesTiebreak  []GameTiebreak  `json:"gamesTiebreak"`
 }
 

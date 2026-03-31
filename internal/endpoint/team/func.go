@@ -146,6 +146,27 @@ func makeGetTournamentTeamVsTeamTable(s team.IService) endpoint.Endpoint {
 	}
 }
 
+func makeGetTournamentsTeamVsTeamTable(s team.IService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		reqID, ctx := middleware.GetRequestID(ctx)
+		serviceLogger := s.GetLogger().With().Str("Source", "makeGetTournamentsTeamVsTeamTable").Str("request_id", reqID).Logger()
+
+		req, err := helpers.CastRequest[*entities.GetTeamVsTeamTableRequest](request)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg(errors.FailedCastRequest)
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		teamsResp, err := s.GetTournamentsTeamVsTeamTable(ctx, req.CityID, req.SeasonID)
+		if err != nil {
+			serviceLogger.Error().Err(err).Msg("failed to team.GetTournamentsTeamVsTeamTable")
+			return nil, error_templates.WrapErrorEndpoint(err, reqID)
+		}
+
+		return teamsResp, nil
+	}
+}
+
 func makeCreate(s team.IService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		reqID, ctx := middleware.GetRequestID(ctx)
