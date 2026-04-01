@@ -69,6 +69,8 @@ paths:
     $ref: './paths/teams/teams-vs.yaml'
   /tournaments/1vs1/teams/vs:
     $ref: './paths/teams/teams-tournaments-1vs1-teams-vs.yaml'
+  /tournaments/teams/vs:
+    $ref: './paths/teams/teams-tournaments-teams-vs.yaml'
   /teams/add-player:
     $ref: './paths/teams/teams-add-player.yaml'
   /teams/remove-player:
@@ -111,7 +113,7 @@ paths:
     $ref: './paths/match/match-matches.yaml'
   /matches/{id}:
     $ref: './paths/match/match-matches-id.yaml'
-  
+
   /leagues:
     $ref: './paths/league/league-leagues.yaml'
   /leagues/{id}:
@@ -153,7 +155,6 @@ paths:
     $ref: './paths/game/game-tournaments-games-future-id.yaml'
   /tournaments/{id}/games:
     $ref: './paths/game/game-tournaments-id-games.yaml'
-
 
   /cities:
     $ref: './paths/city/city-cities.yaml'
