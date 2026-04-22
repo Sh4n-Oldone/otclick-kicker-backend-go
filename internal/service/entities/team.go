@@ -220,12 +220,13 @@ type Stages struct {
 }
 
 type DataTournament struct {
-	TournamentId   int64           `json:"id"`
-	TournamentName string          `json:"name"`
-	Table          TableTournament `json:"table"`
-	PlayoffUp      []Stages        `json:"PlayoffUp,omitempty"`
-	PlayoffDown    []Stages        `json:"PlayoffDown,omitempty"`
-	GamesTiebreak  []GameTiebreak  `json:"gamesTiebreak"`
+	TournamentId     int64           `json:"id"`
+	TournamentTypeId int64           `json:"typeId"`
+	TournamentName   string          `json:"name"`
+	Table            TableTournament `json:"table"`
+	PlayoffUp        []Stages        `json:"PlayoffUp,omitempty"`
+	PlayoffDown      []Stages        `json:"PlayoffDown,omitempty"`
+	GamesTiebreak    []GameTiebreak  `json:"gamesTiebreak"`
 }
 
 type TableTournament struct {
