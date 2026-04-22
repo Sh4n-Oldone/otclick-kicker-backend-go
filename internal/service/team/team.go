@@ -483,6 +483,7 @@ func (s *Service) GetTournamentTeamVsTeamTable(ctx context.Context, cityID, seas
 	for _, tournament := range tournaments { // Проходим по турнирам нужного города/сезона
 		var dataItem entities.DataTournament
 		dataItem.TournamentId = tournament.ID
+		dataItem.TournamentTypeId = tournament.TypeID
 		dataItem.TournamentName = tournament.Name
 
 		dataItem.Table.Columns = append(dataItem.Table.Columns, entities.Column{Uid: "teamShortName", Name: "Команда"})
@@ -660,6 +661,7 @@ func (s *Service) GetTournamentsTeamVsTeamTable(ctx context.Context, cityID, sea
 		typeID := tournament.TypeID
 		var dataItem entities.DataTournament
 		dataItem.TournamentId = tournament.ID
+		dataItem.TournamentTypeId = tournament.TypeID
 		dataItem.TournamentName = tournament.Name
 
 		dataItem.Table.Columns = append(dataItem.Table.Columns, entities.Column{Uid: "teamShortName", Name: "Команда"})
