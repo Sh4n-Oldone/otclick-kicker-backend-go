@@ -268,7 +268,7 @@ func CheckQtyTeamsInRegularPlayoffWithLooserBracket(neededTeamsForFirstPlayoffSt
 	}
 
 	// Проверка для нечетных этапов > 2: команды приходят из двух источников
-	if nextStageNumber > 2 && nextStageNumber%2 != 0 {
+	if nextStageNumber > 2 && nextStageNumber%2 == 0 { // значит текущий curentStage нечетный, и в винерах команд меньше (ушли в лузеры)
 		// На нечетных этапах команды приходят из верхней и нижней сеток
 		// Минимальное количество команд из текущего этапа должно быть >= requiredTeams / 2
 		// Но так как команды приходят из двух источников, проверяем: requiredTeams <= 2 * currentStageTeamsQty
