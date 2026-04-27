@@ -639,3 +639,61 @@ func (db *RWDBOperation) DeleteTournamentMatches(logger zerolog.Logger, ctx cont
 
 	return nil
 }
+
+func (db *RDBOperation) GetMatchById(logger zerolog.Logger, ctx context.Context, matchId int64) (*entities.Match, error) {
+	timeout, cancel := context.WithTimeout(ctx, db.cfg.MaxIdleConnectionTimeout)
+	defer cancel()
+
+	m := &entities.Match{}
+
+	query := `
+		SELECT m.id,
+			m.date,
+			m.game_id,
+			m.team1_id,
+			m.team2_id,
+			m.player1_team1_id,
+			m.player2_team1_id,
+			m.player1_team2_id,
+			m.player2_team2_id,
+			m.score_team1,
+			m.score_team2,
+			m.player1_team1_rate_before,
+			m.player1_team2_rate_before,
+			m.player2_team1_rate_before,
+			m.player2_team2_rate_before,
+			m.player1_team1_rate_after,
+			m.player1_team2_rate_after,
+			m.player2_team1_rate_after,
+			m.player2_team2_rate_after 
+		FROM matches m
+		WHERE m.id = $1;`
+
+	err := db.db.QueryRow(timeout, query, matchId).Scan(
+		&m.ID,
+		&m.Date,
+		&m.GameID,
+		&m.Team1ID,
+		&m.Team2ID,
+		&m.Player1Team1ID,
+		&m.Player2Team1ID,
+		&m.Player1Team2ID,
+		&m.Player2Team2ID,
+		&m.ScoreTeam1,
+		&m.ScoreTeam2,
+		&m.Player1Team1RateBefore,
+		&m.Player1Team2RateBefore,
+		&m.Player2Team1RateBefore,
+		&m.Player2Team2RateBefore,
+		&m.Player1Team1RateAfter,
+		&m.Player1Team2RateAfter,
+		&m.Player2Team1RateAfter,
+		&m.Player2Team2RateAfter,
+	)
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to postgresql.GetMatchById")
+		return nil, DecodeDatabaseError(err)
+	}
+
+	return m, nil
+}
