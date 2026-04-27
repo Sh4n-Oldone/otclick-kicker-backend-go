@@ -15,6 +15,7 @@ type IMatchR interface {
 	GetMatchListByLeagueID(logger zerolog.Logger, ctx context.Context, leagueID int64) ([]entities.Match, error)
 	GetMatchListByTournamentId(logger zerolog.Logger, ctx context.Context, tournamentId int64) ([]entities.Match, error)
 	FetchMatches(logger zerolog.Logger, ctx context.Context, gameID int64) ([]entities.ShortMatch, error)
+	GetMatchById(logger zerolog.Logger, ctx context.Context, matchId int64) (*entities.Match, error)
 }
 
 type IMatchRW interface {
